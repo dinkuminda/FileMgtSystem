@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --tooltip-bg: #ffffff;
+    --tooltip-text: #111827;
+  }
+  .dark {
+    --tooltip-bg: #111827;
+    --tooltip-text: #f9fafb;
+  }
+}

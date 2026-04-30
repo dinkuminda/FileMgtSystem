@@ -4,7 +4,8 @@ import {
   FileText, Users, LogOut, Plus, Search, 
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
-  FileOutput, FileInput, LayoutDashboard
+  FileOutput, FileInput, LayoutDashboard,
+  Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm from './RecordForm';
@@ -138,55 +139,59 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     r.request_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-600 rounded-lg">
-            <Users className="w-5 h-5 text-white" />
+  const SidebarContent = () => {
+    return (
+      <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-colors duration-300">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-600 rounded-lg">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight text-white">IDS Manager</span>
           </div>
-          <span className="font-bold text-lg text-gray-900 tracking-tight">IDS Manager</span>
         </div>
-      </div>
 
-      <nav className="flex-1 p-4 space-y-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.type}
-            onClick={() => {
-              setActiveTab(tab.type);
-            }}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === tab.type 
-                ? 'bg-blue-50 text-blue-700 shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-            }`}
+        <nav className="flex-1 p-4 space-y-2">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.type;
+            return (
+              <button
+                key={tab.type}
+                onClick={() => setActiveTab(tab.type)}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  isActive 
+                    ? 'bg-blue-900/20 text-blue-400' 
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-gray-800 mt-auto space-y-3">
+          <div className="p-4 rounded-xl bg-gray-800/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-2 text-gray-500">Active Session</p>
+            <p className="text-sm font-bold truncate text-gray-100">{userProfile?.full_name || 'Staff Member'}</p>
+            <p className="text-xs mt-1 capitalize text-gray-400">{userProfile?.role} Account</p>
+          </div>
+          
+          <button 
+            onClick={() => supabase.auth.signOut()}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-700 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 transition-colors"
           >
-            <tab.icon className="w-5 h-5" />
-            <span>{tab.label}</span>
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
           </button>
-        ))}
-      </nav>
-
-      <div className="p-4 border-t border-gray-100 mt-auto">
-        <div className="bg-gray-50 p-4 rounded-xl mb-4">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2 text-center lg:text-left">Active Session</p>
-          <p className="text-sm font-bold text-gray-900 truncate text-center lg:text-left">{userProfile?.full_name || 'Staff Member'}</p>
-          <p className="text-xs text-gray-500 mt-1 capitalize text-center lg:text-left">{userProfile?.role} Account</p>
         </div>
-        <button 
-          onClick={() => supabase.auth.signOut()}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-black transition-colors duration-300 overflow-hidden">
       <input 
         type="file" 
         accept=".csv" 
@@ -196,18 +201,18 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       />
 
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-64 border-r border-gray-800 flex flex-col transition-colors duration-300">
         <SidebarContent />
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto flex flex-col">
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
               {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : activeTab}
             </h2>
-            <p className="text-xs text-gray-500 font-medium">Immigration Data Structuring Division</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -218,13 +223,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   <input 
                     type="text"
                     placeholder="Search database..."
-                    className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
+                    className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 w-64 transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
 
-                <div className="h-6 w-px bg-gray-200 mx-2" />
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
               </>
             )}
 
@@ -232,7 +237,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               <button 
                 onClick={exportToCSV}
                 title="Export to CSV"
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
               >
                 <FileOutput className="w-5 h-5" />
               </button>
@@ -242,14 +247,14 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     title="Import from CSV"
-                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
                   >
                     <FileInput className="w-5 h-5" />
                   </button>
                   <button 
                     id="add-record-btn"
                     onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
+                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
                   >
                     <Plus className="w-4 h-4" />
                     <span>New Entry</span>
@@ -267,7 +272,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={activeTab === 'OVERVIEW' ? '' : 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden'}
+              className={activeTab === 'OVERVIEW' ? '' : 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden transition-colors'}
             >
               {activeTab === 'OVERVIEW' ? (
                 <DashboardReports />
@@ -275,17 +280,17 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">BOX #</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Full Name</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Citizenship</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Passport / Req #</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Service</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                      <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOX #</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Full Name</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Citizenship</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Passport / Req #</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Service</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {loading ? (
                         <tr>
                           <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
@@ -302,27 +307,27 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         </tr>
                       ) : (
                         filteredRecords.map((record) => (
-                          <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-6 py-4 text-sm font-mono text-gray-600">{record.box_number}</td>
+                          <tr key={record.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{record.box_number}</td>
                             <td className="px-6 py-4">
-                              <div className="text-sm font-bold text-gray-900">{record.full_name}</div>
-                              <div className="text-xs text-gray-500 uppercase">{record.sex}</div>
+                              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{record.full_name}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{record.sex}</div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-sm text-gray-700">{record.citizenship}</span>
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{record.citizenship}</span>
                             </td>
-                            <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                            <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
                               <div className="flex flex-col">
                                 <span>{record.passport_number}</span>
-                                <span className="text-blue-500">{record.request_number}</span>
+                                <span className="text-blue-500 dark:text-blue-400">{record.request_number}</span>
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
                                 {record.service_provided}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
+                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                               {new Date(record.date).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -331,14 +336,14 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                                   <>
                                     <button 
                                       onClick={() => { setEditingRecord(record); setIsFormOpen(true); }}
-                                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                      className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 rounded-lg transition-all"
                                       title="Edit Record"
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button 
                                       onClick={() => handleDelete(record.id)}
-                                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800 rounded-lg transition-all"
                                       title="Delete Record"
                                     >
                                       <Trash2 className="w-4 h-4" />

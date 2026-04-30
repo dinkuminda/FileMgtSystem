@@ -8,6 +8,13 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [theme] = useState<'dark'>('dark');
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light');
+    root.classList.add('dark');
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -83,7 +90,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
       {!session ? (
         <Auth />
       ) : (
