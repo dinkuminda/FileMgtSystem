@@ -246,9 +246,9 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                     value={formData.sex}
                     onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
                   >
-                    <option>Male</option>
-                    <option>Female</option>
-                    <option>Other</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
@@ -347,7 +347,7 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
 
           {/* Attachments Section */}
           <div className="pt-6 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <Paperclip className="w-5 h-5 text-gray-400" />
                 <h4 className="font-bold text-gray-900 tracking-tight">Evidence & Scanned Documents</h4>
@@ -371,7 +371,6 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
             </div>
 
             <div className="space-y-2">
-              {/* Existing Attachments */}
               {attachments.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group">
                   <div className="flex items-center space-x-3 truncate">
@@ -387,14 +386,14 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                     <button
                       type="button"
                       onClick={() => window.open(supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl)}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"
+                      className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-white shadow-sm transition-all"
                     >
                       <Download className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteAttachment(file)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white shadow-sm transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -402,7 +401,6 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                 </div>
               ))}
 
-              {/* Pending Attachments */}
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100 group animate-pulse">
                   <div className="flex items-center space-x-3 truncate">
@@ -411,13 +409,13 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-semibold text-blue-900 truncate">{file.name}</p>
-                      <span className="text-[10px] font-bold text-blue-600 uppercase">Pending Save</span>
+                      <span className="text-xs font-bold text-blue-600 uppercase">Pending Save</span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => removePendingFile(idx)}
-                    className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                    className="p-1.5 text-red-400 hover:text-red-600 rounded-lg"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
