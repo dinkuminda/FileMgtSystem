@@ -55,8 +55,8 @@ export default function Auth() {
           <div className="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg mb-4">
             <Globe className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Immigration Division</h1>
-          <p className="text-gray-500 mt-2">Data & Evidence Structuring System</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">ICS Portal</h1>
+          <p className="text-gray-500 mt-2 font-medium">Data & Evidence Structuring System</p>
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">

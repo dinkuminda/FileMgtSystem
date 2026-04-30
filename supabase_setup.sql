@@ -133,25 +133,25 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- VISA Policies
-CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (true);
+CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
 
 -- EOID Policies
-CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (true);
+CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
 
 -- Residence ID Policies
-CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (true);
+CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
 
 -- ETD Policies
-CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (true);
+CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
@@ -175,7 +175,7 @@ DROP POLICY IF EXISTS "View attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Insert attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Delete attachments" ON public.record_attachments;
 
-CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (true);
+CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
 CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
 
