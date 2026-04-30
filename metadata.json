@@ -1,0 +1,6 @@
+{
+  "name": "Immigration Data & Evidence System",
+  "description": "A secure, role-based management system for VISA, EOID, Residence ID, and ETD records for the Immigration Data and Evidence Structuring Division.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
