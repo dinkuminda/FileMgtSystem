@@ -179,9 +179,33 @@ CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO au
 CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
 
--- 7. Indexes
+-- 7. Airport Records Table (Specialized for Bole Airport Letters/Docs)
+CREATE TABLE IF NOT EXISTS public.airport_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  full_name TEXT NOT NULL,
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
+  citizenship TEXT NOT NULL,
+  passport_number TEXT NOT NULL,
+  request_number TEXT NOT NULL,
+  letter_number TEXT,
+  document_type TEXT NOT NULL DEFAULT 'Scanned Letter',
+  date DATE NOT NULL,
+  service_provided TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.airport_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+
+-- 8. Indexes
 CREATE INDEX IF NOT EXISTS idx_records_visa_name ON public.visa_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_eoid_name ON public.eoid_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_residence_name ON public.residence_id_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_etd_name ON public.etd_records(full_name);
+CREATE INDEX IF NOT EXISTS idx_records_airport_name ON public.airport_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_attachments_record ON public.record_attachments(record_id);

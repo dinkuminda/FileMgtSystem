@@ -12,7 +12,7 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder'
 );
 
-export type UserRole = 'admin' | 'staff' | 'viewer';
+export type UserRole = 'admin' | 'staff' | 'viewer' | 'airport_staff' | 'airport_viewer';
 
 export interface UserProfile {
   id: string;
@@ -21,13 +21,14 @@ export interface UserProfile {
   full_name?: string;
 }
 
-export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD';
+export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'AIRPORT';
 
 export const TABLE_MAP: Record<RecordType, string> = {
   'VISA': 'visa_records',
   'EOID': 'eoid_records',
   'Residence ID': 'residence_id_records',
-  'ETD': 'etd_records'
+  'ETD': 'etd_records',
+  'AIRPORT': 'airport_records'
 };
 
 export interface ImmigrationRecord {
@@ -46,6 +47,8 @@ export interface ImmigrationRecord {
   eoid_number?: string;
   residence_id_no?: string;
   etd?: string;
+  letter_number?: string;
+  document_type?: string;
 }
 
 export interface RecordAttachment {

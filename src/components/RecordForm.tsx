@@ -29,9 +29,8 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
     request_number: '',
     date: new Date().toISOString().split('T')[0],
     service_provided: '',
-    eoid_number: '',
-    residence_id_no: '',
-    etd: '',
+    letter_number: '',
+    document_type: 'Scanned Letter',
   });
 
   useEffect(() => {
@@ -48,6 +47,8 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         eoid_number: record.eoid_number || '',
         residence_id_no: record.residence_id_no || '',
         etd: record.etd || '',
+        letter_number: record.letter_number || '',
+        document_type: record.document_type || 'Scanned Letter',
       });
       fetchAttachments(record.id);
     }
@@ -142,7 +143,6 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
 
       const tableName = TABLE_MAP[type];
       const basePayload: any = {
-        box_number: formData.box_number,
         full_name: formData.full_name,
         sex: formData.sex,
         citizenship: formData.citizenship,
@@ -153,9 +153,17 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         created_by: user.id,
       };
 
+      if (type !== 'AIRPORT') {
+        basePayload.box_number = formData.box_number;
+      }
+
       if (type === 'EOID') basePayload.eoid_number = formData.eoid_number;
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
+      if (type === 'AIRPORT') {
+        basePayload.letter_number = formData.letter_number;
+        basePayload.document_type = formData.document_type;
+      }
 
       let savedRecordId = record?.id;
 
@@ -221,16 +229,18 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
           {/* Main Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">BOX Number</label>
-                <input
-                  required
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium dark:text-gray-100"
-                  value={formData.box_number}
-                  onChange={e => setFormData({ ...formData, box_number: e.target.value })}
-                  placeholder="BOX-2024-XXX"
-                />
-              </div>
+              {type !== 'AIRPORT' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">BOX Number</label>
+                  <input
+                    required
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium dark:text-gray-100"
+                    value={formData.box_number}
+                    onChange={e => setFormData({ ...formData, box_number: e.target.value })}
+                    placeholder="BOX-2024-XXX"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Full Name</label>
                 <input
@@ -312,6 +322,33 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                     onChange={e => setFormData({ ...formData, etd: e.target.value })}
                   />
                 </div>
+              )}
+              {type === 'AIRPORT' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Letter Number</label>
+                    <input
+                      required
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
+                      value={formData.letter_number}
+                      onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
+                      placeholder="ICS/BOLE/2024/XXX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Document Type</label>
+                    <select
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium dark:text-gray-100"
+                      value={formData.document_type}
+                      onChange={e => setFormData({ ...formData, document_type: e.target.value })}
+                    >
+                      <option value="Scanned Letter">Scanned Letter</option>
+                      <option value="Official Document">Official Document</option>
+                      <option value="Evidence Scan">Evidence Scan</option>
+                      <option value="Airport Clearance">Airport Clearance</option>
+                    </select>
+                  </div>
+                </>
               )}
               <div>
                 <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Request Number</label>

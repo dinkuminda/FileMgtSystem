@@ -5,7 +5,7 @@ import {
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard,
-  Sun, Moon, Activity, BarChart3
+  Sun, Moon, Activity, BarChart3, Plane, Paperclip
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm from './RecordForm';
@@ -13,6 +13,31 @@ import DashboardReports from './DashboardReports';
 import AuditLogView from './AuditLogView';
 import ReportingSystem from './ReportingSystem';
 import Papa from 'papaparse';
+
+const AttachmentIndicator = ({ recordId, type }: { recordId: string, type: RecordType }) => {
+  const [hasAttachments, setHasAttachments] = useState(false);
+
+  useEffect(() => {
+    const checkAttachments = async () => {
+      const { count, error } = await supabase
+        .from('record_attachments')
+        .select('*', { count: 'exact', head: true })
+        .eq('record_id', recordId)
+        .eq('record_table', TABLE_MAP[type]);
+      
+      if (!error && count && count > 0) {
+        setHasAttachments(true);
+      }
+    };
+    checkAttachments();
+  }, [recordId, type]);
+
+  if (!hasAttachments) return null;
+
+  return (
+    <Paperclip className="w-3.5 h-3.5 text-blue-500 animate-pulse" title="Has attachments" />
+  );
+};
 
 interface DashboardProps {
   userProfile: UserProfile | null;
@@ -27,15 +52,38 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = [
+  const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = ([
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Overview' },
     { type: 'REPORTS', icon: BarChart3, label: 'Deep Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'EOID' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD' },
+    { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
-  ];
+  ] as { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS', icon: any, label: string }[]).filter(tab => {
+    if (!userProfile) return false;
+    
+    // Admin has access to everything
+    if (userProfile.role === 'admin') return true;
+    
+    // Airport roles have access ONLY to Overview (maybe) and Airport module
+    if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+      return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
+    }
+    
+    // Regular staff/viewer handle other modules but NOT Audit (usually)
+    if (tab.type === 'AUDIT') return false;
+    
+    return true;
+  });
+
+  useEffect(() => {
+    // If current tab is not allowed, switch to Overview or first allowed
+    if (userProfile && !tabs.find(t => t.type === activeTab)) {
+      setActiveTab(tabs[0]?.type || 'OVERVIEW');
+    }
+  }, [userProfile, activeTab, tabs]);
 
   useEffect(() => {
     if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
@@ -141,6 +189,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     });
   };
 
+  const canEdit = () => {
+    if (!userProfile) return false;
+    if (userProfile.role === 'admin' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'airport_staff' && activeTab === 'AIRPORT') return true;
+    return false;
+  };
+
   const filteredRecords = records.filter(r => 
     r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.passport_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -222,14 +277,18 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       <main className="flex-1 overflow-y-auto flex flex-col">
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-              {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : activeTab === 'AUDIT' ? 'System Audit Logs' : activeTab === 'REPORTS' ? 'Advanced Analytics' : activeTab}
-            </h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+            {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : 
+             activeTab === 'AUDIT' ? 'System Audit Logs' : 
+             activeTab === 'REPORTS' ? 'Advanced Analytics' : 
+             activeTab === 'AIRPORT' ? 'Bole Airport Operations' : 
+             activeTab}
+          </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
           </div>
 
           <div className="flex items-center space-x-3">
-            {['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
+            {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
               <>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -247,7 +306,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             )}
 
             <div className="flex items-center space-x-1">
-              {['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
+              {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
                 <button 
                   onClick={exportToCSV}
                   title="Export to CSV"
@@ -257,7 +316,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 </button>
               )}
 
-              {userProfile?.role !== 'viewer' && ['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
+              {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
                 <>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -300,10 +359,21 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOX #</th>
+                        {activeTab !== 'AIRPORT' && (
+                          <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOX #</th>
+                        )}
                         <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Full Name</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Citizenship</th>
-                        <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Passport / Req #</th>
+                        {activeTab === 'AIRPORT' ? (
+                          <>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Letter / Type</th>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Reference</th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Citizenship</th>
+                            <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Passport / Req #</th>
+                          </>
+                        )}
                         <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Service</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Date</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-right">Actions</th>
@@ -327,20 +397,49 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                       ) : (
                         filteredRecords.map((record) => (
                           <tr key={record.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                            <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{record.box_number}</td>
+                            {activeTab !== 'AIRPORT' && (
+                              <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{record.box_number}</td>
+                            )}
                             <td className="px-6 py-4">
                               <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{record.full_name}</div>
                               <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{record.sex}</div>
                             </td>
-                            <td className="px-6 py-4">
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{record.citizenship}</span>
-                            </td>
-                            <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
-                              <div className="flex flex-col">
-                                <span>{record.passport_number}</span>
-                                <span className="text-blue-500 dark:text-blue-400">{record.request_number}</span>
-                              </div>
-                            </td>
+                            {activeTab === 'AIRPORT' ? (
+                              <>
+                                <td className="px-6 py-4">
+                                  <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{record.letter_number}</div>
+                                  <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">{record.document_type}</div>
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center space-x-2">
+                                      <span>{record.passport_number}</span>
+                                      {record.id && (
+                                        <AttachmentIndicator recordId={record.id} type={activeTab as RecordType} />
+                                      )}
+                                    </div>
+                                    <span className="text-gray-400 dark:text-gray-600">{record.request_number}</span>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-6 py-4">
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{record.citizenship}</span>
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center space-x-2">
+                                      <span>{record.passport_number}</span>
+                                      {record.id && (
+                                        <AttachmentIndicator recordId={record.id} type={activeTab as RecordType} />
+                                      )}
+                                    </div>
+                                    <span className="text-blue-500 dark:text-blue-400">{record.request_number}</span>
+                                  </div>
+                                </td>
+                              </>
+                            )}
                             <td className="px-6 py-4">
                               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
                                 {record.service_provided}
@@ -351,7 +450,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end space-x-2">
-                                {userProfile?.role !== 'viewer' && (
+                                {canEdit() && (
                                   <>
                                     <button 
                                       onClick={() => { setEditingRecord(record); setIsFormOpen(true); }}
