@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Loader2, Globe } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function Auth() {
@@ -10,6 +10,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +35,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
-        });
+          });
         if (error) throw error;
       }
     } catch (err: any) {
@@ -45,69 +46,109 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4 transition-colors">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full"
-      >
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-6">
-            <img 
-              src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
-              alt="ICS Logo"
-              className="h-28 w-auto drop-shadow-md"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                // Fallback to text logo if image fails
-                (e.target as any).style.display = 'none';
-              }}
-            />
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors flex flex-col md:flex-row">
+      {/* Branding Side */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-950 border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-800">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-center max-w-sm"
+        >
+          <img 
+            src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
+            alt="ICS Logo"
+            className="h-48 md:h-64 w-auto object-contain mx-auto mb-2 drop-shadow-sm"
+            referrerPolicy="no-referrer"
+          />
+          <div className="space-y-1">
+            <h1 className="text-6xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
+            <div className="pt-2">
+              <p className="text-blue-900 dark:text-blue-400 font-bold text-lg leading-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Immigration and Citizenship Service</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">ICS Portal</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Immigration and Citizenship Services</p>
-        </div>
+        </motion.div>
+      </div>
 
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 transition-colors">
-          <form onSubmit={handleAuth} className="space-y-4">
+      {/* Form Side */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8 lg:p-24">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="w-full max-w-sm"
+        >
+          <div className="mb-10">
+            <h2 className="text-4xl font-bold text-[#155fc3] mb-2">
+              {isSignUp ? 'Create Account' : 'Login'}
+            </h2>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-6">
             {isSignUp && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+              <div className="relative">
                 <input
                   type="text"
                   required
-                  className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-gray-100"
+                  id="fullName"
+                  className="peer w-full px-4 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl focus:border-blue-600 outline-none transition-all placeholder-transparent dark:text-gray-100"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Doe"
+                  placeholder="Full Name"
                 />
+                <label 
+                  htmlFor="fullName"
+                  className="absolute left-4 -top-2.5 bg-white dark:bg-gray-800 px-1 text-sm font-medium text-blue-600 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+                >
+                  Full Name *
+                </label>
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+
+            <div className="relative">
               <input
                 type="email"
                 required
-                className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-gray-100"
+                id="email"
+                className="peer w-full px-4 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl focus:border-blue-600 outline-none transition-all placeholder-transparent dark:text-gray-100"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@immigration.gov"
+                placeholder="Email Address"
               />
+              <label 
+                htmlFor="email"
+                className="absolute left-4 -top-2.5 bg-white dark:bg-gray-800 px-1 text-sm font-medium text-blue-600 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+              >
+                Email Address *
+              </label>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
-                className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-gray-100"
+                id="password"
+                className="peer w-full px-4 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl focus:border-blue-600 outline-none transition-all placeholder-transparent dark:text-gray-100 pr-12"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Password"
               />
+              <label 
+                htmlFor="password"
+                className="absolute left-4 -top-2.5 bg-white dark:bg-gray-800 px-1 text-sm font-medium text-blue-600 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+              >
+                Password *
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700 p-1"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30 italic">
+              <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
                 {error}
               </p>
             )}
@@ -116,38 +157,31 @@ export default function Auth() {
               id="auth-submit"
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg active:scale-[0.98]"
+              className="w-full flex items-center justify-center space-x-2 bg-[#0066cc] hover:bg-[#0052a3] text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none active:scale-[0.98] disabled:opacity-70"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isSignUp ? (
-                <>
-                  <UserPlus className="w-5 h-5" />
-                  <span>Create Account</span>
-                </>
+                <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
-                <>
-                  <LogIn className="w-5 h-5" />
-                  <span>Sign In</span>
-                </>
+                <span className="text-lg">{isSignUp ? 'Create Account' : 'Log In'}</span>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 text-center pt-8 border-t border-gray-50 dark:border-gray-800">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-bold"
             >
-              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+              {isSignUp ? 'Already have an account? Log In' : "Don't have an account? Sign Up"}
             </button>
           </div>
-        </div>
-        
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-8">
-          Authorized personnel only. All access is logged and monitored.
-        </p>
-      </motion.div>
+          
+          <p className="text-center text-[10px] text-gray-400 dark:text-gray-600 mt-12 uppercase tracking-widest font-bold">
+            Authorized personnel only
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }
+
