@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, type UserProfile, type ImmigrationRecord, type RecordType, TABLE_MAP } from '../lib/supabase';
+import { supabase, type UserProfile, type ImmigrationRecord, type RecordType, TABLE_MAP, logger } from '../lib/supabase';
 import { 
   FileText, Users, LogOut, Plus, Search, 
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard,
-  Sun, Moon
+  Sun, Moon, Activity, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm from './RecordForm';
 import DashboardReports from './DashboardReports';
+import AuditLogView from './AuditLogView';
+import ReportingSystem from './ReportingSystem';
 import Papa from 'papaparse';
 
 interface DashboardProps {
@@ -19,28 +21,30 @@ interface DashboardProps {
 export default function Dashboard({ userProfile }: DashboardProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<RecordType | 'OVERVIEW'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const tabs: { type: RecordType | 'OVERVIEW'; icon: any; label: string }[] = [
+  const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Overview' },
+    { type: 'REPORTS', icon: BarChart3, label: 'Deep Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'EOID' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD' },
+    { type: 'AUDIT', icon: Activity, label: 'System Audit' },
   ];
 
   useEffect(() => {
-    if (activeTab !== 'OVERVIEW') {
+    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
       fetchRecords();
     }
   }, [activeTab]);
 
   const fetchRecords = async () => {
-    if (activeTab === 'OVERVIEW') return;
+    if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS') return;
     setLoading(true);
     const tableName = TABLE_MAP[activeTab as RecordType];
     const { data, error } = await supabase
@@ -57,6 +61,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (!confirm('Are you sure you want to delete this record?')) return;
     
     setLoading(true);
+    const recordToDelete = records.find(r => r.id === id);
     const tableName = TABLE_MAP[activeTab as RecordType];
     
     try {
@@ -73,6 +78,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
       if (error) throw error;
       
+      await logger.log('DELETE', activeTab, `Deleted record for ${recordToDelete?.full_name || 'unknown'}`, id);
       setRecords(records.filter(r => r.id !== id));
     } catch (err: any) {
       console.error('Error deleting record:', err);
@@ -82,8 +88,9 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     }
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
     if (records.length === 0) return;
+    await logger.log('EXPORT', activeTab, `Exported ${records.length} records to CSV`);
     const csv = Papa.unparse(records);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -121,6 +128,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           
           if (error) throw error;
           
+          await logger.log('IMPORT', activeTab, `Imported ${processedData.length} records via CSV`);
           alert(`Successfully imported ${processedData.length} records!`);
           fetchRecords();
         } catch (err: any) {
@@ -210,13 +218,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-              {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : activeTab}
+              {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : activeTab === 'AUDIT' ? 'System Audit Logs' : activeTab === 'REPORTS' ? 'Advanced Analytics' : activeTab}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
           </div>
 
           <div className="flex items-center space-x-3">
-            {activeTab !== 'OVERVIEW' && (
+            {['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
               <>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -234,15 +242,17 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             )}
 
             <div className="flex items-center space-x-1">
-              <button 
-                onClick={exportToCSV}
-                title="Export to CSV"
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-              >
-                <FileOutput className="w-5 h-5" />
-              </button>
+              {['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
+                <button 
+                  onClick={exportToCSV}
+                  title="Export to CSV"
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                >
+                  <FileOutput className="w-5 h-5" />
+                </button>
+              )}
 
-              {userProfile?.role !== 'viewer' && (
+              {userProfile?.role !== 'viewer' && ['VISA', 'EOID', 'Residence ID', 'ETD'].includes(activeTab) && (
                 <>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -276,6 +286,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             >
               {activeTab === 'OVERVIEW' ? (
                 <DashboardReports />
+              ) : activeTab === 'AUDIT' ? (
+                <AuditLogView />
+              ) : activeTab === 'REPORTS' ? (
+                <ReportingSystem />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -370,7 +384,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           <RecordForm 
             isOpen={isFormOpen} 
             onClose={() => setIsFormOpen(false)} 
-            type={activeTab === 'OVERVIEW' ? 'VISA' : activeTab}
+            type={activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab}
             record={editingRecord}
             onSuccess={() => {
               setIsFormOpen(false);

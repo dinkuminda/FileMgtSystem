@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, type ImmigrationRecord, type RecordType, TABLE_MAP, type RecordAttachment } from '../lib/supabase';
+import { supabase, type ImmigrationRecord, type RecordType, TABLE_MAP, type RecordAttachment, logger } from '../lib/supabase';
 import { X, Save, AlertCircle, Loader2, Paperclip, Trash2, FileIcon, ImageIcon, FileTextIcon, Scan, Download } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CITIZENSHIPS } from '../constants';
@@ -162,10 +162,12 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
       if (record) {
         const { error } = await supabase.from(tableName).update(basePayload).eq('id', record.id);
         if (error) throw error;
+        await logger.log('UPDATE', type, `Updated record for ${basePayload.full_name}`, record.id);
       } else {
         const { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
         if (error) throw error;
         savedRecordId = data.id;
+        await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecordId);
       }
 
       // Handle pending uploads

@@ -59,3 +59,33 @@ export interface RecordAttachment {
   created_at: string;
   created_by: string;
 }
+
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  user_email: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'EXPORT' | 'IMPORT';
+  entity_type: string;
+  entity_id?: string;
+  details: string;
+  created_at: string;
+}
+
+export const logger = {
+  log: async (action: AuditLog['action'], entity_type: string, details: string, entity_id?: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from('audit_logs').insert([
+      {
+        user_id: user.id,
+        user_email: user.email,
+        action,
+        entity_type,
+        entity_id,
+        details,
+        created_at: new Date().toISOString()
+      }
+    ]);
+  }
+};
