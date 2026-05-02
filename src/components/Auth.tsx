@@ -54,12 +54,12 @@ export default function Auth() {
           animate={{ opacity: 1, x: 0 }}
           className="text-center max-w-sm"
         >
-          <img 
-            src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
-            alt="ICS Logo"
-            className="h-48 md:h-64 w-auto object-contain mx-auto mb-2 drop-shadow-sm"
-            referrerPolicy="no-referrer"
-          />
+      <img 
+  src="https://upload.wikimedia.org/wikipedia/en/3/30/Immigration_and_Citizenship_Service_%28Ethiopia%29_logo.png"
+  alt="ICS Logo"
+  className="h-48 md:h-64 w-auto object-contain mx-auto mb-2 drop-shadow-sm"
+  referrerPolicy="no-referrer"
+/>
           <div className="space-y-1">
             <h1 className="text-6xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
             <div className="pt-2">
