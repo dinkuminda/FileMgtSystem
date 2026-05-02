@@ -31,6 +31,9 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
     service_provided: '',
     letter_number: '',
     document_type: 'Scanned Letter',
+    eoid_number: '',
+    residence_id_no: '',
+    etd: '',
   });
 
   useEffect(() => {

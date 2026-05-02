@@ -12,6 +12,7 @@ import RecordForm from './RecordForm';
 import DashboardReports from './DashboardReports';
 import AuditLogView from './AuditLogView';
 import ReportingSystem from './ReportingSystem';
+import AirportView from './AirportView';
 import Papa from 'papaparse';
 
 const AttachmentIndicator = ({ recordId, type }: { recordId: string, type: RecordType }) => {
@@ -86,7 +87,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   }, [userProfile, activeTab, tabs]);
 
   useEffect(() => {
-    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
+    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS' && activeTab !== 'AIRPORT') {
       fetchRecords();
     }
   }, [activeTab]);
@@ -325,14 +326,16 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   >
                     <FileInput className="w-5 h-5" />
                   </button>
-                  <button 
-                    id="add-record-btn"
-                    onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>New Entry</span>
-                  </button>
+                  {activeTab !== 'AIRPORT' && (
+                    <button 
+                      id="add-record-btn"
+                      onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>New Entry</span>
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -354,6 +357,14 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <AuditLogView />
               ) : activeTab === 'REPORTS' ? (
                 <ReportingSystem />
+              ) : activeTab === 'AIRPORT' ? (
+                <AirportView 
+                  onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                  onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                  onDeleteRecord={handleDelete}
+                  searchQuery={searchQuery}
+                  canEdit={canEdit()}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">

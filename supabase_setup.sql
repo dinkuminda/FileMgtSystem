@@ -6,9 +6,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer')),
+  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer')),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Helper Function for Admin Check (more performant in RLS)
+CREATE OR REPLACE FUNCTION public.is_admin() 
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 1.1 Audit Logs table
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  user_email TEXT NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  details TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "audit_select" ON public.audit_logs;
+DROP POLICY IF EXISTS "audit_insert" ON public.audit_logs;
+CREATE POLICY "audit_select" ON public.audit_logs FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "audit_insert" ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -106,11 +132,13 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- 4. Policies for Profiles
+DROP POLICY IF EXISTS "Public profiles viewable" ON public.profiles;
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Public profiles viewable" ON public.profiles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 
 -- 5. Policies for Records
--- Drop overlapping policies first
+-- Drop older/overlapping policies
 DROP POLICY IF EXISTS "View visa" ON public.visa_records;
 DROP POLICY IF EXISTS "Insert visa" ON public.visa_records;
 DROP POLICY IF EXISTS "Modify visa" ON public.visa_records;
@@ -124,37 +152,45 @@ DROP POLICY IF EXISTS "View etd" ON public.etd_records;
 DROP POLICY IF EXISTS "Insert etd" ON public.etd_records;
 DROP POLICY IF EXISTS "Modify etd" ON public.etd_records;
 
--- Helper Function for Admin Check (more performant in RLS)
-CREATE OR REPLACE FUNCTION public.is_admin() 
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin';
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- VISA Policies
-CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+DROP POLICY IF EXISTS "visa_select" ON public.visa_records;
+DROP POLICY IF EXISTS "visa_insert" ON public.visa_records;
+DROP POLICY IF EXISTS "visa_update" ON public.visa_records;
+DROP POLICY IF EXISTS "visa_delete" ON public.visa_records;
+CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- EOID Policies
-CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+DROP POLICY IF EXISTS "eoid_select" ON public.eoid_records;
+DROP POLICY IF EXISTS "eoid_insert" ON public.eoid_records;
+DROP POLICY IF EXISTS "eoid_update" ON public.eoid_records;
+DROP POLICY IF EXISTS "eoid_delete" ON public.eoid_records;
+CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- Residence ID Policies
-CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+DROP POLICY IF EXISTS "residence_select" ON public.residence_id_records;
+DROP POLICY IF EXISTS "residence_insert" ON public.residence_id_records;
+DROP POLICY IF EXISTS "residence_update" ON public.residence_id_records;
+DROP POLICY IF EXISTS "residence_delete" ON public.residence_id_records;
+CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- ETD Policies
-CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+DROP POLICY IF EXISTS "etd_select" ON public.etd_records;
+DROP POLICY IF EXISTS "etd_insert" ON public.etd_records;
+DROP POLICY IF EXISTS "etd_update" ON public.etd_records;
+DROP POLICY IF EXISTS "etd_delete" ON public.etd_records;
+CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- 6. Attachments Table
 CREATE TABLE IF NOT EXISTS public.record_attachments (
@@ -175,9 +211,9 @@ DROP POLICY IF EXISTS "View attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Insert attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Delete attachments" ON public.record_attachments;
 
-CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- 7. Airport Records Table (Specialized for Bole Airport Letters/Docs)
 CREATE TABLE IF NOT EXISTS public.airport_records (
@@ -197,10 +233,15 @@ CREATE TABLE IF NOT EXISTS public.airport_records (
 
 ALTER TABLE public.airport_records ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR is_admin());
+DROP POLICY IF EXISTS "airport_select" ON public.airport_records;
+DROP POLICY IF EXISTS "airport_insert" ON public.airport_records;
+DROP POLICY IF EXISTS "airport_update" ON public.airport_records;
+DROP POLICY IF EXISTS "airport_delete" ON public.airport_records;
+
+CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR is_admin());
-CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR is_admin());
+CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- 8. Indexes
 CREATE INDEX IF NOT EXISTS idx_records_visa_name ON public.visa_records(full_name);
@@ -209,3 +250,31 @@ CREATE INDEX IF NOT EXISTS idx_records_residence_name ON public.residence_id_rec
 CREATE INDEX IF NOT EXISTS idx_records_etd_name ON public.etd_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_airport_name ON public.airport_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_attachments_record ON public.record_attachments(record_id);
+
+-- 9. Storage Setup (immigration-docs bucket)
+-- We attempt to insert the bucket. In some Supabase environments, you might need to use the dashboard.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) 
+VALUES ('immigration-docs', 'immigration-docs', false, 10485760, ARRAY['image/*', 'application/pdf'])
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policies
+-- Note: These policies target the storage.objects table
+-- We use a single policy for ALL operations in the specific bucket for authenticated users
+DROP POLICY IF EXISTS "Allow authenticated access" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated select" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated insert" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated update" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated delete" ON storage.objects;
+
+CREATE POLICY "Allow authenticated access" ON storage.objects 
+  FOR ALL TO authenticated 
+  USING (bucket_id = 'immigration-docs')
+  WITH CHECK (bucket_id = 'immigration-docs');
+
+-- 10. Admin Profile Boost
+-- Ensure the primary admin email always has admin role regardless of when they signed up
+INSERT INTO public.profiles (id, email, role, full_name)
+SELECT id, email, 'admin', 'Primary Admin'
+FROM auth.users
+WHERE email = 'dinkuh12@gmail.com'
+ON CONFLICT (id) DO UPDATE SET role = 'admin';
