@@ -52,11 +52,20 @@ export default function Auth() {
         className="max-w-md w-full"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg mb-4">
-            <Globe className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-6">
+            <img 
+              src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
+              alt="ICS Logo"
+              className="h-28 w-auto drop-shadow-md"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // Fallback to text logo if image fails
+                (e.target as any).style.display = 'none';
+              }}
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">ICS Portal</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Data & Evidence Structuring System</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Immigration and Citizenship Services</p>
         </div>
 
         <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 transition-colors">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured, type UserProfile, type UserRole } from './lib/supabase';
+import { supabase, isSupabaseConfigured, type UserProfile, logger } from './lib/supabase';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { ShieldAlert, Loader2 } from 'lucide-react';
@@ -20,14 +20,22 @@ export default function App() {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+        logger.log('LOGIN', 'System', 'Session initialized');
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+        if (event === 'SIGNED_IN') {
+          logger.log('LOGIN', 'User', 'User signed in');
+        }
+      }
       else setUserProfile(null);
     });
 

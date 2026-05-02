@@ -76,7 +76,7 @@ export const logger = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('audit_logs').insert([
+    const { error } = await supabase.from('audit_logs').insert([
       {
         user_id: user.id,
         user_email: user.email,
@@ -87,5 +87,9 @@ export const logger = {
         created_at: new Date().toISOString()
       }
     ]);
+
+    if (error) {
+      console.error('Audit Log Error:', error);
+    }
   }
 };

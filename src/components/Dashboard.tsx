@@ -152,8 +152,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-colors duration-300">
         <div className="p-6 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <Users className="w-5 h-5 text-white" />
+            <div className="p-1 px-1.5 bg-white rounded-lg">
+              <img 
+                src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
+                alt="Logo"
+                className="w-8 h-8 object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <span className="font-bold text-lg tracking-tight text-white">IDS Manager</span>
           </div>

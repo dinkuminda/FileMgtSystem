@@ -27,6 +27,9 @@ export default function AuditLogView() {
       case 'CREATE': return 'text-green-600 bg-green-50 dark:bg-green-900/20';
       case 'UPDATE': return 'text-blue-600 bg-blue-50 dark:bg-blue-900/20';
       case 'DELETE': return 'text-red-600 bg-red-50 dark:bg-red-900/20';
+      case 'LOGIN': return 'text-purple-600 bg-purple-50 dark:bg-purple-900/20';
+      case 'EXPORT': return 'text-orange-600 bg-orange-50 dark:bg-orange-900/20';
+      case 'IMPORT': return 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20';
       default: return 'text-gray-600 bg-gray-50 dark:bg-gray-800';
     }
   };
