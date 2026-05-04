@@ -24,7 +24,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [matchAttachments, setMatchAttachments] = useState<Record<string, any[]>>({});
-  const [activeSubTab, setActiveSubTab] = useState<'add' | 'view' | 'edit'>('view');
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'add' | 'view' | 'edit'>('dashboard');
 
   // Logic for the requested "view document type by searching name"
   const exactMatches = searchQuery && searchQuery.length > 2 
@@ -112,6 +112,16 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
       {/* Top Navigation Tabs (Based on Sketch) */}
       <div className="flex border-b border-gray-200 dark:border-gray-800">
         <button 
+          onClick={() => setActiveSubTab('dashboard')}
+          className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
+            activeSubTab === 'dashboard' 
+              ? 'border-b-2 border-blue-600 text-blue-600' 
+              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+          }`}
+        >
+          Dashboard
+        </button>
+        <button 
           onClick={() => setActiveSubTab('add')}
           className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
             activeSubTab === 'add' 
@@ -145,7 +155,141 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
         )}
       </div>
 
-      {activeSubTab === 'add' ? (
+      {activeSubTab === 'dashboard' ? (
+        <div className="space-y-8">
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+            >
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <FileText className="w-6 h-6 text-blue-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Records</p>
+              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">{stats?.total || 0}</h3>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+            >
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <Clock className="w-6 h-6 text-amber-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Added Today</p>
+              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">{stats?.today || 0}</h3>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+            >
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <Filter className="w-6 h-6 text-purple-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incomplete Scans</p>
+              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">
+                {records.filter(r => !Object.keys(matchAttachments).includes(r.id)).length}
+              </h3>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+            >
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Operations</p>
+              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">ON</h3>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Document Types Chart */}
+            <div className="bg-white dark:bg-gray-900 p-10 rounded-[3rem] border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-2xl font-black">Record Distribution</h3>
+                  <p className="text-sm text-gray-500">Breakdown by document classification</p>
+                </div>
+                <LayoutGrid className="w-6 h-6 text-gray-300" />
+              </div>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats?.typeData || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.documentElement.classList.contains('dark') ? '#334155' : '#f1f5f9'} />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                    />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                    <Tooltip 
+                      cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
+                      contentStyle={{ 
+                        borderRadius: '24px', 
+                        border: 'none', 
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                        backgroundColor: '#1e293b',
+                        color: 'white'
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                      {(stats?.typeData || []).map((_entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Service Breakdown */}
+            <div className="bg-white dark:bg-gray-900 p-10 rounded-[3rem] border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-2xl font-black">Top Services</h3>
+                  <p className="text-sm text-gray-500">Most frequent airport operations</p>
+                </div>
+                <List className="w-6 h-6 text-gray-300" />
+              </div>
+              <div className="space-y-6">
+                {(stats?.serviceData || []).sort((a: any, b: any) => b.value - a.value).slice(0, 4).map((service: any, index: number) => (
+                  <div key={service.name} className="flex items-center gap-6">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl" style={{ backgroundColor: `${COLORS[index % COLORS.length]}20`, color: COLORS[index % COLORS.length] }}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-sm font-black uppercase tracking-widest">{service.name}</span>
+                        <span className="text-xs font-mono font-bold text-gray-400">{service.value}</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(service.value / (stats?.total || 1)) * 100}%` }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : activeSubTab === 'add' ? (
         <div className="min-h-[400px] flex items-center justify-center p-12 bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
           <div className="text-center space-y-6 max-w-md">
             <div className="mx-auto w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
@@ -293,29 +437,54 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                       </div>
 
                       {matchAttachments[match.id]?.length > 0 ? (
-                        <div className="space-y-3">
-                          {matchAttachments[match.id].map(file => (
-                            <button 
-                              key={file.id}
-                              onClick={() => window.open(supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl)}
-                              className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:bg-white dark:hover:bg-gray-900 transition-all text-left shadow-sm group/file"
-                            >
-                              <div className="flex items-center gap-4 truncate">
-                                <div className="p-2 bg-white dark:bg-gray-900 rounded-xl group-hover/file:bg-blue-600 group-hover/file:text-white transition-colors">
-                                  <FileIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <span className="text-xs font-black text-gray-900 dark:text-gray-100 block truncate max-w-[140px] uppercase">
-                                    {file.file_name}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                                    {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
-                                  </span>
-                                </div>
+                        <div className="space-y-4">
+                          {matchAttachments[match.id].map(file => {
+                            const isImage = file.content_type?.startsWith('image/');
+                            const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                            
+                            return (
+                              <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-300">
+                                {isImage ? (
+                                  <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900">
+                                    <img 
+                                      src={fileUrl} 
+                                      alt="Document Scan"
+                                      className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-700"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/20 transition-colors flex items-center justify-center">
+                                      <button 
+                                        onClick={() => window.open(fileUrl)}
+                                        className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600 opacity-0 group-hover/doc:opacity-100 transition-all transform scale-90 group-hover/doc:scale-100"
+                                      >
+                                        <ExternalLink className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button 
+                                    onClick={() => window.open(fileUrl)}
+                                    className="w-full flex items-center justify-between p-5 rounded-[2rem] bg-gray-50 dark:bg-gray-800 border border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:bg-white dark:hover:bg-gray-900 transition-all text-left shadow-sm group/file"
+                                  >
+                                    <div className="flex items-center gap-4 truncate">
+                                      <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl group-hover/file:bg-blue-600 group-hover/file:text-white transition-colors">
+                                        <FileIcon className="w-6 h-6" />
+                                      </div>
+                                      <div>
+                                        <span className="text-xs font-black text-gray-900 dark:text-gray-100 block truncate max-w-[140px] uppercase">
+                                          {file.file_name}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                                          {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <ExternalLink className="w-5 h-5 text-blue-500 opacity-0 group-hover/file:opacity-100 transition-opacity" />
+                                  </button>
+                                )}
                               </div>
-                              <ExternalLink className="w-5 h-5 text-blue-500 opacity-0 group-hover/file:opacity-100 transition-opacity" />
-                            </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="p-8 rounded-3xl bg-gray-50/50 dark:bg-gray-900/50 text-center border-2 border-dotted border-gray-200 dark:border-gray-800">
@@ -333,10 +502,20 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                       </div>
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => onEditRecord(match)}
-                          className="py-3 px-6 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-blue-700 shadow-lg shadow-blue-600/20 active:scale-95"
+                          onClick={() => {
+                            const attachments = matchAttachments[match.id];
+                            if (attachments && attachments.length > 0) {
+                              window.open(supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl);
+                            }
+                          }}
+                          disabled={!matchAttachments[match.id] || matchAttachments[match.id].length === 0}
+                          className={`py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                            matchAttachments[match.id]?.length > 0 
+                              ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20" 
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
                         >
-                          View Scan Doc
+                          {matchAttachments[match.id]?.length > 0 ? 'View Scan Doc' : 'No Scan Available'}
                         </button>
                       </div>
                     </div>

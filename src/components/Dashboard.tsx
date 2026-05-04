@@ -54,8 +54,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = ([
-    { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Overview' },
-    { type: 'REPORTS', icon: BarChart3, label: 'Deep Reports' },
+    { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
+    { type: 'REPORTS', icon: BarChart3, label: 'Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'EOID' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },

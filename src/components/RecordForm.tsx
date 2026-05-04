@@ -18,7 +18,15 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<RecordAttachment[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Cleanup previews on unmount
+    return () => {
+      Object.values(previews).forEach((url) => URL.revokeObjectURL(url as string));
+    };
+  }, [previews]);
 
   const [formData, setFormData] = useState({
     box_number: '',
@@ -72,6 +80,11 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPreviews(prev => ({ ...prev, [file.name]: url }));
+    }
 
     if (record) {
       // Direct upload if record exists
@@ -416,8 +429,15 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
               {attachments.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800 group transition-colors">
                   <div className="flex items-center space-x-3 truncate">
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                      {getFileIcon(file.content_type)}
+                    <div className="p-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm w-12 h-12 flex items-center justify-center overflow-hidden">
+                      {file.content_type?.startsWith('image/') ? (
+                        <img 
+                          src={supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl} 
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : getFileIcon(file.content_type)}
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{file.file_name}</p>
@@ -446,8 +466,14 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30 group animate-pulse">
                   <div className="flex items-center space-x-3 truncate">
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                      {getFileIcon(file.type)}
+                    <div className="p-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm w-12 h-12 flex items-center justify-center overflow-hidden">
+                      {file.type.startsWith('image/') && previews[file.name] ? (
+                        <img 
+                          src={previews[file.name]} 
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : getFileIcon(file.type)}
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-semibold text-blue-900 dark:text-blue-400 truncate">{file.name}</p>
