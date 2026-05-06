@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Eye, EyeOff, FolderTree, ShieldCheck, Database, Files } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function Auth() {
@@ -54,6 +54,22 @@ export default function Auth() {
           animate={{ opacity: 1, x: 0 }}
           className="text-center max-w-sm"
         >
+          {/* File Management Icon Illustration */}
+          <div className="relative mb-8 flex justify-center">
+            <div className="absolute inset-0 bg-blue-100 dark:bg-blue-900/20 blur-3xl rounded-full scale-150 opacity-50" />
+            <div className="relative flex items-center justify-center">
+              <div className="p-8 bg-blue-600 rounded-[2.5rem] shadow-2xl shadow-blue-200 dark:shadow-none transform -rotate-6">
+                <FolderTree className="w-16 h-16 text-white" />
+              </div>
+              <div className="absolute -top-4 -right-4 p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 transform rotate-12">
+                <ShieldCheck className="w-8 h-8 text-blue-600" />
+              </div>
+              <div className="absolute -bottom-2 -left-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transform rotate-12">
+                <Database className="w-6 h-6 text-gray-400" />
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <h1 className="text-6xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
             <div className="pt-2">
