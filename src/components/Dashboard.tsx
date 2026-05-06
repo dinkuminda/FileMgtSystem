@@ -4,7 +4,7 @@ import {
   FileText, Users, LogOut, Plus, Search, 
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
-  FileOutput, FileInput, LayoutDashboard,
+  FileOutput, FileInput, LayoutDashboard, Shield, X,
   Sun, Moon, Activity, BarChart3, Plane, Paperclip
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -52,6 +52,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = ([
@@ -219,9 +220,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             </div>
             <span className="font-bold text-lg tracking-tight text-white">IDS Manager</span>
           </div>
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-1 md:hidden text-gray-500 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" /> 
+          </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.type;
             return (
@@ -250,10 +257,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           
           <button 
             onClick={() => supabase.auth.signOut()}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-700 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 transition-colors"
+            className="w-full flex items-center justify-center space-x-3 px-4 py-3.5 bg-red-600/15 border border-red-500/30 rounded-xl text-sm font-black text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-950/20 uppercase tracking-widest group"
           >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
+            <LogOut className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <span>Logout</span>
           </button>
         </div>
       </div>
@@ -270,42 +277,66 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         onChange={handleImportCSV} 
       />
 
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-800 flex flex-col transition-colors duration-300">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 md:relative md:translate-x-0 transition-transform duration-300 ease-in-out transform ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } border-r border-gray-800 flex flex-col bg-gray-900`}>
         <SidebarContent />
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto flex flex-col">
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
-          <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : 
-             activeTab === 'AUDIT' ? 'System Audit Logs' : 
-             activeTab === 'REPORTS' ? 'Advanced Analytics' : 
-             activeTab === 'AIRPORT' ? 'Bole Airport Operations' : 
-             activeTab}
-          </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
+      <main className="flex-1 overflow-y-auto flex flex-col w-full">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm transition-colors">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 md:hidden text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            >
+              <LayoutDashboard className="w-6 h-6" />
+            </button>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : 
+                 activeTab === 'AUDIT' ? 'System Audit Logs' : 
+                 activeTab === 'REPORTS' ? 'Advanced Analytics' : 
+                 activeTab === 'AIRPORT' ? 'Bole Airport Operations' : 
+                 activeTab}
+              </h2>
+              <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-              <>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input 
-                    type="text"
-                    placeholder="Search database..."
-                    className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 w-64 transition-all"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
-              </>
-            )}
+          <div className="flex items-center space-x-2 md:space-x-3">
+            <div className="hidden md:flex items-center space-x-3">
+              {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input 
+                      type="text"
+                      placeholder="Search database..."
+                      className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 w-48 lg:w-64 transition-all"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                </>
+              )}
+            </div>
 
             <div className="flex items-center space-x-1">
               {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
@@ -323,7 +354,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     title="Import from CSV"
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all hidden md:block"
                   >
                     <FileInput className="w-5 h-5" />
                   </button>
@@ -331,14 +362,27 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                     <button 
                       id="add-record-btn"
                       onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
+                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>New Entry</span>
+                      <span className="hidden sm:inline">New Entry</span>
                     </button>
                   )}
                 </>
               )}
+              
+              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 md:mx-2" />
+              
+              <button 
+                onClick={() => supabase.auth.signOut()}
+                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all group relative"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="absolute -bottom-8 right-0 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Logout
+                </span>
+              </button>
             </div>
           </div>
         </header>
