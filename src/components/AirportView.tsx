@@ -14,12 +14,13 @@ import {
 interface AirportViewProps {
   onAddRecord: () => void;
   onEditRecord: (record: ImmigrationRecord) => void;
-  onDeleteRecord: (id: string) => void;
+  onDeleteRecord: (id: string) => void | Promise<void>;
   searchQuery: string;
   canEdit: boolean;
+  refreshCounter?: number;
 }
 
-export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit }: AirportViewProps) {
+export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit, refreshCounter }: AirportViewProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -37,7 +38,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
 
   useEffect(() => {
     fetchAirportData();
-  }, [searchQuery]);
+  }, [searchQuery, refreshCounter]);
 
   useEffect(() => {
     if (exactMatches.length > 0) {
@@ -195,7 +196,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
               </div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incomplete Scans</p>
               <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">
-                {records.filter(r => !Object.keys(matchAttachments).includes(r.id)).length}
+                {records.filter(r => !r.attachment_url || r.attachment_url === 'null').length}
               </h3>
             </motion.div>
 
@@ -436,55 +437,80 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                         </span>
                       </div>
 
-                      {matchAttachments[match.id]?.length > 0 ? (
+                      {(matchAttachments[match.id]?.length > 0 || (match.attachment_url && match.attachment_url !== 'null')) ? (
                         <div className="space-y-4">
-                          {matchAttachments[match.id].map(file => {
-                            const isImage = file.content_type?.startsWith('image/');
-                            const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
-                            
-                            return (
-                              <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-300">
-                                {isImage ? (
-                                  <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900">
-                                    <img 
-                                      src={fileUrl} 
-                                      alt="Document Scan"
-                                      className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-700"
-                                      referrerPolicy="no-referrer"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/20 transition-colors flex items-center justify-center">
-                                      <button 
-                                        onClick={() => window.open(fileUrl)}
-                                        className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600 opacity-0 group-hover/doc:opacity-100 transition-all transform scale-90 group-hover/doc:scale-100"
-                                      >
-                                        <ExternalLink className="w-5 h-5" />
-                                      </button>
+                          {matchAttachments[match.id]?.length > 0 ? (
+                            matchAttachments[match.id].map(file => {
+                              const isImage = file.content_type?.startsWith('image/');
+                              const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                              
+                              return (
+                                <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-300">
+                                  {isImage ? (
+                                    <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900">
+                                      <img 
+                                        src={fileUrl} 
+                                        alt="Document Scan"
+                                        className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-700"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/20 transition-colors flex items-center justify-center">
+                                        <button 
+                                          onClick={() => window.open(fileUrl)}
+                                          className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600 opacity-0 group-hover/doc:opacity-100 transition-all transform scale-90 group-hover/doc:scale-100"
+                                        >
+                                          <ExternalLink className="w-5 h-5" />
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <button 
+                                      onClick={() => window.open(fileUrl)}
+                                      className="w-full flex items-center justify-between p-5 rounded-[2rem] bg-gray-50 dark:bg-gray-800 border border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:bg-white dark:hover:bg-gray-900 transition-all text-left shadow-sm group/file"
+                                    >
+                                      <div className="flex items-center gap-4 truncate">
+                                        <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl group-hover/file:bg-blue-600 group-hover/file:text-white transition-colors">
+                                          <FileIcon className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                          <span className="text-xs font-black text-gray-900 dark:text-gray-100 block truncate max-w-[140px] uppercase">
+                                            {file.file_name}
+                                          </span>
+                                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                                            {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <ExternalLink className="w-5 h-5 text-blue-500 opacity-0 group-hover/file:opacity-100 transition-opacity" />
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="relative group/doc animate-in fade-in zoom-in duration-300">
+                              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                                {match.attachment_url?.match(/\.(jpg|jpeg|png|gif|webp)/i) || match.attachment_url?.includes('?token=') ? (
+                                  <img 
+                                    src={match.attachment_url} 
+                                    alt="Document Scan"
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
                                 ) : (
-                                  <button 
-                                    onClick={() => window.open(fileUrl)}
-                                    className="w-full flex items-center justify-between p-5 rounded-[2rem] bg-gray-50 dark:bg-gray-800 border border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:bg-white dark:hover:bg-gray-900 transition-all text-left shadow-sm group/file"
-                                  >
-                                    <div className="flex items-center gap-4 truncate">
-                                      <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl group-hover/file:bg-blue-600 group-hover/file:text-white transition-colors">
-                                        <FileIcon className="w-6 h-6" />
-                                      </div>
-                                      <div>
-                                        <span className="text-xs font-black text-gray-900 dark:text-gray-100 block truncate max-w-[140px] uppercase">
-                                          {file.file_name}
-                                        </span>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                                          {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <ExternalLink className="w-5 h-5 text-blue-500 opacity-0 group-hover/file:opacity-100 transition-opacity" />
-                                  </button>
+                                  <FileText className="w-12 h-12 text-blue-200" />
                                 )}
+                                <div className="absolute inset-0 bg-black/5 hover:bg-black/20 transition-colors flex items-center justify-center group/btn">
+                                  <button 
+                                    onClick={() => window.open(match.attachment_url!)}
+                                    className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600"
+                                  >
+                                    <ExternalLink className="w-5 h-5" />
+                                  </button>
+                                </div>
                               </div>
-                            );
-                          })}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="p-8 rounded-3xl bg-gray-50/50 dark:bg-gray-900/50 text-center border-2 border-dotted border-gray-200 dark:border-gray-800">
@@ -504,18 +530,24 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                         <button 
                           onClick={() => {
                             const attachments = matchAttachments[match.id];
-                            if (attachments && attachments.length > 0) {
-                              window.open(supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl);
+                            const effectiveUrl = (match.attachment_url && match.attachment_url !== 'null') 
+                              ? match.attachment_url 
+                              : (attachments && attachments.length > 0 
+                                  ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl 
+                                  : null);
+                            
+                            if (effectiveUrl) {
+                              window.open(effectiveUrl);
                             }
                           }}
-                          disabled={!matchAttachments[match.id] || matchAttachments[match.id].length === 0}
+                          disabled={(!match.attachment_url || match.attachment_url === 'null') && (!matchAttachments[match.id] || matchAttachments[match.id].length === 0)}
                           className={`py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                            matchAttachments[match.id]?.length > 0 
+                            ((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0)
                               ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20" 
                               : "bg-gray-100 text-gray-400 cursor-not-allowed"
                           }`}
                         >
-                          {matchAttachments[match.id]?.length > 0 ? 'View Scan Doc' : 'No Scan Available'}
+                          {((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0) ? 'View Scan Doc' : 'No Scan Available'}
                         </button>
                       </div>
                     </div>

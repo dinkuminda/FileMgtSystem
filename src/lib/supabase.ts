@@ -49,6 +49,7 @@ export interface ImmigrationRecord {
   etd?: string;
   letter_number?: string;
   document_type?: string;
+  attachment_url?: string;
 }
 
 export interface RecordAttachment {
@@ -61,6 +62,7 @@ export interface RecordAttachment {
   size_bytes: number;
   created_at: string;
   created_by: string;
+  user_id?: string;
 }
 
 export interface AuditLog {

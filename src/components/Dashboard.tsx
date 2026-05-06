@@ -51,6 +51,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = ([
@@ -358,13 +359,14 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               ) : activeTab === 'REPORTS' ? (
                 <ReportingSystem />
               ) : activeTab === 'AIRPORT' ? (
-                <AirportView 
-                  onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                  onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                  onDeleteRecord={handleDelete}
-                  searchQuery={searchQuery}
-                  canEdit={canEdit()}
-                />
+          <AirportView 
+            refreshCounter={refreshCounter}
+            onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+            onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+            onDeleteRecord={handleDelete}
+            searchQuery={searchQuery}
+            canEdit={canEdit()}
+          />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -503,6 +505,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             record={editingRecord}
             onSuccess={() => {
               setIsFormOpen(false);
+              setRefreshCounter(prev => prev + 1);
               fetchRecords();
             }}
           />

@@ -54,12 +54,6 @@ export default function Auth() {
           animate={{ opacity: 1, x: 0 }}
           className="text-center max-w-sm"
         >
-      <img 
-  src="https://upload.wikimedia.org/wikipedia/en/3/30/Immigration_and_Citizenship_Service_%28Ethiopia%29_logo.png"
-  alt="ICS Logo"
-  className="h-48 md:h-64 w-auto object-contain mx-auto mb-2 drop-shadow-sm"
-  referrerPolicy="no-referrer"
-/>
           <div className="space-y-1">
             <h1 className="text-6xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
             <div className="pt-2">
@@ -77,10 +71,13 @@ export default function Auth() {
           animate={{ opacity: 1, x: 0 }}
           className="w-full max-w-sm"
         >
-          <div className="mb-10">
-            <h2 className="text-4xl font-bold text-[#155fc3] mb-2">
-              {isSignUp ? 'Create Account' : 'Login'}
+          <div className="mb-10 text-center md:text-left">
+            <h2 className="text-4xl font-bold text-[#155fc3] mb-2 leading-tight">
+              {isSignUp ? 'Create Account' : 'Internal Login'}
             </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              {isSignUp ? 'Join the ICS Digital Portal' : 'Access the ICS Internal Management System'}
+            </p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-6">

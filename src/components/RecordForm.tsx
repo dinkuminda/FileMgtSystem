@@ -97,7 +97,7 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const uploadFile = async (file: File, recordId: string) => {
+  const uploadFile = async (file: File, recordId: string): Promise<string | null> => {
     setUploading(true);
     setError(null);
 
@@ -124,13 +124,33 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
           file_path: filePath,
           content_type: file.type,
           size_bytes: file.size,
-          created_by: user.id
+          created_by: user.id,
+          user_id: user.id
         }]);
 
       if (dbError) throw dbError;
+      
+      const { data: { publicUrl } } = supabase.storage.from('immigration-docs').getPublicUrl(filePath);
+      
+      // Update attachment_url for AIRPORT records explicitly
+      if (type === 'AIRPORT') {
+        const { error: updateError } = await supabase
+          .from('airport_records')
+          .update({ attachment_url: publicUrl })
+          .eq('id', recordId);
+        
+        if (updateError) {
+          console.error('Failed to update airport_records attachment_url:', updateError);
+        } else {
+          console.log('Successfully updated airport_records attachment_url');
+        }
+      }
+
       fetchAttachments(recordId);
+      return publicUrl;
     } catch (err: any) {
       setError('Upload failed: ' + err.message);
+      return null;
     } finally {
       setUploading(false);
     }
@@ -142,6 +162,12 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
     try {
       await supabase.storage.from('immigration-docs').remove([attachment.file_path]);
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
+      
+      // Clear attachment_url if this was the last one and it's an AIRPORT record
+      if (type === 'AIRPORT' && record && attachments.length === 1) {
+        await supabase.from('airport_records').update({ attachment_url: null }).eq('id', record.id);
+      }
+      
       setAttachments(attachments.filter(a => a.id !== attachment.id));
     } catch (err: any) {
       setError('Delete failed: ' + err.message);
@@ -197,9 +223,13 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
       // Handle pending uploads
       if (savedRecordId && pendingFiles.length > 0) {
         setUploading(true);
+        let firstUrl: string | null = null;
         for (const file of pendingFiles) {
-          await uploadFile(file, savedRecordId);
+          const url = await uploadFile(file, savedRecordId);
+          if (!firstUrl) firstUrl = url;
         }
+
+        // attachment_url is now updated inside uploadFile, no need for second update here
       }
 
       onSuccess();
