@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured, type UserProfile, logger } from './lib/supabase';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
@@ -99,11 +100,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
-      {!session ? (
-        <Auth />
-      ) : (
-        <Dashboard userProfile={userProfile} />
-      )}
+      <Routes>
+        <Route 
+          path="/login" 
+          element={!session ? <Auth /> : <Navigate to="/" replace />} 
+        />
+        <Route 
+          path="/*" 
+          element={session ? <Dashboard userProfile={userProfile} /> : <Navigate to="/login" replace />} 
+        />
+      </Routes>
     </div>
   );
 }
