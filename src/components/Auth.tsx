@@ -71,7 +71,7 @@ export default function Auth() {
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-6xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-[#155fc3]">ICS</h1>
             <div className="pt-2">
               <p className="text-blue-900 dark:text-blue-400 font-bold text-lg leading-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
               <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Immigration and Citizenship Service</p>
@@ -89,10 +89,10 @@ export default function Auth() {
         >
           <div className="mb-10 text-center md:text-left">
             <h2 className="text-4xl font-bold text-[#155fc3] mb-2 leading-tight">
-              {isSignUp ? 'Create Account' : 'Internal Login'}
+              {isSignUp ? 'Create Account' : 'Login'}
             </h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-              {isSignUp ? 'Join the ICS Digital Portal' : 'Access the ICS Internal Management System'}
+              {isSignUp ? 'Join the ICS Digital Portal' : ''}
             </p>
           </div>
 
