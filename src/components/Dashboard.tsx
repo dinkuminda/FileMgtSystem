@@ -15,6 +15,7 @@ import AuditLogView from './AuditLogView';
 import ReportingSystem from './ReportingSystem';
 import AirportView from './AirportView';
 import RecordTable from './RecordTable';
+import UserManagement from './UserManagement';
 import Papa from 'papaparse';
 
 interface DashboardProps {
@@ -27,7 +28,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = [
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'REPORTS', icon: BarChart3, label: 'Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
@@ -35,6 +36,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD' },
     { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
+    { type: 'USERS', icon: Users, label: 'Users' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
   ];
 
@@ -52,7 +54,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
     }
-    if (tab.type === 'AUDIT') return false;
+    // Staff can see records and reports, but not system level management
+    if (tab.type === 'AUDIT' || tab.type === 'USERS') return false;
     return true;
   });
 
@@ -386,6 +389,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/" element={<DashboardReports />} />
                 <Route path="/audit" element={<AuditLogView />} />
                 <Route path="/reports" element={<ReportingSystem />} />
+                <Route path="/users" element={<UserManagement />} />
                 <Route path="/airport" element={
                   <AirportView 
                     refreshCounter={refreshCounter}

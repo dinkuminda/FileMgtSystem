@@ -147,6 +147,8 @@ BEGIN
     new.raw_user_meta_data->>'full_name',
     CASE 
       WHEN new.email = 'dinkuh12@gmail.com' THEN 'admin'
+      WHEN new.email = 'demebirhanu@gmail.com' THEN 'staff'
+      WHEN new.email = 'dinku_staff@gmail.com' THEN 'airport_staff'
       ELSE 'staff'
     END
   );
@@ -166,59 +168,61 @@ CREATE POLICY "Public profiles viewable" ON public.profiles FOR SELECT TO authen
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 
 -- 5. Policies for Records
--- Drop older/overlapping policies
-DROP POLICY IF EXISTS "View visa" ON public.visa_records;
-DROP POLICY IF EXISTS "Insert visa" ON public.visa_records;
-DROP POLICY IF EXISTS "Modify visa" ON public.visa_records;
-DROP POLICY IF EXISTS "View eoid" ON public.eoid_records;
-DROP POLICY IF EXISTS "Insert eoid" ON public.eoid_records;
-DROP POLICY IF EXISTS "Modify eoid" ON public.eoid_records;
-DROP POLICY IF EXISTS "View residence" ON public.residence_id_records;
-DROP POLICY IF EXISTS "Insert residence" ON public.residence_id_records;
-DROP POLICY IF EXISTS "Modify residence" ON public.residence_id_records;
-DROP POLICY IF EXISTS "View etd" ON public.etd_records;
-DROP POLICY IF EXISTS "Insert etd" ON public.etd_records;
-DROP POLICY IF EXISTS "Modify etd" ON public.etd_records;
-
 -- VISA Policies
 DROP POLICY IF EXISTS "visa_select" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_insert" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_update" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_delete" ON public.visa_records;
-CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (public.is_authorized());
-CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
-CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
-CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
+CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
 
 -- EOID Policies
 DROP POLICY IF EXISTS "eoid_select" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_insert" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_update" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_delete" ON public.eoid_records;
-CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (public.is_authorized());
-CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
-CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
-CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
+CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
 
 -- Residence ID Policies
 DROP POLICY IF EXISTS "residence_select" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_insert" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_update" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_delete" ON public.residence_id_records;
-CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (public.is_authorized());
-CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
-CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
-CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
+CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
 
 -- ETD Policies
 DROP POLICY IF EXISTS "etd_select" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_insert" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_update" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_delete" ON public.etd_records;
-CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (public.is_authorized());
-CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
-CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
-CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
+CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
 
 -- 6. Attachments Table
 CREATE TABLE IF NOT EXISTS public.record_attachments (
@@ -271,10 +275,29 @@ DROP POLICY IF EXISTS "airport_insert" ON public.airport_records;
 DROP POLICY IF EXISTS "airport_update" ON public.airport_records;
 DROP POLICY IF EXISTS "airport_delete" ON public.airport_records;
 
-CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (public.is_authorized());
-CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
-CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
-CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
+-- Select logic: Admin always, Deme blocked, Dinku (airport user) ok, others ok if not deme.
+CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated 
+  USING (
+    public.is_admin() OR (
+      public.is_authorized() AND 
+      (SELECT email FROM public.profiles WHERE id = auth.uid()) != 'demebirhanu@gmail.com'
+    )
+  );
+
+CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated 
+  WITH CHECK (
+    public.is_admin() OR 
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+  );
+
+CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated 
+  USING (
+    public.is_admin() OR 
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+  );
+
+CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
 
 -- 8. Indexes
 CREATE INDEX IF NOT EXISTS idx_records_visa_name ON public.visa_records(full_name);
