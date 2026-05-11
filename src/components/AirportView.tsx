@@ -3,7 +3,8 @@ import { supabase, ImmigrationRecord, logger } from '../lib/supabase';
 import { 
   Plane, Users, FileText, CheckCircle, 
   Clock, AlertCircle, Search, Plus,
-  LayoutGrid, List, Filter, Paperclip, ExternalLink, FileIcon
+  LayoutGrid, List, Filter, Paperclip, ExternalLink, FileIcon,
+  Loader2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
@@ -22,42 +23,101 @@ interface AirportViewProps {
 
 export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit, refreshCounter }: AirportViewProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
+  const [globalMatches, setGlobalMatches] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [matchAttachments, setMatchAttachments] = useState<Record<string, any[]>>({});
   const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'add' | 'view' | 'edit'>('dashboard');
 
-  // Logic for the requested "view document type by searching name"
-  const exactMatches = searchQuery && searchQuery.length > 2 
-    ? records.filter(r => 
-        r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.passport_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.request_number.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  useEffect(() => {
+    if (refreshCounter && refreshCounter > 0) {
+      if (activeSubTab === 'add') {
+        setActiveSubTab('view');
+      }
+    }
+  }, [refreshCounter]);
+
+  // Memoize search query to fetch data from all tables
+  useEffect(() => {
+    const performGlobalSearch = async () => {
+      if (searchQuery.length < 3 || activeSubTab === 'dashboard') return;
+      
+      setSearching(true);
+      try {
+        const tables = ['airport_records', 'residence_id_records', 'visa_records', 'eoid_records', 'etd_records'];
+        let allMatches: any[] = [];
+        
+        for (const table of tables) {
+          const { data, error } = await supabase
+            .from(table)
+            .select('*')
+            .or(`full_name.ilike.%${searchQuery}%,passport_number.ilike.%${searchQuery}%,request_number.ilike.%${searchQuery}%`)
+            .limit(10);
+            
+          if (!error && data) {
+            allMatches = [...allMatches, ...data.map(r => ({ ...r, _table: table }))];
+          }
+        }
+        
+        setGlobalMatches(allMatches);
+      } catch (err) {
+        console.error('Global search err:', err);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    const timer = setTimeout(performGlobalSearch, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeSubTab, refreshCounter]);
+
+  // Use global matches for View and Edit if searching
+  const exactMatches = React.useMemo(() => {
+    if (searchQuery.length >= 3) {
+      return globalMatches;
+    }
+    return records.map(r => ({ ...r, _table: 'airport_records' }));
+  }, [searchQuery, globalMatches, records]);
 
   useEffect(() => {
     fetchAirportData();
-  }, [searchQuery, refreshCounter]);
+  }, [refreshCounter]);
 
   useEffect(() => {
     if (exactMatches.length > 0) {
       fetchAttachmentsForMatches();
     }
-  }, [exactMatches.length]);
+  }, [exactMatches, refreshCounter]);
 
   const fetchAttachmentsForMatches = async () => {
     try {
       const matchIds = exactMatches.map(m => m.id);
-      const { data, error } = await supabase
-        .from('record_attachments')
-        .select('*')
-        .in('record_id', matchIds)
-        .eq('record_table', 'airport_records');
+      if (matchIds.length === 0) return;
+
+      // Group records by table to fetch attachments correctly
+      const tableMap: Record<string, string[]> = {};
+      exactMatches.forEach(m => {
+        const table = (m as any)._table || 'airport_records';
+        if (!tableMap[table]) tableMap[table] = [];
+        tableMap[table].push(m.id);
+      });
+
+      let allAttachments: any[] = [];
       
-      if (error) throw error;
+      for (const [table, ids] of Object.entries(tableMap)) {
+        const { data, error } = await supabase
+          .from('record_attachments')
+          .select('*')
+          .in('record_id', ids)
+          .eq('record_table', table);
+        
+        if (!error && data) {
+          allAttachments = [...allAttachments, ...data];
+        }
+      }
       
-      const grouped = (data || []).reduce((acc: any, attr: any) => {
+      const grouped = (allAttachments || []).reduce((acc: any, attr: any) => {
         if (!acc[attr.record_id]) acc[attr.record_id] = [];
         acc[attr.record_id].push(attr);
         return acc;
@@ -80,7 +140,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
       if (error) throw error;
       
       const airportRecords = data as ImmigrationRecord[];
-      setRecords(airportRecords);
+      setRecords(airportRecords.map(r => ({ ...r, _table: 'airport_records' })));
 
       // Process Stats
       const total = airportRecords.length;
@@ -334,6 +394,11 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                 <Search className="w-12 h-12 text-gray-200 mx-auto mb-4" />
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Search to Modify Documents</p>
               </div>
+            ) : searching ? (
+              <div className="py-24 text-center">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Accessing Information System...</p>
+              </div>
             ) : exactMatches.length === 0 ? (
               <div className="py-24 text-center bg-gray-50 dark:bg-gray-800/20 rounded-[2rem]">
                  <p className="text-gray-400">No records found matching "{searchQuery}"</p>
@@ -342,8 +407,15 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {exactMatches.map(match => (
                   <div key={match.id} className="p-6 rounded-[2rem] bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
-                    <h4 className="text-lg font-black mb-1">{match.full_name}</h4>
-                    <p className="text-xs font-mono text-blue-600 mb-6">{match.passport_number}</p>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-lg font-black mb-1">{match.full_name}</h4>
+                        <p className="text-xs font-mono text-blue-600 truncate">{match.passport_number}</p>
+                      </div>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest bg-white dark:bg-gray-800 px-1.5 py-1 rounded shadow-sm">
+                        {(match as any)._table?.replace('_records', '').replace('_', ' ')}
+                      </span>
+                    </div>
                     
                     <div className="flex gap-2">
                       <button 
@@ -387,6 +459,11 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                 <h4 className="text-xl font-black text-gray-900 dark:text-white">Document Lookup Ready</h4>
                 <p className="text-gray-500 mt-2 max-w-sm mx-auto">Enter an applicant name, passport number, or request ID to retrieve their scanned documents.</p>
               </div>
+            ) : searching ? (
+              <div className="py-24 text-center">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Retrieving Scanned Records...</p>
+              </div>
             ) : exactMatches.length === 0 ? (
               <div className="py-24 text-center bg-gray-50 dark:bg-gray-800/20 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                 <div className="inline-flex p-6 bg-white dark:bg-gray-900 rounded-3xl shadow-sm mb-4">
@@ -408,9 +485,12 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                       <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30">
                         <FileText className="w-8 h-8 text-white" />
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1">
                         <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                          {match.document_type}
+                          {match.document_type || (match as any)._table?.replace('_records', '').replace('_', ' ') || 'Record'}
+                        </span>
+                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                          {(match as any)._table?.replace('_records', '').replace('_', ' ')}
                         </span>
                       </div>
                     </div>
@@ -419,9 +499,22 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                       <h4 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
                         {match.full_name}
                       </h4>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-black bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-500 uppercase tracking-widest">{match.citizenship}</span>
-                        <span className="text-[10px] font-mono font-bold text-blue-500 uppercase">REQ: {match.request_number}</span>
+                      <div className="flex flex-col gap-1 mt-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-500 uppercase tracking-widest">{match.citizenship}</span>
+                          <span className="text-[10px] font-mono font-bold text-blue-500 uppercase">REQ: {match.request_number}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {(match as any).residence_id_no && (
+                            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">ID: {(match as any).residence_id_no}</span>
+                          )}
+                          {(match as any).eoid_number && (
+                            <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400">EOID: {(match as any).eoid_number}</span>
+                          )}
+                          {(match as any).letter_number && (
+                            <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400">LTR: {(match as any).letter_number}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -433,7 +526,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                           Document Scan Files
                         </p>
                         <span className="text-[10px] font-bold text-gray-300">
-                          {matchAttachments[match.id]?.length || 0} FILE(S)
+                          {Math.max(matchAttachments[match.id]?.length || 0, (match.attachment_url && match.attachment_url !== 'null') ? 1 : 0)} FILE(S)
                         </span>
                       </div>
 
@@ -527,28 +620,40 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                         <span className="text-sm font-black font-mono tracking-tighter">{match.passport_number}</span>
                       </div>
                       <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            const attachments = matchAttachments[match.id];
-                            const effectiveUrl = (match.attachment_url && match.attachment_url !== 'null') 
-                              ? match.attachment_url 
-                              : (attachments && attachments.length > 0 
-                                  ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl 
-                                  : null);
-                            
-                            if (effectiveUrl) {
-                              window.open(effectiveUrl);
-                            }
-                          }}
-                          disabled={(!match.attachment_url || match.attachment_url === 'null') && (!matchAttachments[match.id] || matchAttachments[match.id].length === 0)}
-                          className={`py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                            ((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0)
-                              ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20" 
-                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          }`}
-                        >
-                          {((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0) ? 'View Scan Doc' : 'No Scan Available'}
-                        </button>
+                        {((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0) ? (
+                          <button 
+                            onClick={() => {
+                              const attachments = matchAttachments[match.id];
+                              const effectiveUrl = (match.attachment_url && match.attachment_url !== 'null') 
+                                ? match.attachment_url 
+                                : (attachments && attachments.length > 0 
+                                    ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl 
+                                    : null);
+                              
+                              if (effectiveUrl) {
+                                window.open(effectiveUrl);
+                              }
+                            }}
+                            className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                          >
+                            View Scan Doc
+                          </button>
+                        ) : canEdit ? (
+                          <button 
+                            onClick={() => onEditRecord(match)}
+                            className="bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Upload Scan
+                          </button>
+                        ) : (
+                          <button 
+                            disabled
+                            className="bg-gray-100 text-gray-400 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed"
+                          >
+                            No Scan Available
+                          </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>

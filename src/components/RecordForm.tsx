@@ -8,7 +8,7 @@ interface RecordFormProps {
   type: RecordType;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (record: ImmigrationRecord) => void;
   record?: ImmigrationRecord | null;
 }
 
@@ -124,26 +124,26 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
           file_path: filePath,
           content_type: file.type,
           size_bytes: file.size,
-          created_by: user.id,
-          user_id: user.id
+          created_by: user.id
         }]);
 
       if (dbError) throw dbError;
       
       const { data: { publicUrl } } = supabase.storage.from('immigration-docs').getPublicUrl(filePath);
       
-      // Update attachment_url for AIRPORT records explicitly
-      if (type === 'AIRPORT') {
-        const { error: updateError } = await supabase
-          .from('airport_records')
-          .update({ attachment_url: publicUrl })
-          .eq('id', recordId);
-        
-        if (updateError) {
-          console.error('Failed to update airport_records attachment_url:', updateError);
-        } else {
-          console.log('Successfully updated airport_records attachment_url');
-        }
+      // Update attachment_url for the record in its main table
+      const { error: updateError } = await supabase
+        .from(TABLE_MAP[type])
+        .update({ attachment_url: publicUrl })
+        .eq('id', recordId);
+      
+      if (updateError) {
+        console.error(`Failed to update ${TABLE_MAP[type]} attachment_url:`, updateError);
+        // We don't throw here so the attachment is still considered "saved" in the record_attachments table
+        // But we can inform the user that the main link failed
+        setError(`File uploaded but failed to link to record. Please Refresh. Details: ${updateError.message}`);
+      } else {
+        console.log(`Successfully updated ${TABLE_MAP[type]} attachment_url`);
       }
 
       fetchAttachments(recordId);
@@ -207,32 +207,37 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         basePayload.document_type = formData.document_type;
       }
 
-      let savedRecordId = record?.id;
+      let savedRecord: any = record;
 
       if (record) {
-        const { error } = await supabase.from(tableName).update(basePayload).eq('id', record.id);
+        // Remove created_by from update payload as it should remain original creator
+        const { created_by, ...updatePayload } = basePayload;
+        const { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
         if (error) throw error;
+        savedRecord = data;
         await logger.log('UPDATE', type, `Updated record for ${basePayload.full_name}`, record.id);
       } else {
         const { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
         if (error) throw error;
-        savedRecordId = data.id;
-        await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecordId);
+        savedRecord = data;
+        await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecord.id);
       }
 
       // Handle pending uploads
-      if (savedRecordId && pendingFiles.length > 0) {
+      if (savedRecord && savedRecord.id && pendingFiles.length > 0) {
         setUploading(true);
         let firstUrl: string | null = null;
         for (const file of pendingFiles) {
-          const url = await uploadFile(file, savedRecordId);
+          const url = await uploadFile(file, savedRecord.id);
           if (!firstUrl) firstUrl = url;
         }
-
-        // attachment_url is now updated inside uploadFile, no need for second update here
+        
+        // Refresh savedRecord to get the attachment_url
+        const { data: updatedRecord } = await supabase.from(tableName).select('*').eq('id', savedRecord.id).single();
+        if (updatedRecord) savedRecord = updatedRecord;
       }
 
-      onSuccess();
+      onSuccess(savedRecord);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -10,11 +10,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Ensure full_name exists (in case table was created without it previously)
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='full_name') THEN
+    ALTER TABLE public.profiles ADD COLUMN full_name TEXT;
+  END IF;
+END $$;
+
 -- Helper Function for Admin Check (more performant in RLS)
 CREATE OR REPLACE FUNCTION public.is_admin() 
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- New Helper for checking authorized staff roles
+CREATE OR REPLACE FUNCTION public.is_auth_staff() 
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'staff', 'airport_staff');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- New Helper for checking any authorized user (including viewers)
+CREATE OR REPLACE FUNCTION public.is_authorized() 
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -50,8 +74,9 @@ CREATE TABLE IF NOT EXISTS public.visa_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 -- EOID Table
@@ -66,8 +91,9 @@ CREATE TABLE IF NOT EXISTS public.eoid_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 -- Residence ID Table
@@ -82,8 +108,9 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 -- ETD Table
@@ -98,8 +125,9 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 -- Enable RLS on all tables
@@ -157,40 +185,40 @@ DROP POLICY IF EXISTS "visa_select" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_insert" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_update" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_delete" ON public.visa_records;
-CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
+CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
+CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
 
 -- EOID Policies
 DROP POLICY IF EXISTS "eoid_select" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_insert" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_update" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_delete" ON public.eoid_records;
-CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
+CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
+CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
 
 -- Residence ID Policies
 DROP POLICY IF EXISTS "residence_select" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_insert" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_update" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_delete" ON public.residence_id_records;
-CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
+CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
+CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
 
 -- ETD Policies
 DROP POLICY IF EXISTS "etd_select" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_insert" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_update" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_delete" ON public.etd_records;
-CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
+CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
+CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
 
 -- 6. Attachments Table
 CREATE TABLE IF NOT EXISTS public.record_attachments (
@@ -202,17 +230,20 @@ CREATE TABLE IF NOT EXISTS public.record_attachments (
   content_type TEXT,
   size_bytes BIGINT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 ALTER TABLE public.record_attachments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "attachments_select" ON public.record_attachments;
+DROP POLICY IF EXISTS "attachments_insert" ON public.record_attachments;
+DROP POLICY IF EXISTS "attachments_delete" ON public.record_attachments;
 DROP POLICY IF EXISTS "View attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Insert attachments" ON public.record_attachments;
 DROP POLICY IF EXISTS "Delete attachments" ON public.record_attachments;
 
-CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR public.is_auth_staff());
 CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
 -- 7. Airport Records Table (Specialized for Bole Airport Letters/Docs)
@@ -227,21 +258,23 @@ CREATE TABLE IF NOT EXISTS public.airport_records (
   document_type TEXT NOT NULL DEFAULT 'Scanned Letter',
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
 ALTER TABLE public.airport_records ENABLE ROW LEVEL SECURITY;
 
+-- 7. Policies for Airport Records
 DROP POLICY IF EXISTS "airport_select" ON public.airport_records;
 DROP POLICY IF EXISTS "airport_insert" ON public.airport_records;
 DROP POLICY IF EXISTS "airport_update" ON public.airport_records;
 DROP POLICY IF EXISTS "airport_delete" ON public.airport_records;
 
-CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
-CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
+CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated USING (public.is_authorized());
+CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated WITH CHECK (public.is_auth_staff());
+CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated USING (public.is_auth_staff());
+CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated USING (public.is_admin() OR auth.uid() = created_by);
 
 -- 8. Indexes
 CREATE INDEX IF NOT EXISTS idx_records_visa_name ON public.visa_records(full_name);

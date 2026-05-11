@@ -31,6 +31,11 @@ export const TABLE_MAP: Record<RecordType, string> = {
   'AIRPORT': 'airport_records'
 };
 
+export const REVERSE_TABLE_MAP: Record<string, RecordType> = Object.entries(TABLE_MAP).reduce((acc, [key, value]) => {
+  acc[value] = key as RecordType;
+  return acc;
+}, {} as Record<string, RecordType>);
+
 export interface ImmigrationRecord {
   id: string;
   box_number: string;

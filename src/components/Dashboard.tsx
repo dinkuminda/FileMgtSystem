@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, type UserProfile, type ImmigrationRecord, type RecordType, TABLE_MAP, logger } from '../lib/supabase';
+import { supabase, type UserProfile, type ImmigrationRecord, type RecordType, TABLE_MAP, logger, REVERSE_TABLE_MAP } from '../lib/supabase';
 import { 
   FileText, Users, LogOut, Plus, Search, 
   CreditCard, Fingerprint, MapPin, FileQuestion,
@@ -449,11 +449,16 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           <RecordForm 
             isOpen={isFormOpen} 
             onClose={() => setIsFormOpen(false)} 
-            type={activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab}
+            type={(editingRecord && (editingRecord as any)._table) 
+              ? REVERSE_TABLE_MAP[(editingRecord as any)._table] 
+              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab as RecordType)}
             record={editingRecord}
-            onSuccess={() => {
+            onSuccess={(record) => {
               setIsFormOpen(false);
               setRefreshCounter(prev => prev + 1);
+              if (activeTab === 'AIRPORT' && record.passport_number) {
+                setSearchQuery(record.request_number || record.passport_number);
+              }
               fetchRecords();
             }}
           />
