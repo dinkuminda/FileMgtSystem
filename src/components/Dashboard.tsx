@@ -27,18 +27,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Get active tab from URL path
-  const path = location.pathname.split('/')[1]?.toUpperCase() || 'OVERVIEW';
-  const activeTab = (path === '' ? 'OVERVIEW' : path) as RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS';
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
-  const [refreshCounter, setRefreshCounter] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const tabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = ([
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'REPORTS', icon: BarChart3, label: 'Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
@@ -47,22 +36,32 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     { type: 'ETD', icon: MapPin, label: 'ETD' },
     { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
-  ] as { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS', icon: any, label: string }[]).filter(tab => {
+  ];
+
+  // Map path to tab type
+  const currentPath = location.pathname.split('/')[1]?.toLowerCase() || '';
+  const matchingTab = allTabs.find(tab => {
+    const slug = tab.type === 'OVERVIEW' ? '' : tab.type.toLowerCase().replace(' ', '-');
+    return slug === currentPath;
+  });
+  const activeTab = matchingTab?.type || 'OVERVIEW';
+
+  const tabs = allTabs.filter(tab => {
     if (!userProfile) return false;
-    
-    // Admin has access to everything
     if (userProfile.role === 'admin') return true;
-    
-    // Airport roles have access ONLY to Overview (maybe) and Airport module
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
     }
-    
-    // Regular staff/viewer handle other modules but NOT Audit (usually)
     if (tab.type === 'AUDIT') return false;
-    
     return true;
   });
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // If current tab is not allowed, switch to Overview or first allowed
