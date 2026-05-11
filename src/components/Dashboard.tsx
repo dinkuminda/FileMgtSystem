@@ -6,7 +6,7 @@ import {
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Sun, Moon, Activity, BarChart3, Plane, Paperclip,
-  ArrowLeft, Clock, List, LayoutGrid
+  ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -97,6 +97,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -229,10 +230,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     const isAirportContext = activeTab === 'AIRPORT';
 
     return (
-      <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-colors duration-300">
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-1 px-1.5 bg-white rounded-lg">
+      <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-all duration-300 overflow-hidden">
+        <div className={`p-6 border-b border-gray-800 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+          <div className="flex items-center space-x-3 overflow-hidden">
+            <div className="p-1 px-1.5 bg-white rounded-lg flex-shrink-0">
               <img 
                 src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
                 alt="Logo"
@@ -240,17 +241,34 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <span className="font-bold text-lg tracking-tight text-white">IDS Manager</span>
+            {!isSidebarCollapsed && (
+              <motion.span 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="font-bold text-lg tracking-tight text-white whitespace-nowrap"
+              >
+                IDS Manager
+              </motion.span>
+            )}
           </div>
-          <button 
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-1 md:hidden text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" /> 
-          </button>
+          <div className="flex items-center">
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden md:flex p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors ml-2"
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1.5 md:hidden text-gray-500 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" /> 
+            </button>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
+        <nav className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-hide">
           <AnimatePresence mode="wait">
             {isAirportContext ? (
               <motion.div
@@ -260,16 +278,18 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 exit={{ x: -20, opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="px-4 py-2">
-                  <button 
-                    onClick={() => navigate('/')}
-                    className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-all mb-4"
-                  >
-                    <ArrowLeft className="w-3 h-3" />
-                    <span>Back to Main Menu</span>
-                  </button>
-                  <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Airport Navigator</h3>
-                </div>
+                {!isSidebarCollapsed && (
+                  <div className="px-4 py-2">
+                    <button 
+                      onClick={() => navigate('/')}
+                      className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-all mb-4"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      <span>Back to Main Menu</span>
+                    </button>
+                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Airport Navigator</h3>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   {airportTabs.map((at) => {
@@ -280,30 +300,35 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         key={at.id}
                         to={`/airport/${at.id}`}
                         onClick={() => setIsSidebarOpen(false)}
-                        className={`w-full flex items-center space-x-4 px-5 py-4 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all ${
+                        title={isSidebarCollapsed ? at.label : ""}
+                        className={`w-full flex items-center rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          isSidebarCollapsed ? 'justify-center p-4' : 'space-x-4 px-5 py-4'
+                        } ${
                           isActive 
                             ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
                             : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                         }`}
                       >
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-500'}`} />
-                        <span>{at.label}</span>
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                        {!isSidebarCollapsed && <span>{at.label}</span>}
                       </Link>
                     );
                   })}
                 </div>
 
-                <div className="px-5 py-6 mt-8 rounded-3xl bg-blue-600/5 border border-blue-500/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                      <Plane className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-blue-100 italic">Terminal 2</p>
-                      <p className="text-[8px] font-bold text-blue-400">Main Hub</p>
+                {!isSidebarCollapsed && (
+                  <div className="px-5 py-6 mt-8 rounded-3xl bg-blue-600/5 border border-blue-500/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
+                        <Plane className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-blue-100 italic">Terminal 2</p>
+                        <p className="text-[8px] font-bold text-blue-400">Main Hub</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -321,14 +346,17 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                       key={tab.type}
                       to={path}
                       onClick={() => setIsSidebarOpen(false)}
-                      className={`w-full flex items-center space-x-3 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      title={isSidebarCollapsed ? tab.label : ""}
+                      className={`w-full flex items-center rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        isSidebarCollapsed ? 'justify-center p-4' : 'space-x-3 px-6 py-4'
+                      } ${
                         isActive 
                           ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
                           : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
-                      <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-blue-500'}`} />
-                      <span>{tab.label}</span>
+                      <tab.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                      {!isSidebarCollapsed && <span>{tab.label}</span>}
                     </Link>
                   );
                 })}
@@ -338,18 +366,29 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         </nav>
 
         <div className="p-4 border-t border-gray-800 mt-auto space-y-3">
-          <div className="p-4 rounded-xl bg-gray-800/50">
-            <p className="text-[10px] font-bold uppercase tracking-wider mb-2 text-gray-500">Active Session</p>
-            <p className="text-sm font-bold truncate text-gray-100">{userProfile?.full_name || 'Staff Member'}</p>
-            <p className="text-xs mt-1 capitalize text-gray-400">{userProfile?.role} Account</p>
-          </div>
+          {!isSidebarCollapsed ? (
+            <div className="p-4 rounded-xl bg-gray-800/50">
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-2 text-gray-500">Active Session</p>
+              <p className="text-sm font-bold truncate text-gray-100">{userProfile?.full_name || 'Staff Member'}</p>
+              <p className="text-xs mt-1 capitalize text-gray-400">{userProfile?.role} Account</p>
+            </div>
+          ) : (
+            <div className="flex justify-center py-2" title={userProfile?.full_name}>
+              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold text-blue-400">
+                {userProfile?.full_name?.[0] || 'S'}
+              </div>
+            </div>
+          )}
           
           <button 
             onClick={() => supabase.auth.signOut()}
-            className="w-full flex items-center justify-center space-x-3 px-4 py-3.5 bg-red-600/15 border border-red-500/30 rounded-xl text-sm font-black text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-950/20 uppercase tracking-widest group"
+            title="Logout"
+            className={`w-full flex items-center justify-center bg-red-600/15 border border-red-500/30 rounded-xl text-sm font-black text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-950/20 uppercase tracking-widest group ${
+              isSidebarCollapsed ? 'p-3' : 'space-x-3 px-4 py-3.5'
+            }`}
           >
-            <LogOut className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            <span>Logout</span>
+            <LogOut className={`w-5 h-5 group-hover:translate-x-1 transition-transform ${!isSidebarCollapsed && 'mr-0'}`} />
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </div>
@@ -380,7 +419,9 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 md:relative md:translate-x-0 transition-transform duration-300 ease-in-out transform ${
+      <aside className={`fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0 transition-all duration-300 ease-in-out transform ${
+        isSidebarCollapsed ? 'w-24' : 'w-72 md:w-80'
+      } ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } border-r border-gray-800 flex flex-col bg-gray-900`}>
         <SidebarContent />
