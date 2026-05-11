@@ -2,19 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { supabase, type AuditLog } from '../lib/supabase';
 import { Loader2, Activity, User, Calendar, ShieldCheck } from 'lucide-react';
 
-export default function AuditLogView() {
+export default function AuditLogView({ filter }: { filter?: string }) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [filter]);
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('audit_logs')
-      .select('*')
+      .select('*');
+    
+    if (filter) {
+      query = query.eq('entity_type', filter);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(100);
 

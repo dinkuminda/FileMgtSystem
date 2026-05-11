@@ -19,6 +19,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   full_name?: string;
+  modules?: string[];
 }
 
 export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'AIRPORT';
@@ -74,7 +75,7 @@ export interface AuditLog {
   id: string;
   user_id: string;
   user_email: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'EXPORT' | 'IMPORT';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'EXPORT' | 'IMPORT' | 'ADMIN_ACTION';
   entity_type: string;
   entity_id?: string;
   details: string;

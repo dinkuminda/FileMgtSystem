@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, ImmigrationRecord, logger } from '../lib/supabase';
 import { 
   Plane, Users, FileText, CheckCircle, 
   Clock, AlertCircle, Search, Plus,
   LayoutGrid, List, Filter, Paperclip, ExternalLink, FileIcon,
-  Loader2
+  Loader2, Activity
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
+import UserManagement from './UserManagement';
+import AuditLogView from './AuditLogView';
 
 interface AirportViewProps {
   onAddRecord: () => void;
@@ -22,21 +25,24 @@ interface AirportViewProps {
 }
 
 export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit, refreshCounter }: AirportViewProps) {
+  const { subTab: urlSubTab } = useParams();
+  const navigate = useNavigate();
+  const activeSubTab = (urlSubTab || 'dashboard') as 'dashboard' | 'add' | 'view' | 'edit' | 'users' | 'audit';
+
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [globalMatches, setGlobalMatches] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [matchAttachments, setMatchAttachments] = useState<Record<string, any[]>>({});
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'add' | 'view' | 'edit'>('dashboard');
 
   useEffect(() => {
     if (refreshCounter && refreshCounter > 0) {
       if (activeSubTab === 'add') {
-        setActiveSubTab('view');
+        navigate('/airport/view');
       }
     }
-  }, [refreshCounter]);
+  }, [refreshCounter, activeSubTab, navigate]);
 
   // Memoize search query to fetch data from all tables
   useEffect(() => {
@@ -169,54 +175,9 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a'];
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Top Navigation Tabs (Based on Sketch) */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800">
-        <button 
-          onClick={() => setActiveSubTab('dashboard')}
-          className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
-            activeSubTab === 'dashboard' 
-              ? 'border-b-2 border-blue-600 text-blue-600' 
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-          }`}
-        >
-          Dashboard
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('add')}
-          className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
-            activeSubTab === 'add' 
-              ? 'border-b-2 border-blue-600 text-blue-600' 
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-          }`}
-        >
-          Add Document
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('view')}
-          className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
-            activeSubTab === 'view' 
-              ? 'border-b-2 border-blue-600 text-blue-600' 
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-          }`}
-        >
-          View Document
-        </button>
-        {canEdit && (
-          <button 
-            onClick={() => setActiveSubTab('edit')}
-            className={`px-8 py-4 text-sm font-black uppercase tracking-widest transition-all ${
-              activeSubTab === 'edit' 
-                ? 'border-b-2 border-blue-600 text-blue-600' 
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-            }`}
-          >
-            Edit Document
-          </button>
-        )}
-      </div>
-
-      {activeSubTab === 'dashboard' ? (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6">
+        {activeSubTab === 'dashboard' ? (
         <div className="space-y-8">
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -437,18 +398,34 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
             )}
           </div>
         </div>
+      ) : activeSubTab === 'users' ? (
+        <UserManagement />
+      ) : activeSubTab === 'audit' ? (
+        <AuditLogView filter="AIRPORT" />
       ) : (
         <div className="space-y-8">
-          {/* Lookup Interface (View Document) */}
           <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20">
-                <Search className="w-6 h-6 text-white" />
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20">
+                  <Search className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Record Viewport</h3>
+                  <p className="text-sm text-gray-500 font-medium">Quick search for all airport and linked records.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white">Document Search</h3>
-                <p className="text-sm text-gray-500">View only scanned documents by Name, Passport No or Request Number</p>
-              </div>
+            </div>
+            
+            <div className="relative mb-8">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input 
+                type="text"
+                placeholder="Type Passport or Name to search..."
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-gray-900 dark:text-white"
+                value={searchQuery}
+                readOnly
+              />
             </div>
 
             {searchQuery.length < 3 ? (
@@ -663,6 +640,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

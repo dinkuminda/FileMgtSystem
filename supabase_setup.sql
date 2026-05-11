@@ -6,9 +6,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer')),
+  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'airport_viewer')),
+  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'],
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Ensure modules column exists
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='modules') THEN
+    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+  END IF;
+END $$;
 
 -- Ensure full_name exists (in case table was created without it previously)
 DO $$ 
@@ -140,7 +149,7 @@ ALTER TABLE public.etd_records ENABLE ROW LEVEL SECURITY;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
+  INSERT INTO public.profiles (id, email, full_name, role, modules)
   VALUES (
     new.id, 
     new.email, 
@@ -149,7 +158,13 @@ BEGIN
       WHEN new.email = 'dinkuh12@gmail.com' THEN 'admin'
       WHEN new.email = 'demebirhanu@gmail.com' THEN 'staff'
       WHEN new.email = 'dinku_staff@gmail.com' THEN 'airport_staff'
+      WHEN new.email = 'ephremweleba94@gmail.com' THEN 'airport_staff'
       ELSE 'staff'
+    END,
+    CASE
+      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
+      WHEN new.email IN ('dinku_staff@gmail.com', 'ephremweleba94@gmail.com') THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+      ELSE ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
     END
   );
   RETURN new;
@@ -329,8 +344,18 @@ CREATE POLICY "Allow authenticated access" ON storage.objects
 
 -- 10. Admin Profile Boost
 -- Ensure the primary admin email always has admin role regardless of when they signed up
-INSERT INTO public.profiles (id, email, role, full_name)
-SELECT id, email, 'admin', 'Primary Admin'
+INSERT INTO public.profiles (id, email, role, full_name, modules)
+SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT']
 FROM auth.users
 WHERE email = 'dinkuh12@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'admin';
+ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
+
+-- Boost for Ephrem (Airport Only)
+INSERT INTO public.profiles (id, email, role, full_name, modules)
+SELECT id, email, 'airport_staff', 'Ephrem (Airport)', ARRAY['OVERVIEW', 'AIRPORT']
+FROM auth.users
+WHERE email = 'ephremweleba94@gmail.com'
+ON CONFLICT (id) DO UPDATE SET role = 'airport_staff', modules = ARRAY['OVERVIEW', 'AIRPORT'];
+
+-- Force schema reload
+NOTIFY pgrst, 'reload schema';

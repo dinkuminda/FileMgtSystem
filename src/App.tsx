@@ -47,7 +47,7 @@ export default function App() {
     // Fetch the profile from the 'profiles' table which is synced via trigger
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, full_name, role, modules')
       .eq('id', uid)
       .single();
 

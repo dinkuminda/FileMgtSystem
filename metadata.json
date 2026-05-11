@@ -1,6 +1,6 @@
 {
   "name": "ICS Data & Evidence Structuring System",
-  "description": "A secure, role-based management system for VISA, EOID, Residence ID, and ETD records for the Immigration Data and Evidence Structuring Division.",
+  "description": "A secure, role-based management system for VISA, EOID, Residence ID, ETD, and Bole Airport records for the Immigration Data and Evidence Structuring Division.",
   "requestFramePermissions": [
     "camera"
   ],

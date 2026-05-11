@@ -5,7 +5,8 @@ import {
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard, Shield, X,
-  Sun, Moon, Activity, BarChart3, Plane, Paperclip
+  Sun, Moon, Activity, BarChart3, Plane, Paperclip,
+  ArrowLeft, Clock, List, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -30,18 +31,21 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
+    { type: 'USERS', icon: Users, label: 'User Management' },
     { type: 'REPORTS', icon: BarChart3, label: 'Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'EOID' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD' },
     { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
-    { type: 'USERS', icon: Users, label: 'Users' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
   ];
 
   // Map path to tab type
-  const currentPath = location.pathname.split('/')[1]?.toLowerCase() || '';
+  const pathParts = location.pathname.split('/').filter(p => p);
+  const currentPath = pathParts[0]?.toLowerCase() || '';
+  const airportSubPath = pathParts[1]?.toLowerCase() || 'dashboard';
+
   const matchingTab = allTabs.find(tab => {
     const slug = tab.type === 'OVERVIEW' ? '' : tab.type.toLowerCase().replace(' ', '-');
     return slug === currentPath;
@@ -50,12 +54,41 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
   const tabs = allTabs.filter(tab => {
     if (!userProfile) return false;
+    
+    // If user has specific modules assigned, use those
+    if (userProfile.modules && userProfile.modules.length > 0) {
+      return userProfile.modules.includes(tab.type);
+    }
+
+    // Fallback to role-based logic if no modules assigned
     if (userProfile.role === 'admin') return true;
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
     }
     // Staff can see records and reports, but not system level management
     if (tab.type === 'AUDIT' || tab.type === 'USERS') return false;
+    return true;
+  });
+
+  // Calculate Airport Sub Tabs based on permissions
+  const airportTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid, module: 'AIRPORT_VIEW' },
+    { id: 'add', label: 'Add Document', icon: Plus, module: 'AIRPORT_ADD' },
+    { id: 'view', label: 'View Document', icon: Search, module: 'AIRPORT_VIEW' },
+    { id: 'edit', label: 'Edit Document', icon: List, module: 'AIRPORT_EDIT' },
+    { id: 'users', label: 'User Management', icon: Users, module: 'USERS' },
+    { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
+  ].filter(at => {
+    if (!userProfile) return false;
+    if (userProfile.role === 'admin') return true;
+    if (userProfile.modules && userProfile.modules.length > 0) {
+      // If they have users/audit module, show them in airport too
+      if (at.module === 'USERS') return userProfile.modules.includes('USERS');
+      if (at.module === 'AUDIT') return userProfile.modules.includes('AUDIT');
+      return userProfile.modules.includes(at.module);
+    }
+    // Fallback
+    if (at.id === 'users' || at.id === 'audit') return false;
     return true;
   });
 
@@ -193,6 +226,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   );
 
   const SidebarContent = () => {
+    const isAirportContext = activeTab === 'AIRPORT';
+
     return (
       <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-colors duration-300">
         <div className="p-6 border-b border-gray-800 flex items-center justify-between">
@@ -216,25 +251,90 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.type;
-            const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
-            return (
-              <Link
-                key={tab.type}
-                to={path}
-                onClick={() => setIsSidebarOpen(false)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  isActive 
-                    ? 'bg-blue-900/20 text-blue-400' 
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
+          <AnimatePresence mode="wait">
+            {isAirportContext ? (
+              <motion.div
+                key="airport-sidebar"
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                className="space-y-4"
               >
-                <tab.icon className="w-5 h-5" />
-                <span>{tab.label}</span>
-              </Link>
-            );
-          })}
+                <div className="px-4 py-2">
+                  <button 
+                    onClick={() => navigate('/')}
+                    className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-all mb-4"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    <span>Back to Main Menu</span>
+                  </button>
+                  <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Airport Navigator</h3>
+                </div>
+
+                <div className="space-y-1">
+                  {airportTabs.map((at) => {
+                    const isActive = airportSubPath === at.id;
+                    const Icon = at.icon;
+                    return (
+                      <Link
+                        key={at.id}
+                        to={`/airport/${at.id}`}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`w-full flex items-center space-x-4 px-5 py-4 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all ${
+                          isActive 
+                            ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
+                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                        <span>{at.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="px-5 py-6 mt-8 rounded-3xl bg-blue-600/5 border border-blue-500/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <Plane className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-100 italic">Terminal 2</p>
+                      <p className="text-[8px] font-bold text-blue-400">Main Hub</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="main-sidebar"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                className="space-y-1"
+              >
+                {tabs.map((tab) => {
+                  const isActive = activeTab === tab.type;
+                  const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+                  return (
+                    <Link
+                      key={tab.type}
+                      to={path}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className={`w-full flex items-center space-x-3 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        isActive 
+                          ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                      <span>{tab.label}</span>
+                    </Link>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
 
         <div className="p-4 border-t border-gray-800 mt-auto space-y-3">
@@ -391,6 +491,16 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/reports" element={<ReportingSystem />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/airport" element={
+                  <AirportView 
+                    refreshCounter={refreshCounter}
+                    onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                    onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                    onDeleteRecord={handleDelete}
+                    searchQuery={searchQuery}
+                    canEdit={canEdit()}
+                  />
+                } />
+                <Route path="/airport/:subTab" element={
                   <AirportView 
                     refreshCounter={refreshCounter}
                     onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
