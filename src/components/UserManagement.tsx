@@ -261,7 +261,7 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <UserCog className="w-8 h-8 text-blue-600" />
-            Admin: User Management
+            User Management
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Control system access, roles, and authentication security</p>
         </div>
