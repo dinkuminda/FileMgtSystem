@@ -373,10 +373,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               <p className="text-xs mt-1 capitalize text-gray-400">{userProfile?.role} Account</p>
             </div>
           ) : (
-            <div className="flex justify-center py-2" title={userProfile?.full_name}>
-              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold text-blue-400">
+            <div className="flex flex-col items-center py-2 space-y-1" title={`${userProfile?.full_name} (${userProfile?.role})`}>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-blue-500/10">
                 {userProfile?.full_name?.[0] || 'S'}
               </div>
+              <span className="text-[8px] font-black uppercase tracking-tighter text-blue-500 truncate w-full text-center px-1">
+                {userProfile?.role?.split('_')[0]}
+              </span>
             </div>
           )}
           
@@ -450,6 +453,23 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-3">
+            <div className="hidden lg:flex items-center space-x-4 mr-4 px-4 border-r border-gray-200 dark:border-gray-800 text-right">
+              <div>
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
+                  {userProfile?.full_name || 'Staff Member'}
+                </p>
+                <div className="flex items-center justify-end space-x-1">
+                  <Shield className="w-3 h-3 text-blue-600" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                    {userProfile?.role?.replace('_', ' ')}
+                  </p>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
+                {userProfile?.full_name?.[0] || 'S'}
+              </div>
+            </div>
+
             <div className="hidden md:flex items-center space-x-3">
               {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
                 <>

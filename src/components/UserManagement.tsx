@@ -685,7 +685,7 @@ export default function UserManagement() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
+              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -706,74 +706,81 @@ export default function UserManagement() {
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                    Select New Role
-                  </label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { id: 'admin', label: 'Administrator', desc: 'Full system access' },
-                      { id: 'staff', label: 'Immigration Staff', desc: 'Standard records access' },
-                      { id: 'airport_staff', label: 'Airport Staff', desc: 'Bole Airport records only' },
-                      { id: 'viewer', label: 'Viewer', desc: 'Read-only standard records' },
-                      { id: 'airport_viewer', label: 'Airport Viewer', desc: 'Read-only airport records' }
-                    ].map((role) => (
-                      <button
-                        key={role.id}
-                        onClick={() => setSelectedRole(role.id)}
-                        className={`text-left p-4 rounded-2xl border-2 transition-all ${
-                          selectedRole === role.id 
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
-                            : 'border-gray-100 dark:border-gray-800 hover:border-gray-200'
+              <div className="overflow-y-auto pr-2 flex-1 scrollbar-hide">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                      Select New Role
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { id: 'admin', label: 'Administrator', desc: 'Full system access' },
+                        { id: 'staff', label: 'Immigration Staff', desc: 'Standard records access' },
+                        { id: 'airport_staff', label: 'Airport Staff', desc: 'Bole Airport records only' },
+                        { id: 'viewer', label: 'Viewer', desc: 'Read-only standard records' },
+                        { id: 'airport_viewer', label: 'Airport Viewer', desc: 'Read-only airport records' }
+                      ].map((role) => (
+                        <button
+                          key={role.id}
+                          onClick={() => setSelectedRole(role.id)}
+                          className={`text-left p-4 rounded-2xl border-2 transition-all group ${
+                            selectedRole === role.id 
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
+                              : 'border-gray-100 dark:border-gray-800 hover:border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-sm text-gray-900 dark:text-white leading-tight">{role.label}</span>
+                            <div className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                              selectedRole === role.id ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 dark:border-gray-700'
+                            }`} />
+                          </div>
+                          <p className="text-[10px] text-gray-500 leading-relaxed">{role.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {status && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
+                          status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
                         }`}
                       >
-                        <div className="font-bold text-gray-900 dark:text-white">{role.label}</div>
-                        <div className="text-xs text-gray-500">{role.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <AnimatePresence>
-                  {status && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
-                        status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                      }`}
-                    >
-                      {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p>{status.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={() => setModifyingRoleUser(null)}
-                    disabled={actionLoading}
-                    className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleUpdateRole}
-                    disabled={actionLoading || !selectedRole}
-                    className="flex-[2] px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Shield className="w-4 h-4" />
-                        <span>Update Role</span>
-                      </>
+                        {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
+                        <p>{status.message}</p>
+                      </motion.div>
                     )}
-                  </button>
+                  </AnimatePresence>
                 </div>
+              </div>
+
+              <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
+                <button 
+                  onClick={() => setModifyingRoleUser(null)}
+                  disabled={actionLoading}
+                  className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleUpdateRole}
+                  disabled={actionLoading || !selectedRole}
+                  className="flex-[2] px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4" />
+                      <span>Update Role</span>
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>
