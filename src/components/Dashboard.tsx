@@ -5,7 +5,7 @@ import {
   CreditCard, Fingerprint, MapPin, FileQuestion,
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard, Shield, X,
-  Sun, Moon, Activity, BarChart3, Plane, Paperclip,
+  Activity, BarChart3, Plane, Paperclip,
   ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,11 +32,11 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'USERS', icon: Users, label: 'User Management' },
-    { type: 'REPORTS', icon: BarChart3, label: 'Reports' },
+    { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
-    { type: 'EOID', icon: Fingerprint, label: 'EOID' },
+    { type: 'EOID', icon: Fingerprint, label: 'EOID Logs' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
-    { type: 'ETD', icon: MapPin, label: 'ETD' },
+    { type: 'ETD', icon: MapPin, label: 'ETD Records' },
     { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
   ];
@@ -55,16 +55,19 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const tabs = allTabs.filter(tab => {
     if (!userProfile) return false;
     
+    // Admins should always see everything
+    if (userProfile.role === 'admin') return true;
+
     // If user has specific modules assigned, use those
     if (userProfile.modules && userProfile.modules.length > 0) {
       return userProfile.modules.includes(tab.type);
     }
 
-    // Fallback to role-based logic if no modules assigned
-    if (userProfile.role === 'admin') return true;
+    // Role-based fallbacks for users without explicit modules
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
     }
+
     // Staff can see records and reports, but not system level management
     if (tab.type === 'AUDIT' || tab.type === 'USERS') return false;
     return true;
@@ -230,67 +233,37 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     const isAirportContext = activeTab === 'AIRPORT';
 
     return (
-      <div className="flex flex-col h-full bg-gray-900 text-gray-100 transition-all duration-300 overflow-hidden">
-        <div className={`p-6 border-b border-gray-800 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-          <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="p-1 px-1.5 bg-white rounded-lg flex-shrink-0">
-              <img 
-                src="https://www.ics.gov.et/wp-content/uploads/2023/10/cropped-logo-192x192.png"
-                alt="Logo"
-                className="w-8 h-8 object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            {!isSidebarCollapsed && (
-              <motion.span 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="font-bold text-lg tracking-tight text-white whitespace-nowrap"
-              >
-                IDS Manager
-              </motion.span>
-            )}
+      <div className="flex flex-col h-full bg-white border-r border-slate-100 transition-all duration-300 overflow-hidden">
+        {/* Branding Area */}
+        <div className={`pt-10 pb-8 px-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
+          <div className="w-12 h-12 bg-blue-600 rounded-[14px] flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
+            <Fingerprint className="w-6 h-6 text-white" />
           </div>
-          <div className="flex items-center">
-            <button 
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden md:flex p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors ml-2"
-              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          {!isSidebarCollapsed && (
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="overflow-hidden"
             >
-              {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-            </button>
-            <button 
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-1.5 md:hidden text-gray-500 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" /> 
-            </button>
-          </div>
+              <h1 className="font-bold text-xl tracking-tight text-slate-800 leading-none mb-1">
+                CLOUDINV
+              </h1>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Inventory Sys</p>
+            </motion.div>
+          )}
         </div>
 
-        <nav className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-hide">
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-2 py-4">
           <AnimatePresence mode="wait">
             {isAirportContext ? (
               <motion.div
                 key="airport-sidebar"
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -20, opacity: 0 }}
-                className="space-y-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-1"
               >
-                {!isSidebarCollapsed && (
-                  <div className="px-4 py-2">
-                    <button 
-                      onClick={() => navigate('/')}
-                      className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-all mb-4"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      <span>Back to Main Menu</span>
-                    </button>
-                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Airport Navigator</h3>
-                  </div>
-                )}
-
                 <div className="space-y-1">
                   {airportTabs.map((at) => {
                     const isActive = airportSubPath === at.id;
@@ -300,42 +273,23 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         key={at.id}
                         to={`/airport/${at.id}`}
                         onClick={() => setIsSidebarOpen(false)}
-                        title={isSidebarCollapsed ? at.label : ""}
-                        className={`w-full flex items-center rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                          isSidebarCollapsed ? 'justify-center p-4' : 'space-x-4 px-5 py-4'
-                        } ${
-                          isActive 
-                            ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
-                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        className={`sidebar-link ${isSidebarCollapsed ? 'p-4 justify-center' : ''} ${
+                          isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
                         }`}
                       >
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                        <Icon className={`w-5 h-5 flex-shrink-0`} />
                         {!isSidebarCollapsed && <span>{at.label}</span>}
                       </Link>
                     );
                   })}
                 </div>
-
-                {!isSidebarCollapsed && (
-                  <div className="px-5 py-6 mt-8 rounded-3xl bg-blue-600/5 border border-blue-500/10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                        <Plane className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-blue-100 italic">Terminal 2</p>
-                        <p className="text-[8px] font-bold text-blue-400">Main Hub</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </motion.div>
             ) : (
               <motion.div
                 key="main-sidebar"
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 20, opacity: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="space-y-1"
               >
                 {tabs.map((tab) => {
@@ -346,16 +300,11 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                       key={tab.type}
                       to={path}
                       onClick={() => setIsSidebarOpen(false)}
-                      title={isSidebarCollapsed ? tab.label : ""}
-                      className={`w-full flex items-center rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                        isSidebarCollapsed ? 'justify-center p-4' : 'space-x-3 px-6 py-4'
-                      } ${
-                        isActive 
-                          ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      className={`sidebar-link ${isSidebarCollapsed ? 'p-4 justify-center' : ''} ${
+                        isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
                       }`}
                     >
-                      <tab.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`} />
+                      <tab.icon className={`w-5 h-5 flex-shrink-0`} />
                       {!isSidebarCollapsed && <span>{tab.label}</span>}
                     </Link>
                   );
@@ -365,33 +314,46 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           </AnimatePresence>
         </nav>
 
-        <div className="p-4 border-t border-gray-800 mt-auto space-y-3">
-          {!isSidebarCollapsed ? (
-            <div className="p-4 rounded-xl bg-gray-800/50">
-              <p className="text-[10px] font-bold uppercase tracking-wider mb-2 text-gray-500">Active Session</p>
-              <p className="text-sm font-bold truncate text-gray-100">{userProfile?.full_name || 'Staff Member'}</p>
-              <p className="text-xs mt-1 capitalize text-gray-400">{userProfile?.role} Account</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center py-2 space-y-1" title={`${userProfile?.full_name} (${userProfile?.role})`}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-blue-500/10">
-                {userProfile?.full_name?.[0] || 'S'}
+        {/* Bottom Profile Section */}
+        <div className="p-4 md:p-6 mt-auto flex flex-col items-center border-t border-slate-50">
+          <div className="w-full mb-4">
+            <div className={`flex items-center gap-4 px-2 py-2 mb-4 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs md:text-sm font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
+                {userProfile?.full_name?.[0]?.toUpperCase() || 'A'}
               </div>
-              <span className="text-[8px] font-black uppercase tracking-tighter text-blue-500 truncate w-full text-center px-1">
-                {userProfile?.role?.split('_')[0]}
-              </span>
+              {!isSidebarCollapsed && (
+                <div className="overflow-hidden">
+                  <p className="text-sm font-black text-slate-900 leading-tight truncate">{userProfile?.full_name || 'System Administrator'}</p>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{userProfile?.role || 'ADMIN'}</p>
+                </div>
+              )}
             </div>
-          )}
+            
+            <div className="space-y-1">
+              <button 
+                className={`sidebar-link sidebar-link-inactive w-full ${isSidebarCollapsed ? 'p-3 justify-center' : ''}`}
+                onClick={() => navigate('/settings')}
+                title="Settings"
+              >
+                <Activity className="w-5 h-5 flex-shrink-0" />
+                {!isSidebarCollapsed && <span>Settings</span>}
+              </button>
+              <button 
+                onClick={() => supabase.auth.signOut()}
+                className={`sidebar-link sidebar-link-inactive w-full text-red-500 hover:text-red-600 hover:bg-red-50 ${isSidebarCollapsed ? 'p-3 justify-center' : ''}`}
+                title="Log Out"
+              >
+                <LogOut className="w-5 h-5 flex-shrink-0" />
+                {!isSidebarCollapsed && <span>Log Out</span>}
+              </button>
+            </div>
+          </div>
           
           <button 
-            onClick={() => supabase.auth.signOut()}
-            title="Logout"
-            className={`w-full flex items-center justify-center bg-red-600/15 border border-red-500/30 rounded-xl text-sm font-black text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-red-950/20 uppercase tracking-widest group ${
-              isSidebarCollapsed ? 'p-3' : 'space-x-3 px-4 py-3.5'
-            }`}
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="w-10 h-10 hidden md:flex items-center justify-center text-slate-300 hover:text-slate-500 bg-slate-50 rounded-xl transition-all"
           >
-            <LogOut className={`w-5 h-5 group-hover:translate-x-1 transition-transform ${!isSidebarCollapsed && 'mr-0'}`} />
-            {!isSidebarCollapsed && <span>Logout</span>}
+            {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
         </div>
       </div>
@@ -399,7 +361,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-black transition-colors duration-300 overflow-hidden">
+    <div className="flex min-h-screen bg-slate-50 transition-colors duration-300 font-sans">
       <input 
         type="file" 
         accept=".csv" 
@@ -416,136 +378,146 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/10 z-40 md:hidden backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0 transition-all duration-300 ease-in-out transform ${
-        isSidebarCollapsed ? 'w-24' : 'w-72 md:w-80'
+      {/* FAB */}
+      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && activeTab !== 'AIRPORT' && (
+        <button 
+          onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
+          className="m3-fab shadow-blue-500/20"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
+      )}
+
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar (Material 3 style) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--m3-surface-container)] border-t border-[var(--m3-outline-variant)] flex items-center justify-around px-2 z-40">
+        {tabs.slice(0, 4).map((tab) => {
+          const isActive = activeTab === tab.type;
+          const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+          return (
+            <Link
+              key={tab.type}
+              to={path}
+              className={`bottom-nav-link ${isActive ? 'bottom-nav-link-active' : 'bottom-nav-link-inactive'}`}
+            >
+              <div className="bottom-nav-icon-container">
+                <tab.icon className="w-6 h-6" />
+              </div>
+              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'text-[var(--m3-on-primary-container)]' : 'text-[var(--clr-text)]'}`}>
+                {tab.label.split(' ')[0]}
+              </span>
+            </Link>
+          );
+        })}
+        {/* Toggle Sidebar Button for Mobile */}
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="bottom-nav-link bottom-nav-link-inactive"
+        >
+          <div className="bottom-nav-icon-container">
+            <List className="w-6 h-6" />
+          </div>
+          <span className="text-[10px] font-bold tracking-tight text-[var(--clr-text)]">More</span>
+        </button>
+      </nav>
+
+      {/* Sidebar (Navigation Drawer) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 md:sticky md:top-0 md:h-screen md:translate-x-0 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) transform ${
+        isSidebarCollapsed ? 'w-24' : 'w-72'
       } ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } border-r border-gray-800 flex flex-col bg-gray-900`}>
+      } flex flex-col shadow-2xl md:shadow-none bg-[var(--m3-surface)] md:border-r md:border-[var(--m3-outline-variant)]/30`}>
         <SidebarContent />
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto flex flex-col w-full">
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm transition-colors">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 md:hidden text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-            >
-              <LayoutDashboard className="w-6 h-6" />
-            </button>
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {activeTab === 'OVERVIEW' ? 'Dashboard Reports' : 
-                 activeTab === 'AUDIT' ? 'System Audit Logs' : 
-                 activeTab === 'REPORTS' ? 'Advanced Analytics' : 
-                 activeTab === 'AIRPORT' ? 'Bole Airport Operations' : 
-                 activeTab}
+      {/* Scaffold */}
+      <main className="flex-1 flex flex-col w-full pb-20 md:pb-0">
+        {/* Header Bar */}
+        <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-[var(--m3-surface)] md:bg-white/40 md:backdrop-blur-md sticky top-0 z-30 transition-colors border-b border-[var(--m3-outline-variant)] md:border-slate-50">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="md:hidden w-10 h-10 bg-[var(--m3-primary-container)] rounded-xl flex items-center justify-center">
+              <Fingerprint className="w-5 h-5 text-[var(--m3-on-primary-container)]" />
+            </div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-base md:text-sm font-bold text-slate-800">
+                {activeTab === 'OVERVIEW' ? 'Dashboard' : activeTab}
               </h2>
-              <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium">Immigration Data Structuring Division</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <div className="hidden lg:flex items-center space-x-4 mr-4 px-4 border-r border-gray-200 dark:border-gray-800 text-right">
-              <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
-                  {userProfile?.full_name || 'Staff Member'}
-                </p>
-                <div className="flex items-center justify-end space-x-1">
-                  <Shield className="w-3 h-3 text-blue-600" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                    {userProfile?.role?.replace('_', ' ')}
-                  </p>
-                </div>
+          <div className="flex items-center gap-4">
+             {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
+              <div className="hidden md:flex items-center relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[var(--m3-primary)] transition-colors" />
+                <input 
+                  type="text"
+                  placeholder="Universal search..."
+                  className="pl-12 pr-6 py-2 bg-slate-50 border border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-[var(--m3-primary)]/20 rounded-xl text-xs font-bold text-slate-800 outline-none w-64 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
-                {userProfile?.full_name?.[0] || 'S'}
-              </div>
-            </div>
+            )}
 
-            <div className="hidden md:flex items-center space-x-3">
-              {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-                <>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input 
-                      type="text"
-                      placeholder="Search database..."
-                      className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 w-48 lg:w-64 transition-all"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-1">
-              {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-                <button 
-                  onClick={exportToCSV}
-                  title="Export to CSV"
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                >
-                  <FileOutput className="w-5 h-5" />
-                </button>
-              )}
-
-              {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-                <>
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Import from CSV"
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all hidden md:block"
-                  >
-                    <FileInput className="w-5 h-5" />
-                  </button>
-                  {activeTab !== 'AIRPORT' && (
-                    <button 
-                      id="add-record-btn"
-                      onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">New Entry</span>
-                    </button>
-                  )}
-                </>
-              )}
-              
-              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 md:mx-2" />
-              
+            <div className="flex items-center gap-2 md:gap-3">
               <button 
                 onClick={() => supabase.auth.signOut()}
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all group relative"
-                title="Sign Out"
+                className="md:hidden p-2.5 text-red-500 bg-red-50 rounded-xl active:scale-95 transition-all"
+                title="Log Out"
               >
-                <LogOut className="w-5 h-5" />
-                <span className="absolute -bottom-8 right-0 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                  Logout
-                </span>
+                <LogOut className="w-4 h-4" />
               </button>
+               {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
+                <button 
+                  onClick={exportToCSV}
+                  className="p-2.5 bg-white text-slate-400 rounded-xl hover:bg-slate-50 hover:text-[var(--m3-primary)] border border-slate-100 transition-all"
+                >
+                  <FileOutput className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </header>
 
-        <div className="p-8">
+        {/* Content View */}
+        <div className="p-5 md:p-8 max-w-7xl">
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={activeTab === 'OVERVIEW' ? '' : 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden transition-colors'}
+              key={activeTab + airportSubPath}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
+              <div className="mb-8 md:mb-10">
+                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
+                  {activeTab === 'OVERVIEW' ? 'Overview' : 
+                   activeTab === 'AIRPORT' ? 'Hub Operations' : 
+                   activeTab}
+                </h1>
+                <p className="text-slate-500 text-sm md:text-base font-medium">
+                  {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
+                   `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
+                </p>
+              </div>
+
               <Routes>
                 <Route path="/" element={<DashboardReports />} />
                 <Route path="/audit" element={<AuditLogView />} />
@@ -553,6 +525,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/airport" element={
                   <AirportView 
+                    userProfile={userProfile}
                     refreshCounter={refreshCounter}
                     onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
                     onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
@@ -563,6 +536,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 } />
                 <Route path="/airport/:subTab" element={
                   <AirportView 
+                    userProfile={userProfile}
                     refreshCounter={refreshCounter}
                     onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
                     onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
@@ -572,44 +546,52 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   />
                 } />
                 <Route path="/visa" element={
-                  <RecordTable 
-                    loading={loading}
-                    records={filteredRecords}
-                    activeTab={activeTab as RecordType}
-                    canEdit={canEdit()}
-                    onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDelete={handleDelete}
-                  />
+                  <div className="flutter-card p-4">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 } />
                 <Route path="/eoid" element={
-                  <RecordTable 
-                    loading={loading}
-                    records={filteredRecords}
-                    activeTab={activeTab as RecordType}
-                    canEdit={canEdit()}
-                    onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDelete={handleDelete}
-                  />
+                   <div className="flutter-card p-4">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 } />
                 <Route path="/residence-id" element={
-                  <RecordTable 
-                    loading={loading}
-                    records={filteredRecords}
-                    activeTab={activeTab as RecordType}
-                    canEdit={canEdit()}
-                    onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDelete={handleDelete}
-                  />
+                   <div className="flutter-card p-4">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 } />
                 <Route path="/etd" element={
-                  <RecordTable 
-                    loading={loading}
-                    records={filteredRecords}
-                    activeTab={activeTab as RecordType}
-                    canEdit={canEdit()}
-                    onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDelete={handleDelete}
-                  />
+                   <div className="flutter-card p-4">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

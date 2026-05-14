@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase, ImmigrationRecord, logger } from '../lib/supabase';
+import { supabase, type ImmigrationRecord, logger, type UserProfile } from '../lib/supabase';
 import { 
   Plane, Users, FileText, CheckCircle, 
   Clock, AlertCircle, Search, Plus,
@@ -16,6 +16,7 @@ import UserManagement from './UserManagement';
 import AuditLogView from './AuditLogView';
 
 interface AirportViewProps {
+  userProfile: UserProfile | null;
   onAddRecord: () => void;
   onEditRecord: (record: ImmigrationRecord) => void;
   onDeleteRecord: (id: string) => void | Promise<void>;
@@ -24,10 +25,33 @@ interface AirportViewProps {
   refreshCounter?: number;
 }
 
-export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit, refreshCounter }: AirportViewProps) {
+export default function AirportView({ userProfile, onAddRecord, onEditRecord, onDeleteRecord, searchQuery, canEdit, refreshCounter }: AirportViewProps) {
   const { subTab: urlSubTab } = useParams();
   const navigate = useNavigate();
   const activeSubTab = (urlSubTab || 'dashboard') as 'dashboard' | 'add' | 'view' | 'edit' | 'users' | 'audit';
+
+  // Sub-tabs configuration with permission check
+  const subTabs = [
+    { id: 'dashboard', label: 'Overview', icon: LayoutGrid, module: 'AIRPORT_VIEW' },
+    { id: 'add', label: 'Register', icon: Plus, module: 'AIRPORT_ADD' },
+    { id: 'view', label: 'Database', icon: List, module: 'AIRPORT_VIEW' },
+    { id: 'edit', label: 'Correct', icon: Clock, module: 'AIRPORT_EDIT' },
+    { id: 'users', label: 'Users', icon: Users, module: 'USERS' },
+    { id: 'audit', label: 'Audit', icon: Activity, module: 'AUDIT' },
+  ].filter(tab => {
+    if (!userProfile) return false;
+    if (userProfile.role === 'admin') return true;
+    if (userProfile.modules && userProfile.modules.length > 0) {
+      if (tab.id === 'users') return userProfile.modules.includes('USERS');
+      if (tab.id === 'audit') return userProfile.modules.includes('AUDIT');
+      return userProfile.modules.includes(tab.module);
+    }
+    // Fallback for staff
+    if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+      return ['dashboard', 'view', 'add', 'edit'].includes(tab.id);
+    }
+    return true;
+  });
 
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [globalMatches, setGlobalMatches] = useState<ImmigrationRecord[]>([]);
@@ -175,77 +199,115 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a'];
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="space-y-6">
+    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="space-y-12">
+        {/* Navigation Tabs - M3 Style */}
+        <div className="flex items-center gap-6 pb-2 border-b border-[var(--m3-outline)]/10 overflow-x-auto scrollbar-hide">
+          {subTabs.map((tab) => {
+            const isActive = activeSubTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(`/airport/${tab.id}`)}
+                className={`relative flex items-center gap-2 px-4 py-4 transition-all whitespace-nowrap group`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface-variant)] group-hover:text-[var(--m3-on-surface)]'}`} />
+                <span className={`text-sm font-bold ${isActive ? 'text-[var(--m3-on-surface)]' : 'text-[var(--m3-on-surface-variant)] group-hover:text-[var(--m3-on-surface)]'}`}>
+                  {tab.label}
+                </span>
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--m3-primary)] rounded-t-full"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {activeSubTab === 'dashboard' ? (
-        <div className="space-y-8">
+        <div className="space-y-12">
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="m3-card-elevated flex flex-col justify-between h-44"
             >
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-[var(--m3-primary-container)] rounded-2xl flex items-center justify-center">
+                <FileText className="w-6 h-6 text-[var(--m3-on-primary-container)]" />
               </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Records</p>
-              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">{stats?.total || 0}</h3>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-[var(--m3-primary)]">Cumulative</p>
+                <h3 className="text-4xl font-bold text-[var(--m3-on-surface)] mt-1">{stats?.total || 0}</h3>
+                <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium mt-1">Total Records Scanned</p>
+              </div>
             </motion.div>
 
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="m3-card flex flex-col justify-between h-44 border-none shadow-none bg-amber-500/10"
             >
-              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mb-4">
-                <Clock className="w-6 h-6 text-amber-600" />
+              <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-white" />
               </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Added Today</p>
-              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">{stats?.today || 0}</h3>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-amber-600">Daily</p>
+                <h3 className="text-4xl font-bold text-[var(--m3-on-surface)] mt-1">{stats?.today || 0}</h3>
+                <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium mt-1">New Entries Detected</p>
+              </div>
             </motion.div>
 
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="m3-card-elevated flex flex-col justify-between h-44"
             >
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mb-4">
-                <Filter className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-[var(--m3-secondary-container)] rounded-2xl flex items-center justify-center">
+                <Filter className="w-6 h-6 text-[var(--m3-on-secondary-container)]" />
               </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incomplete Scans</p>
-              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">
-                {records.filter(r => !r.attachment_url || r.attachment_url === 'null').length}
-              </h3>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Compliance</p>
+                <h3 className="text-4xl font-bold text-[var(--m3-on-surface)] mt-1">
+                  {records.filter(r => !r.attachment_url || r.attachment_url === 'null').length}
+                </h3>
+                <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium mt-1">Partial Attachments</p>
+              </div>
             </motion.div>
 
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="p-8 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="m3-card flex flex-col justify-between h-44 border-none shadow-none bg-emerald-500/10"
             >
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mb-4">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-white" />
               </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Operations</p>
-              <h3 className="text-4xl font-black text-gray-900 dark:text-white mt-1">ON</h3>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-600">Status</p>
+                <h3 className="text-4xl font-bold text-[var(--m3-on-surface)] mt-1">ACTIVE</h3>
+                <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium mt-1">Endpoint Connection</p>
+              </div>
             </motion.div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
             {/* Document Types Chart */}
-            <div className="bg-white dark:bg-gray-900 p-10 rounded-[3rem] border border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-10">
+            <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-[var(--m3-outline-variant)]">
+              <div className="flex items-center justify-between mb-8 md:mb-10">
                 <div>
-                  <h3 className="text-2xl font-black">Record Distribution</h3>
-                  <p className="text-sm text-gray-500">Breakdown by document classification</p>
+                  <h3 className="text-xl md:text-2xl font-black">Record Distribution</h3>
+                  <p className="text-xs md:text-sm text-gray-500">Breakdown by document classification</p>
                 </div>
-                <LayoutGrid className="w-6 h-6 text-gray-300" />
+                <LayoutGrid className="w-5 h-5 md:w-6 md:h-6 text-gray-300" />
               </div>
-              <div className="h-[300px]">
+              <div className="h-[250px] md:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats?.typeData || []}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.documentElement.classList.contains('dark') ? '#334155' : '#f1f5f9'} />
@@ -253,7 +315,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 700 }}
                     />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
                     <Tooltip 
@@ -266,7 +328,7 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                         color: 'white'
                       }}
                     />
-                    <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                    <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={40}>
                       {(stats?.typeData || []).map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -277,26 +339,26 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
             </div>
 
             {/* Service Breakdown */}
-            <div className="bg-white dark:bg-gray-900 p-10 rounded-[3rem] border border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-8">
+            <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-[var(--m3-outline-variant)]">
+              <div className="flex items-center justify-between mb-6 md:mb-8">
                 <div>
-                  <h3 className="text-2xl font-black">Top Services</h3>
-                  <p className="text-sm text-gray-500">Most frequent airport operations</p>
+                  <h3 className="text-xl md:text-2xl font-black">Top Services</h3>
+                  <p className="text-xs md:text-sm text-gray-500">Most frequent operations</p>
                 </div>
-                <List className="w-6 h-6 text-gray-300" />
+                <List className="w-5 h-5 md:w-6 md:h-6 text-gray-300" />
               </div>
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {(stats?.serviceData || []).sort((a: any, b: any) => b.value - a.value).slice(0, 4).map((service: any, index: number) => (
-                  <div key={service.name} className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl" style={{ backgroundColor: `${COLORS[index % COLORS.length]}20`, color: COLORS[index % COLORS.length] }}>
+                  <div key={service.name} className="flex items-center gap-4 md:gap-6">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-lg md:text-xl flex-shrink-0" style={{ backgroundColor: `${COLORS[index % COLORS.length]}20`, color: COLORS[index % COLORS.length] }}>
                       {index + 1}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="text-sm font-black uppercase tracking-widest">{service.name}</span>
-                        <span className="text-xs font-mono font-bold text-gray-400">{service.value}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-end mb-1 md:mb-2">
+                        <span className="text-xs font-black uppercase tracking-widest truncate pr-2">{service.name}</span>
+                        <span className="text-[10px] font-mono font-bold text-gray-400">{service.value}</span>
                       </div>
-                      <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                         <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${(service.value / (stats?.total || 1)) * 100}%` }}
@@ -453,57 +515,44 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
                 {exactMatches.map(match => (
                   <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
                     key={match.id} 
-                    className="group bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl shadow-gray-200/50 dark:shadow-none p-8 flex flex-col transition-all hover:border-blue-500/50"
+                    className="group m3-card-elevated flex flex-col transition-all hover:bg-[var(--m3-surface-container-highest)]"
                   >
                     <div className="flex justify-between items-start mb-8">
-                      <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30">
-                        <FileText className="w-8 h-8 text-white" />
+                      <div className="w-14 h-14 bg-[var(--m3-primary)] rounded-2xl flex items-center justify-center shadow-lg shadow-[var(--m3-primary)]/30">
+                        <FileText className="w-7 h-7 text-[var(--m3-on-primary)]" />
                       </div>
-                      <div className="text-right flex flex-col items-end gap-1">
-                        <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                      <div className="text-right flex flex-col items-end gap-1.5">
+                        <span className="inline-block px-3 py-1 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
                           {match.document_type || (match as any)._table?.replace('_records', '').replace('_', ' ') || 'Record'}
                         </span>
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-[var(--m3-on-surface-variant)] opacity-50 uppercase tracking-widest">
                           {(match as any)._table?.replace('_records', '').replace('_', ' ')}
                         </span>
                       </div>
                     </div>
 
                     <div className="mb-8">
-                      <h4 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
+                      <h4 className="text-2xl font-bold text-[var(--m3-on-surface)] tracking-tight leading-tight group-hover:text-[var(--m3-primary)] transition-colors">
                         {match.full_name}
                       </h4>
-                      <div className="flex flex-col gap-1 mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-500 uppercase tracking-widest">{match.citizenship}</span>
-                          <span className="text-[10px] font-mono font-bold text-blue-500 uppercase">REQ: {match.request_number}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {(match as any).residence_id_no && (
-                            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">ID: {(match as any).residence_id_no}</span>
-                          )}
-                          {(match as any).eoid_number && (
-                            <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400">EOID: {(match as any).eoid_number}</span>
-                          )}
-                          {(match as any).letter_number && (
-                            <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400">LTR: {(match as any).letter_number}</span>
-                          )}
-                        </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <span className="text-[11px] font-bold bg-[var(--m3-surface-container-highest)] px-2.5 py-1 rounded-lg text-[var(--m3-on-surface)] uppercase tracking-wide border border-[var(--m3-outline)]/5">{match.citizenship}</span>
+                        <span className="text-[11px] font-mono font-bold text-[var(--m3-primary)] px-2.5 py-1 bg-[var(--m3-primary-container)]/30 rounded-lg">REQ: {match.request_number}</span>
                       </div>
                     </div>
 
                     {/* Scanned Files Visualization */}
-                    <div className="flex-1 space-y-3 mb-8">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                          <Paperclip className="w-4 h-4 text-blue-500" />
-                          Document Scan Files
+                    <div className="flex-1 space-y-4 mb-8">
+                      <div className="flex items-center justify-between px-1">
+                        <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-widest flex items-center gap-2">
+                          <Paperclip className="w-4 h-4 text-[var(--m3-primary)]" />
+                          Registry Artifacts
                         </p>
-                        <span className="text-[10px] font-bold text-gray-300">
-                          {Math.max(matchAttachments[match.id]?.length || 0, (match.attachment_url && match.attachment_url !== 'null') ? 1 : 0)} FILE(S)
+                        <span className="px-2 py-0.5 bg-[var(--m3-surface-container)] rounded-md text-[10px] font-bold text-[var(--m3-on-surface-variant)]">
+                          {Math.max(matchAttachments[match.id]?.length || 0, (match.attachment_url && match.attachment_url !== 'null') ? 1 : 0)} FILES
                         </span>
                       </div>
 
@@ -515,67 +564,67 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                               const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
                               
                               return (
-                                <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-300">
+                                <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-500">
                                   {isImage ? (
-                                    <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900">
+                                    <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-[var(--m3-outline)]/5 shadow-inner bg-[var(--m3-surface-container)]">
                                       <img 
                                         src={fileUrl} 
-                                        alt="Document Scan"
-                                        className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-700"
+                                        alt="Scan"
+                                        className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-1000"
                                         referrerPolicy="no-referrer"
                                       />
-                                      <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/20 transition-colors flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/30 transition-all flex items-center justify-center backdrop-blur-0 group-hover/doc:backdrop-blur-[2px]">
                                         <button 
                                           onClick={() => window.open(fileUrl)}
-                                          className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600 opacity-0 group-hover/doc:opacity-100 transition-all transform scale-90 group-hover/doc:scale-100"
+                                          className="p-4 bg-[var(--m3-surface-container-high)]/90 rounded-2xl shadow-2xl text-[var(--m3-primary)] opacity-0 group-hover/doc:opacity-100 transition-all transform translate-y-2 group-hover/doc:translate-y-0"
                                         >
-                                          <ExternalLink className="w-5 h-5" />
+                                          <ExternalLink className="w-6 h-6" />
                                         </button>
                                       </div>
                                     </div>
                                   ) : (
                                     <button 
                                       onClick={() => window.open(fileUrl)}
-                                      className="w-full flex items-center justify-between p-5 rounded-[2rem] bg-gray-50 dark:bg-gray-800 border border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:bg-white dark:hover:bg-gray-900 transition-all text-left shadow-sm group/file"
+                                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--m3-surface-container)] hover:bg-[var(--m3-surface-container-high)] border border-transparent hover:border-[var(--m3-primary)] transition-all text-left group/file"
                                     >
                                       <div className="flex items-center gap-4 truncate">
-                                        <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl group-hover/file:bg-blue-600 group-hover/file:text-white transition-colors">
-                                          <FileIcon className="w-6 h-6" />
+                                        <div className="p-3 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-xl group-hover/file:bg-[var(--m3-primary)] group-hover/file:text-[var(--m3-on-primary)] transition-colors">
+                                          <FileIcon className="w-5 h-5" />
                                         </div>
-                                        <div>
-                                          <span className="text-xs font-black text-gray-900 dark:text-gray-100 block truncate max-w-[140px] uppercase">
+                                        <div className="truncate pr-2">
+                                          <span className="text-sm font-bold text-[var(--m3-on-surface)] block truncate uppercase">
                                             {file.file_name}
                                           </span>
-                                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                                          <span className="text-[10px] text-[var(--m3-on-surface-variant)] font-bold uppercase">
                                             {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
                                           </span>
                                         </div>
                                       </div>
-                                      <ExternalLink className="w-5 h-5 text-blue-500 opacity-0 group-hover/file:opacity-100 transition-opacity" />
+                                      <ExternalLink className="w-5 h-5 text-[var(--m3-primary)] opacity-0 group-hover/file:opacity-100 transition-opacity" />
                                     </button>
                                   )}
                                 </div>
                               );
                             })
                           ) : (
-                            <div className="relative group/doc animate-in fade-in zoom-in duration-300">
-                              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                            <div className="relative group/doc animate-in fade-in zoom-in duration-500">
+                              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-[var(--m3-outline)]/5 shadow-inner bg-[var(--m3-surface-container)] flex items-center justify-center">
                                 {match.attachment_url?.match(/\.(jpg|jpeg|png|gif|webp)/i) || match.attachment_url?.includes('?token=') ? (
                                   <img 
                                     src={match.attachment_url} 
-                                    alt="Document Scan"
+                                    alt="Scan"
                                     className="w-full h-full object-cover"
                                     referrerPolicy="no-referrer"
                                   />
                                 ) : (
-                                  <FileText className="w-12 h-12 text-blue-200" />
+                                  <FileText className="w-12 h-12 text-[var(--m3-outline)] opacity-20" />
                                 )}
-                                <div className="absolute inset-0 bg-black/5 hover:bg-black/20 transition-colors flex items-center justify-center group/btn">
+                                <div className="absolute inset-0 bg-black/5 hover:bg-black/30 transition-all flex items-center justify-center backdrop-blur-0 hover:backdrop-blur-[2px]">
                                   <button 
                                     onClick={() => window.open(match.attachment_url!)}
-                                    className="p-3 bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-xl text-blue-600"
+                                    className="p-4 bg-[var(--m3-surface-container-high)]/90 rounded-2xl shadow-2xl text-[var(--m3-primary)]"
                                   >
-                                    <ExternalLink className="w-5 h-5" />
+                                    <ExternalLink className="w-6 h-6" />
                                   </button>
                                 </div>
                               </div>
@@ -583,18 +632,18 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                           )}
                         </div>
                       ) : (
-                        <div className="p-8 rounded-3xl bg-gray-50/50 dark:bg-gray-900/50 text-center border-2 border-dotted border-gray-200 dark:border-gray-800">
-                          <AlertCircle className="w-6 h-6 text-gray-300 mx-auto mb-2" />
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Digital Scan Missing</p>
-                          <p className="text-[10px] text-gray-300 font-medium italic mt-1">This record requires a manual scan upload.</p>
+                        <div className="p-10 rounded-[2rem] bg-[var(--m3-surface-container)]/50 text-center border-2 border-dashed border-[var(--m3-outline)]/10">
+                          <AlertCircle className="w-8 h-8 text-[var(--m3-on-surface-variant)] opacity-20 mx-auto mb-3" />
+                          <p className="text-xs text-[var(--m3-on-surface-variant)] font-bold uppercase tracking-widest">Metadata Only</p>
+                          <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium italic mt-2 opacity-60">Physical artifact not yet digitized.</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                    <div className="pt-6 border-t border-[var(--m3-outline)]/5 flex items-center justify-between gap-4">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Passport No</span>
-                        <span className="text-sm font-black font-mono tracking-tighter">{match.passport_number}</span>
+                        <span className="text-[10px] font-bold text-[var(--m3-on-surface-variant)] uppercase tracking-widest">ID Reference</span>
+                        <span className="text-sm font-bold font-mono tracking-tighter text-[var(--m3-on-surface)]">{match.passport_number}</span>
                       </div>
                       <div className="flex gap-2">
                         {((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0) ? (
@@ -611,24 +660,24 @@ export default function AirportView({ onAddRecord, onEditRecord, onDeleteRecord,
                                 window.open(effectiveUrl);
                               }
                             }}
-                            className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                            className="m3-button-filled px-6 py-3 text-xs shadow-none group-hover:scale-105 transition-transform"
                           >
-                            View Scan Doc
+                            Digital Scan
                           </button>
                         ) : canEdit ? (
                           <button 
                             onClick={() => onEditRecord(match)}
-                            className="bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                            className="bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
                           >
-                            <Plus className="w-3 h-3" />
-                            Upload Scan
+                            <Plus className="w-4 h-4" />
+                            Upload
                           </button>
                         ) : (
                           <button 
                             disabled
-                            className="bg-gray-100 text-gray-400 py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed"
+                            className="bg-[var(--m3-surface-container)] text-[var(--m3-on-surface-variant)] opacity-50 px-6 py-3 rounded-2xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 cursor-not-allowed"
                           >
-                            No Scan Available
+                            Unavailable
                           </button>
                         )}
                       </div>

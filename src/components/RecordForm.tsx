@@ -258,189 +258,192 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-colors">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface)]/80 backdrop-blur-xl transition-all">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border dark:border-gray-800 transition-colors"
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.98 }}
+        className="bg-[var(--m3-surface-container-high)] w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-[var(--m3-outline-variant)]/30 transition-all font-sans"
       >
-        <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 transition-colors">
-          <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              {record ? 'Review/Edit' : 'Create New'} {type} Record
+        <header className="px-8 py-6 flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-2xl font-bold text-[var(--m3-on-surface)] tracking-tight">
+              {record ? 'Review & Edit' : 'New Registration'} 
             </h3>
+            <p className="text-xs font-medium text-[var(--m3-on-surface-variant)] uppercase tracking-widest">{type} MODULE</p>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-3 text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors">
+            <X className="w-6 h-6" />
           </button>
         </header>
 
-        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 bg-white dark:bg-gray-900 transition-colors">
+        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 pb-8 space-y-10 scrollbar-hide">
           {/* Main Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              {type !== 'AIRPORT' && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">BOX Number</label>
-                  <input
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium dark:text-gray-100"
-                    value={formData.box_number}
-                    onChange={e => setFormData({ ...formData, box_number: e.target.value })}
-                    placeholder="BOX-2024-XXX"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Full Name</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            {type !== 'AIRPORT' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Box Number</label>
                 <input
                   required
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium dark:text-gray-100"
-                  value={formData.full_name}
-                  onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+                  className="m3-input font-mono"
+                  value={formData.box_number}
+                  onChange={e => setFormData({ ...formData, box_number: e.target.value })}
+                  placeholder="BOX-2024-XXX"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Sex</label>
-                  <select
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium dark:text-gray-100"
-                    value={formData.sex}
-                    onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Citizenship</label>
-                  <input
-                    required
-                    list="citizenships-list"
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium dark:text-gray-100"
-                    value={formData.citizenship}
-                    onChange={e => setFormData({ ...formData, citizenship: e.target.value })}
-                    placeholder="Search country..."
-                  />
-                  <datalist id="citizenships-list">
-                    {CITIZENSHIPS.map(c => <option key={c} value={c} className="dark:bg-gray-800" />)}
-                  </datalist>
-                </div>
+            )}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Full Name</label>
+              <input
+                required
+                className="m3-input"
+                value={formData.full_name}
+                onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Sex</label>
+                <select
+                  className="m3-input"
+                  value={formData.sex}
+                  onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Citizenship</label>
+                <input
+                  required
+                  list="citizenships-list"
+                  className="m3-input"
+                  value={formData.citizenship}
+                  onChange={e => setFormData({ ...formData, citizenship: e.target.value })}
+                  placeholder="Search..."
+                />
+                <datalist id="citizenships-list">
+                  {CITIZENSHIPS.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Passport Number</label>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Passport Number</label>
+              <input
+                required
+                className="m3-input font-mono"
+                value={formData.passport_number}
+                onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
+              />
+            </div>
+
+            {type === 'EOID' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">EOID Number</label>
                 <input
                   required
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                  value={formData.passport_number}
-                  onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
+                  className="m3-input font-mono"
+                  value={formData.eoid_number}
+                  onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
                 />
               </div>
-              {type === 'EOID' && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">EOID Number</label>
-                  <input
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                    value={formData.eoid_number}
-                    onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
-                  />
-                </div>
-              )}
-              {type === 'Residence ID' && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Residence ID No.</label>
-                  <input
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                    value={formData.residence_id_no}
-                    onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
-                  />
-                </div>
-              )}
-              {type === 'ETD' && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">ETD</label>
-                  <input
-                    required
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                    value={formData.etd}
-                    onChange={e => setFormData({ ...formData, etd: e.target.value })}
-                  />
-                </div>
-              )}
-              {type === 'AIRPORT' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Letter Number</label>
-                    <input
-                      required
-                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                      value={formData.letter_number}
-                      onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
-                      placeholder="ICS/BOLE/2024/XXX"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Document Type</label>
-                    <select
-                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium dark:text-gray-100"
-                      value={formData.document_type}
-                      onChange={e => setFormData({ ...formData, document_type: e.target.value })}
-                    >
-                      <option value="Scanned Letter">Scanned Letter</option>
-                      <option value="Official Document">Official Document</option>
-                      <option value="Evidence Scan">Evidence Scan</option>
-                      <option value="Airport Clearance">Airport Clearance</option>
-                    </select>
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Request Number</label>
+            )}
+            {type === 'Residence ID' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Residence ID No.</label>
                 <input
                   required
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium font-mono dark:text-gray-100"
-                  value={formData.request_number}
-                  onChange={e => setFormData({ ...formData, request_number: e.target.value })}
+                  className="m3-input font-mono"
+                  value={formData.residence_id_no}
+                  onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Date</label>
+            )}
+            {type === 'ETD' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">ETD</label>
                 <input
                   required
-                  type="date"
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium dark:text-gray-100 dark:color-scheme-dark"
-                  value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value })}
+                  className="m3-input font-mono"
+                  value={formData.etd}
+                  onChange={e => setFormData({ ...formData, etd: e.target.value })}
                 />
               </div>
+            )}
+            {type === 'AIRPORT' && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Letter Number</label>
+                  <input
+                    required
+                    className="m3-input font-mono"
+                    value={formData.letter_number}
+                    onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
+                    placeholder="ICS/BOLE/XXX"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Document Type</label>
+                  <select
+                    className="m3-input"
+                    value={formData.document_type}
+                    onChange={e => setFormData({ ...formData, document_type: e.target.value })}
+                  >
+                    <option value="Scanned Letter">Scanned Letter</option>
+                    <option value="Official Document">Official Document</option>
+                    <option value="Evidence Scan">Evidence Scan</option>
+                    <option value="Airport Clearance">Airport Clearance</option>
+                  </select>
+                </div>
+              </>
+            )}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Request Number</label>
+              <input
+                required
+                className="m3-input font-mono"
+                value={formData.request_number}
+                onChange={e => setFormData({ ...formData, request_number: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Date</label>
+              <input
+                required
+                type="date"
+                className="m3-input"
+                value={formData.date}
+                onChange={e => setFormData({ ...formData, date: e.target.value })}
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Service Provided</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Service Details</label>
             <textarea
               required
-              rows={3}
-              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none shadow-inner dark:text-gray-100"
+              rows={4}
+              className="m3-input resize-none"
               value={formData.service_provided}
               onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
-              placeholder="Describe the immigration service rendered..."
+              placeholder="Record any critical service information here..."
             />
           </div>
 
           {/* Attachments Section */}
-          <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Paperclip className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <h4 className="font-bold text-gray-900 dark:text-white tracking-tight">Evidence & Scanned Documents</h4>
+          <div className="pt-10 border-t border-[var(--m3-outline)]/10">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
+                  <Paperclip className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-[var(--m3-on-surface)]">Document Attachments</h4>
+                  <p className="text-xs text-[var(--m3-on-surface-variant)] font-medium">Scanned copies & legal evidence</p>
+                </div>
               </div>
               <input 
                 type="file" 
@@ -453,18 +456,18 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center space-x-2 text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                className="flex items-center gap-2 px-6 py-3 bg-[var(--m3-secondary-container)] text-[var(--m3-on-secondary-container)] rounded-full text-sm font-bold hover:opacity-90 transition-all active:scale-95"
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
-                <span>{uploading ? 'Processing...' : 'Scan / Upload'}</span>
+                <span>{uploading ? 'Processing...' : 'Upload File'}</span>
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {attachments.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800 group transition-colors">
-                  <div className="flex items-center space-x-3 truncate">
-                    <div className="p-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm w-12 h-12 flex items-center justify-center overflow-hidden">
+                <div key={file.id} className="m3-card group p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="w-14 h-14 bg-[var(--m3-surface-container)] rounded-2xl flex items-center justify-center overflow-hidden border border-[var(--m3-outline)]/5">
                       {file.content_type?.startsWith('image/') ? (
                         <img 
                           src={supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl} 
@@ -474,23 +477,23 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                         />
                       ) : getFileIcon(file.content_type)}
                     </div>
-                    <div className="truncate">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{file.file_name}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{(file.size_bytes / 1024).toFixed(1)} KB</p>
+                    <div className="truncate pr-2">
+                      <p className="text-sm font-bold text-[var(--m3-on-surface)] truncate">{file.file_name}</p>
+                      <p className="text-xs text-[var(--m3-on-surface-variant)] font-black uppercase tracking-tighter opacity-50">{(file.size_bytes / 1024).toFixed(1)} KB</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => window.open(supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl)}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-white dark:hover:bg-gray-700 shadow-sm transition-all"
+                      className="p-2 text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors"
                     >
                       <Download className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteAttachment(file)}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-white dark:hover:bg-gray-700 shadow-sm transition-all"
+                      className="p-2 text-[var(--m3-error)] hover:bg-[var(--m3-error-container)]/20 rounded-full transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -499,9 +502,9 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
               ))}
 
               {pendingFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30 group animate-pulse">
-                  <div className="flex items-center space-x-3 truncate">
-                    <div className="p-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm w-12 h-12 flex items-center justify-center overflow-hidden">
+                <div key={idx} className="m3-card bg-[var(--m3-primary-container)]/10 border-[var(--m3-primary)]/20 group p-3 flex items-center justify-between animate-pulse">
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="w-14 h-14 bg-[var(--m3-surface-container)] rounded-2xl flex items-center justify-center overflow-hidden border border-[var(--m3-primary)]/10">
                       {file.type.startsWith('image/') && previews[file.name] ? (
                         <img 
                           src={previews[file.name]} 
@@ -511,56 +514,59 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
                       ) : getFileIcon(file.type)}
                     </div>
                     <div className="truncate">
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-400 truncate">{file.name}</p>
-                      <span className="text-xs font-bold text-blue-600 dark:text-blue-500 uppercase tracking-tight">Pending Save</span>
+                      <p className="text-sm font-bold text-[var(--m3-primary)] truncate">{file.name}</p>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[var(--m3-primary)] opacity-70">Enqueuing...</span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => removePendingFile(idx)}
-                    className="p-1.5 text-red-400 hover:text-red-600"
+                    className="p-2 text-[var(--m3-error)] hover:bg-[var(--m3-error-container)]/20 rounded-full"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-
-              {attachments.length === 0 && pendingFiles.length === 0 && (
-                <div className="text-center py-6 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl">
-                  <p className="text-sm text-gray-400 dark:text-gray-600 italic">No evidence documents attached yet</p>
-                </div>
-              )}
             </div>
+
+            {attachments.length === 0 && pendingFiles.length === 0 && (
+              <div className="py-10 border-2 border-dashed border-[var(--m3-outline)]/10 rounded-[2rem] text-center">
+                <div className="inline-flex p-4 bg-[var(--m3-surface-container)] rounded-2xl mb-4">
+                  <Scan className="w-8 h-8 text-[var(--m3-on-surface-variant)] opacity-20" />
+                </div>
+                <p className="text-sm font-bold text-[var(--m3-on-surface-variant)] opacity-50">Drag files here or use upload button</p>
+              </div>
+            )}
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-start space-x-3 text-red-600 dark:text-red-400">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <p className="text-sm font-semibold">{error}</p>
+            <div className="p-5 bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] rounded-[1.5rem] flex items-start gap-4 shadow-sm">
+              <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-bold leading-tight">{error}</p>
             </div>
           )}
         </form>
 
-        <footer className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-end space-x-3 transition-colors">
+        <footer className="px-8 py-6 bg-[var(--m3-surface-container)] border-t border-[var(--m3-outline-variant)]/30 flex items-center justify-end gap-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            className="px-8 py-3 text-sm font-bold text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors"
           >
-            Cancel
+            Discard
           </button>
           <button
             form="record-form"
             type="submit"
             disabled={loading}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-10 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 transition-all active:scale-95 disabled:opacity-50"
+            className="m3-button-filled flex items-center gap-3 px-12 py-3 shadow-xl shadow-[var(--m3-primary)]/20"
           >
             {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-6 h-6 animate-spin" />
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                <span>{record ? 'Apply Changes' : 'Save Record'}</span>
+                <Save className="w-5 h-5" />
+                <span>{record ? 'Apply Changes' : 'Finalize Record'}</span>
               </>
             )}
           </button>

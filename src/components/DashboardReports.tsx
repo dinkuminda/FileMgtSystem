@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, Legend 
 } from 'recharts';
 import { Loader2, TrendingUp, Users, FileText, Globe } from 'lucide-react';
+import { motion } from 'motion/react';
 
 const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#4f46e5'];
 
@@ -73,130 +74,113 @@ export default function DashboardReports() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 transition-colors">
+    <div className="space-y-6 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="flutter-card p-5 md:p-8 flex flex-col justify-between h-40 md:h-48 group hover:border-blue-200 transition-all">
+          <div className="flex items-center justify-between pointer-events-none">
+            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-slate-400">Total</p>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-[14px] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Users className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Records</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats?.totalRecords}</p>
+          </div>
+          <div>
+            <p className="text-2xl md:text-4xl font-bold text-slate-800 mb-1">{stats?.totalRecords}</p>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-3 md:w-3.5 h-3 md:h-3.5 text-emerald-500" />
+              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-500">Live units</p>
             </div>
           </div>
         </div>
-        {stats?.totals.map((item: any, idx: number) => (
-          <div key={item.name} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl" style={{ backgroundColor: `${COLORS[idx % COLORS.length]}20` }}>
-                <FileText className="w-6 h-6" style={{ color: COLORS[idx % COLORS.length] }} />
+
+        {stats?.totals.slice(0, 3).map((item: any) => (
+          <div key={item.name} className="flutter-card p-5 md:p-8 flex flex-col justify-between h-40 md:h-48 group hover:border-blue-200 transition-all">
+            <div className="flex items-center justify-between pointer-events-none">
+              <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-slate-400 truncate pr-2">{item.name}</p>
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 text-slate-400 rounded-[14px] flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{item.name}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{item.value}</p>
-              </div>
+            </div>
+            <div>
+              <p className="text-2xl md:text-4xl font-bold text-slate-800 mb-1">{item.value}</p>
+              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-300">Active</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Distribution by Category */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>Category Distribution</span>
-          </h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={stats?.totals}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {stats?.totals.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    backgroundColor: 'var(--tooltip-bg, #fff)',
-                    color: 'var(--tooltip-text, #000)'
-                  }}
-                  itemStyle={{ color: 'inherit' }}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Resource Pulse (Reg Trend) */}
+        <div className="lg:col-span-2 flutter-card p-6 md:p-10">
+          <div className="mb-6 md:mb-10">
+            <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Resource Pulse</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Distribution across categories</p>
           </div>
-        </div>
-
-        {/* Top Citizenships */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center space-x-2">
-            <Globe className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span>Top Citizenships</span>
-          </h3>
-          <div className="h-[300px]">
+          <div className="h-[300px] md:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.citizenshipData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-gray-200 dark:text-gray-800" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fill: 'currentColor' }} className="text-gray-500 dark:text-gray-400" />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    backgroundColor: 'var(--tooltip-bg, #fff)',
-                    color: 'var(--tooltip-text, #000)'
-                  }}
+              <BarChart data={stats?.totals}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }} 
                 />
-                <Bar dataKey="value" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={20} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} />
+                <Tooltip 
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ 
+                    borderRadius: '20px', 
+                    border: 'none', 
+                    backgroundColor: '#0f172a',
+                    color: '#fff',
+                    boxShadow: '0 10px 30px -5px rgba(0,0,0,0.3)'
+                  }}
+                  itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill="var(--m3-primary)" 
+                  radius={[12, 12, 4, 4]} 
+                  barSize={40} 
+                  animationBegin={200}
+                  animationDuration={1000}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Records Trend */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 transition-colors">Recent Registration Trend</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stats?.timeData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-gray-200 dark:text-gray-800" />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'currentColor' }} className="text-gray-400 dark:text-gray-500" />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'currentColor' }} className="text-gray-400 dark:text-gray-500" />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    backgroundColor: 'var(--tooltip-bg, #fff)',
-                    color: 'var(--tooltip-text, #000)'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="#2563eb" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Global Distribution */}
+        <div className="flutter-card p-6 md:p-10 flex flex-col">
+          <div className="mb-6 md:mb-10">
+            <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Global Reach</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Top registry origins</p>
+          </div>
+          <div className="flex-1 space-y-4 md:space-y-6">
+            {stats?.citizenshipData.map((item: any, idx: number) => (
+              <div key={item.name} className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <p className="text-xs font-bold text-slate-600">{item.name}</p>
+                  <p className="text-xs font-black text-[var(--m3-primary)]">{( (item.value / stats.totalRecords) * 100 ).toFixed(1)}%</p>
+                </div>
+                <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(item.value / stats.totalRecords) * 100}%` }}
+                    transition={{ duration: 1, delay: idx * 0.1 }}
+                    className="h-full bg-[var(--m3-primary)] rounded-full"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 md:mt-10 pt-8 md:pt-10 border-t border-slate-50 flex items-center justify-between">
+            <div>
+              <p className="text-lg md:text-xl font-bold text-slate-800">{stats?.citizenshipData.length}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Nations</p>
+            </div>
+            <Globe className="w-8 h-8 md:w-10 md:h-10 text-slate-100" />
           </div>
         </div>
       </div>

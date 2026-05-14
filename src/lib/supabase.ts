@@ -1,15 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (process.env.SUPABASE_URL as string) || '';
-const supabaseAnonKey = (process.env.SUPABASE_ANON_KEY as string) || '';
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
+
+// Fallback for server-side where import.meta.env might not be available in some contexts,
+// or for the define plugin in vite.config.ts
+const finalUrl = supabaseUrl || (process.env.SUPABASE_URL as string) || '';
+const finalAnonKey = supabaseAnonKey || (process.env.SUPABASE_ANON_KEY as string) || '';
 
 // Lazy initialization is better, but for common usage we export the client.
 // We check if keys are present to avoid immediate crashes.
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://your-project.supabase.co');
+export const isSupabaseConfigured = Boolean(finalUrl && finalAnonKey && finalUrl !== 'https://your-project.supabase.co');
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  finalUrl || 'https://placeholder.supabase.co',
+  finalAnonKey || 'placeholder'
 );
 
 export type UserRole = 'admin' | 'staff' | 'viewer' | 'airport_staff' | 'airport_viewer';

@@ -9,12 +9,9 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [theme] = useState<'dark'>('dark');
-
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light');
-    root.classList.add('dark');
+    root.classList.remove('dark');
   }, []);
 
   useEffect(() => {
@@ -55,9 +52,12 @@ export default function App() {
       setUserProfile(data as UserProfile);
     } else {
       // Fallback/Retry logic if trigger is slow or not configured
+      console.warn("Profile fetch failed, using fallback logic for user:", uid);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const isAdminByEmail = user.email === 'dinkuh12@gmail.com'; 
+        const adminEmail = (import.meta as any).env.VITE_ADMIN_EMAIL || 'dinkuh12@gmail.com';
+        const isAdminByEmail = user.email === adminEmail; 
+        console.log("Fallback determined role:", isAdminByEmail ? 'admin' : 'staff', "for email:", user.email);
         setUserProfile({
           id: user.id,
           email: user.email || '',
@@ -99,7 +99,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-[var(--m3-surface)] text-[var(--m3-on-surface)] font-sans transition-colors duration-300">
       <Routes>
         <Route 
           path="/login" 

@@ -14,6 +14,12 @@ const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Initialize Supabase Admin client
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("CRITICAL ERROR: Supabase environment variables are missing!");
+  console.error("SUPABASE_URL:", supabaseUrl ? "Defined" : "MISSING");
+  console.error("SUPABASE_SERVICE_ROLE_KEY:", supabaseServiceKey ? "Defined" : "MISSING");
+}
+
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -28,9 +34,19 @@ async function startServer() {
   // JSON parsing middleware
   app.use(express.json());
 
+  // Logging middleware for API routes
+  app.use("/api", (req, res, next) => {
+    console.log(`[API] ${req.method} ${req.url}`);
+    next();
+  });
+
   // API Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", service: "Immigration Data System" });
+    res.json({ 
+      status: "ok", 
+      service: "Immigration Data System",
+      supabaseConfigured: !!supabaseUrl && !!supabaseServiceKey && supabaseUrl !== "https://your-project.supabase.co"
+    });
   });
 
   // Admin: Reset Password
@@ -281,6 +297,12 @@ async function startServer() {
     }
   });
 
+  // Unhandled API routes - catch before Vite/Static middleware
+  app.all("/api/*", (req, res) => {
+    console.warn(`[API 404] Unhandled request: ${req.method} ${req.url}`);
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -298,7 +320,8 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[SERVER] Ready and listening on http://0.0.0.0:${PORT}`);
+    console.log(`[SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 

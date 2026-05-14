@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, logger } from '../lib/supabase';
-import { Shield, Key, Loader2, Search, CheckCircle, AlertCircle, UserCog, Calendar, Clock, Mail, Users, LayoutDashboard, Plus, Activity } from 'lucide-react';
+import { Shield, Key, Loader2, Search, CheckCircle, AlertCircle, UserCog, Calendar, Clock, Mail, Users, LayoutDashboard, Plus, Activity, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminUser {
@@ -30,12 +30,15 @@ export default function UserManagement() {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchUsers();
   }, []);
 
   async function fetchUsers() {
     setLoading(true);
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
@@ -46,12 +49,18 @@ export default function UserManagement() {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to fetch users');
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Admin API endpoint not found (404). If you are on Vercel, the backend server might not be configured correctly.');
+        }
+        throw new Error('Failed to fetch users: ' + response.statusText);
+      }
       
       const data = await response.json();
       setUsers(data.users || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching users:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -256,222 +265,232 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="p-8 space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-            <UserCog className="w-8 h-8 text-blue-600" />
+          <h1 className="text-3xl font-bold text-[var(--m3-on-surface)] tracking-tight flex items-center gap-4">
+            <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
+              <UserCog className="w-8 h-8" />
+            </div>
             User Management
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Control system access, roles, and authentication security</p>
+          <p className="text-xs text-[var(--m3-on-surface-variant)] font-black uppercase tracking-[0.2em] mt-2 opacity-50">Operational Access Control & Security</p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-4 w-full md:w-auto">
           <button 
             onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
-            className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95"
+            className="m3-button-filled flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
           >
             <Users className="w-5 h-5" />
-            <span>Create New User</span>
+            <span className="uppercase tracking-widest text-[10px] font-black">Provision User</span>
           </button>
-          <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input 
-            type="text"
-            placeholder="Search users..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--m3-on-surface-variant)] opacity-40" />
+            <input 
+              type="text"
+              placeholder="Search Subject ID..."
+              className="m3-input w-full pl-12 pr-4 py-3.5"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
-    </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-3xl border border-blue-100 dark:border-blue-900/30">
-          <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1.5">Total Accounts</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)]">
+          <p className="text-[10px] font-black text-[var(--m3-primary)] uppercase tracking-[0.2em] mb-2 opacity-60">Registry Total</p>
           <div className="flex items-end justify-between">
-            <p className="text-3xl font-black text-gray-900 dark:text-white">{users.length}</p>
-            <Users className="w-6 h-6 text-blue-500/50" />
+            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.length}</p>
+            <Users className="w-10 h-10 text-[var(--m3-primary)] opacity-10" />
           </div>
         </div>
-        <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-3xl border border-purple-100 dark:border-purple-900/30">
-          <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-1.5">Administrators</p>
+        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)] border-l-4 border-l-[var(--m3-secondary)]">
+          <p className="text-[10px] font-black text-[var(--m3-secondary)] uppercase tracking-[0.2em] mb-2 opacity-60">Command Units</p>
           <div className="flex items-end justify-between">
-            <p className="text-3xl font-black text-gray-900 dark:text-white">{users.filter(u => u.role === 'admin').length}</p>
-            <Shield className="w-6 h-6 text-purple-500/50" />
+            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.filter(u => u.role === 'admin').length}</p>
+            <Shield className="w-10 h-10 text-[var(--m3-secondary)] opacity-10" />
           </div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-900/30">
-          <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1.5">Staff Members</p>
+        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)] border-l-4 border-l-[var(--m3-tertiary)]">
+          <p className="text-[10px] font-black text-[var(--m3-tertiary)] uppercase tracking-[0.2em] mb-2 opacity-60">Field Personnel</p>
           <div className="flex items-end justify-between">
-            <p className="text-3xl font-black text-gray-900 dark:text-white">{users.filter(u => ['staff', 'airport_staff'].includes(u.role)).length}</p>
-            <CheckCircle className="w-6 h-6 text-emerald-500/50" />
+            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.filter(u => ['staff', 'airport_staff'].includes(u.role)).length}</p>
+            <CheckCircle className="w-10 h-10 text-[var(--m3-tertiary)] opacity-10" />
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-3xl border border-gray-100 dark:border-gray-800">
-          <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Active Today</p>
+        <div className="m3-card p-6 bg-[var(--m3-surface-container-highest)]">
+          <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em] mb-2 opacity-40">Active Pulse</p>
           <div className="flex items-end justify-between">
-            <p className="text-3xl font-black text-gray-900 dark:text-white">
+            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">
               {users.filter(u => u.last_sign_in_at && new Date(u.last_sign_in_at).toDateString() === new Date().toDateString()).length}
             </p>
-            <Clock className="w-6 h-6 text-gray-500/30" />
+            <Activity className="w-10 h-10 text-[var(--m3-on-surface-variant)] opacity-10" />
           </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="text-center space-y-4">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto" />
-            <p className="text-sm font-black text-gray-400 uppercase tracking-widest">Hydrating Auth Management...</p>
+        <div className="flex flex-col items-center justify-center py-32">
+          <Loader2 className="w-16 h-16 text-[var(--m3-primary)] animate-spin opacity-20 mb-6" />
+          <p className="text-xs font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.3em] opacity-40">Synchronizing Identity Manifest...</p>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center py-24 px-6">
+          <div className="max-w-xl w-full m3-card bg-[var(--m3-error-container)] border border-[var(--m3-error)] p-10 text-center space-y-6">
+            <div className="w-20 h-20 bg-[var(--m3-on-error-container)]/10 rounded-3xl flex items-center justify-center mx-auto text-[var(--m3-error)]">
+              <AlertCircle className="w-10 h-10" />
+            </div>
+            <h3 className="text-xl font-bold text-[var(--m3-on-error-container)]">Communication Protocol Failure</h3>
+            <p className="text-sm text-[var(--m3-on-error-container)] opacity-80 font-medium leading-relaxed">
+              {error}
+            </p>
+            <button 
+              onClick={() => fetchUsers()}
+              className="px-10 py-4 bg-[var(--m3-error)] text-[var(--m3-on-error)] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-[var(--m3-error)]/20 transition-all active:scale-95"
+            >
+              Retry Handshake
+            </button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredUsers.map((user) => (
-            <motion.div 
-              layout
-              key={user.id}
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900/30 transition-all group"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center space-x-5">
-                  <div className={`p-4 rounded-2xl shadow-inner ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/20' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/20'
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <AnimatePresence mode="popLayout">
+            {filteredUsers.map((user) => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                key={user.id}
+                className="m3-card-elevated p-8 hover:ring-2 hover:ring-[var(--m3-primary)]/20 transition-all group overflow-hidden relative"
+              >
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Shield className={`w-20 h-20 ${user.role === 'admin' ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface-variant)]'}`} />
+                </div>
+
+                <div className="flex items-start gap-5 relative z-10">
+                  <div className={`p-4 rounded-3xl shadow-inner ${
+                    user.role === 'admin' ? 'bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)]' : 'bg-[var(--m3-surface-container-highest)] text-[var(--m3-on-surface-variant)]'
                   }`}>
-                    <Shield className="w-7 h-7" />
+                    {user.role === 'admin' ? <Shield className="w-8 h-8" /> : <Users className="w-8 h-8" />}
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
-                        {user.full_name || 'Anonymous User'}
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-lg font-bold text-[var(--m3-on-surface)] truncate leading-tight">
+                        {user.full_name || 'Unidentified Unit'}
                       </h3>
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                      <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${
                         user.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/20' 
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                          ? 'bg-[var(--m3-primary)] text-[var(--m3-on-primary)] shadow-sm' 
+                          : 'bg-[var(--m3-surface-container)] text-[var(--m3-on-surface-variant)]'
                       }`}>
                         {user.role}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <Mail className="w-3.5 h-3.5" />
-                        {user.email}
-                      </div>
-                      <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                      <div className="flex items-center gap-1">
-                        {user.confirmed_at ? (
-                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle className="w-3.5 h-3.5" /> Verified
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
-                            <AlertCircle className="w-3.5 h-3.5" /> Pending
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--m3-on-surface-variant)] opacity-60 truncate">
+                      <Mail className="w-3.5 h-3.5" />
+                      {user.email}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-8 lg:gap-12">
+                <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-[var(--m3-outline-variant)]/30 relative z-10">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3" /> Created
-                    </p>
-                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300 tabular-nums">
-                      {formatDate(user.created_at)}
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-40">Registry</p>
+                    <p className="text-xs font-bold text-[var(--m3-on-surface)] font-mono">
+                      {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Clock className="w-3 h-3" /> Last Active
-                    </p>
-                    <p className={`text-sm font-bold tabular-nums ${user.last_sign_in_at ? 'text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600'}`}>
-                      {formatDate(user.last_sign_in_at)}
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-40">Last Pulse</p>
+                    <p className={`text-xs font-bold font-mono ${user.last_sign_in_at ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface-variant)] opacity-30'}`}>
+                      {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'STALED'}
                     </p>
                   </div>
                 </div>
 
-                  <div className="flex lg:justify-end gap-2">
-                    <button 
-                      onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); setStatus(null); }}
-                      className="w-full lg:w-auto flex items-center justify-center space-x-2 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-600 hover:text-white px-5 py-4 rounded-2xl transition-all shadow-sm"
-                      title="Manage accessible modules"
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>Edit Access</span>
-                    </button>
-                    <button 
-                      onClick={() => { setModifyingRoleUser(user); setSelectedRole(user.role); setStatus(null); }}
-                      className="w-full lg:w-auto flex items-center justify-center space-x-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-600 hover:text-white px-5 py-4 rounded-2xl transition-all shadow-sm"
-                    >
-                      <UserCog className="w-4 h-4" />
-                      <span>Role</span>
-                    </button>
-                    <button 
-                      onClick={() => { setResettingUser(user); setStatus(null); }}
-                      className="w-full lg:w-auto flex items-center justify-center space-x-2 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-600 hover:text-white px-5 py-4 rounded-2xl transition-all shadow-sm"
-                    >
-                      <Key className="w-4 h-4" />
-                      <span>Key</span>
-                    </button>
-                  </div>
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex items-center justify-between gap-3 mt-8 relative z-10">
+                  <button 
+                    onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); setStatus(null); }}
+                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-primary-container)] hover:text-[var(--m3-on-primary-container)] transition-all flex-1 flex flex-col items-center gap-1"
+                    title="Control Matrix Access"
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Modules</span>
+                  </button>
+                  <button 
+                    onClick={() => { setModifyingRoleUser(user); setSelectedRole(user.role); setStatus(null); }}
+                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-secondary-container)] hover:text-[var(--m3-on-secondary-container)] transition-all flex-1 flex flex-col items-center gap-1"
+                  >
+                    <UserCog className="w-5 h-5" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Role</span>
+                  </button>
+                  <button 
+                    onClick={() => { setResettingUser(user); setStatus(null); }}
+                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-surface-container-highest)] transition-all flex-1 flex flex-col items-center gap-1"
+                  >
+                    <Key className="w-5 h-5" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Auth</span>
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {/* Customize Modules Modal */}
       <AnimatePresence>
         {modifyingModulesUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="m3-card-elevated p-8 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                    <LayoutDashboard className="w-6 h-6 text-blue-600" />
-                    Module Permissions
-                  </h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Configure which features are visible in the sidebar</p>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
+                    <LayoutDashboard className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Subject Matrix Access</h3>
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Feature availability override</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setModifyingModulesUser(null)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
                 >
-                  <Search className="w-5 h-5 rotate-45" />
+                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
                 </button>
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl mb-6">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Customizing access for: <span className="font-bold underline">{modifyingModulesUser.email}</span>
+              <div className="p-4 bg-[var(--m3-secondary-container)] text-[var(--m3-on-secondary-container)] rounded-2xl mb-8 border border-[var(--m3-outline-variant)]/30">
+                <p className="text-xs font-bold flex items-center gap-2">
+                  <Activity className="w-4 h-4 opacity-40" />
+                  Target: <span className="font-black underline">{modifyingModulesUser.email}</span>
                 </p>
               </div>
 
-              <div className="overflow-y-auto pr-2 space-y-4 flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="overflow-y-auto pr-2 space-y-4 flex-1 scrollbar-hide">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { id: 'OVERVIEW', label: 'Dashboard', desc: 'Main statistics and highlights' },
-                    { id: 'USERS', label: 'User Management', desc: 'Admin tools for controlling access' },
-                    { id: 'REPORTS', label: 'Reports', desc: 'Graphical analytics and data maps' },
-                    { id: 'VISA', label: 'VISA Records', desc: 'Standard visa database' },
-                    { id: 'EOID', label: 'EOID', desc: 'Exit/Entry records' },
-                    { id: 'Residence ID', label: 'Residence ID', desc: 'Permanent resident data' },
-                    { id: 'ETD', label: 'ETD', desc: 'Emergency Travel Documents' },
-                    { id: 'AIRPORT', label: 'Bole Airport', desc: 'Main Airport Operations' },
-                    { id: 'AIRPORT_ADD', label: 'Airport: Add', desc: 'Create new airport records' },
-                    { id: 'AIRPORT_VIEW', label: 'Airport: View', desc: 'Search and view airport entries' },
-                    { id: 'AIRPORT_EDIT', label: 'Airport: Edit', desc: 'Modify existing airport entries' },
-                    { id: 'AUDIT', label: 'System Audit', desc: 'Track all system changes' }
+                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Main terminal statistics' },
+                    { id: 'USERS', label: 'Auth Matrix', desc: 'Administrative user controls' },
+                    { id: 'REPORTS', label: 'Intelligence', desc: 'Visual data maps & analytics' },
+                    { id: 'VISA', label: 'VISA Records', desc: 'Standard entry database' },
+                    { id: 'EOID', label: 'EOID Feed', desc: 'Exit/Entry event logistics' },
+                    { id: 'Residence ID', label: 'Residency', desc: 'Permanent subject data' },
+                    { id: 'ETD', label: 'Emergency', desc: 'Travel document exceptions' },
+                    { id: 'AIRPORT', label: 'Bole Hub', desc: 'Main airport operations center' },
+                    { id: 'AIRPORT_ADD', label: 'Hub: Intake', desc: 'Create new localized entries' },
+                    { id: 'AIRPORT_VIEW', label: 'Hub: Search', desc: 'Scan localized database' },
+                    { id: 'AIRPORT_EDIT', label: 'Hub: Mod', desc: 'Edit existing unit data' },
+                    { id: 'AUDIT', label: 'Black Box', desc: 'Immutable system audit logs' }
                   ].map((module) => {
                     const isSelected = selectedModules.includes(module.id);
                     return (
@@ -484,21 +503,23 @@ export default function UserManagement() {
                             setSelectedModules(prev => [...prev, module.id]);
                           }
                         }}
-                        className={`text-left p-4 rounded-2xl border-2 transition-all group ${
+                        className={`text-left p-5 rounded-2xl border-2 transition-all group relative overflow-hidden ${
                           isSelected 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                            : 'border-gray-100 dark:border-gray-800 hover:border-gray-200'
+                            ? 'border-[var(--m3-primary)] bg-[var(--m3-primary-container)]/20' 
+                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-primary)]/40 hover:bg-[var(--m3-surface-container)]'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-black text-xs text-gray-900 dark:text-white uppercase tracking-wider">{module.label}</span>
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                            isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-200 dark:border-gray-700'
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`font-bold text-xs uppercase tracking-tight ${isSelected ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface)]'}`}>
+                            {module.label}
+                          </span>
+                          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-[var(--m3-primary)] border-[var(--m3-primary)] shadow-sm scale-110' : 'border-[var(--m3-outline)]/40'
                           }`}>
-                            {isSelected && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                            {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[var(--m3-on-primary)]" />}
                           </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 leading-relaxed">{module.desc}</p>
+                        <p className="text-[10px] text-[var(--m3-on-surface-variant)] opacity-60 leading-snug">{module.desc}</p>
                       </button>
                     );
                   })}
@@ -510,36 +531,38 @@ export default function UserManagement() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
-                        status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                        status.type === 'success' 
+                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
+                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
                       }`}
                     >
                       {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p>{status.message}</p>
+                      <p className="uppercase tracking-wide">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
+              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
                 <button 
                   onClick={() => setModifyingModulesUser(null)}
                   disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-[var(--m3-surface-container-highest)] transition-all"
                 >
-                  Cancel
+                  Return
                 </button>
                 <button 
                   onClick={handleUpdateModules}
                   disabled={actionLoading}
-                  className="flex-[2] px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center space-x-2"
+                  className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>Save Access Configuration</span>
+                      <LayoutDashboard className="w-5 h-5" />
+                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Apply Matrix Update</span>
                     </>
                   )}
                 </button>
@@ -552,81 +575,91 @@ export default function UserManagement() {
       {/* Create User Modal */}
       <AnimatePresence>
         {isAddingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]"
+              initial={{ scale: 0.95, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 30 }}
+              className="m3-card-elevated p-10 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <Users className="w-6 h-6 text-blue-600" />
-                  Create Access Account
-                </h3>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[var(--m3-secondary-container)] rounded-2xl text-[var(--m3-on-secondary-container)]">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Init Subject Provisioning</h3>
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Authorized registry creation</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setIsAddingUser(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
                 >
-                  <Search className="w-5 h-5 rotate-45" />
+                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
                 </button>
               </div>
 
-              <div className="overflow-y-auto pr-2 space-y-6 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
+              <div className="overflow-y-auto pr-2 space-y-8 flex-1 scrollbar-hide">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Authentication ID (Email)</label>
                     <input 
                       type="email"
-                      className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                      className="m3-input w-full"
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="user@example.com"
+                      placeholder="subject@boleregistry.gov"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Full Identity Name</label>
                     <input 
                       type="text"
-                      className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                      className="m3-input w-full"
                       value={newUserFullName}
                       onChange={(e) => setNewUserFullName(e.target.value)}
-                      placeholder="e.g. John Doe"
+                      placeholder="Official Subject Name"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Initial Password</label>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Root Access Key</label>
                   <input 
                     type="password"
-                    className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                    className="m3-input w-full font-mono"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimal 6 characters"
+                    placeholder="Min 6 alphanumeric characters"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">System Role</label>
+                <div className="space-y-4">
+                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Clearance Tier</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { id: 'admin', label: 'Administrator', desc: 'Full system access' },
-                      { id: 'staff', label: 'Immigration Staff', desc: 'Standard records' },
-                      { id: 'airport_staff', label: 'Airport Staff', desc: 'Bole Airport only' },
-                      { id: 'viewer', label: 'Viewer', desc: 'Read-only access' }
+                      { id: 'admin', label: 'Command/Admin', desc: 'Unrestricted matrix control' },
+                      { id: 'staff', label: 'Field Staff', desc: 'Standard registry access' },
+                      { id: 'airport_staff', label: 'Hub Personnel', desc: 'Localized bole operations' },
+                      { id: 'viewer', label: 'Observer', desc: 'Passive record monitoring' }
                     ].map((role) => (
                       <button
                         key={role.id}
                         onClick={() => setSelectedRole(role.id)}
-                        className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                        className={`text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-1 ${
                           selectedRole === role.id 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                            : 'border-gray-100 dark:border-gray-800 hover:border-gray-200'
+                            ? 'border-[var(--m3-secondary)] bg-[var(--m3-secondary-container)]/20' 
+                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-secondary)]'
                         }`}
                       >
-                        <div className="font-bold text-sm text-gray-900 dark:text-white leading-tight">{role.label}</div>
-                        <div className="text-[10px] text-gray-500 mt-1">{role.desc}</div>
+                        <div className="flex items-center justify-between">
+                          <span className={`font-bold text-sm ${selectedRole === role.id ? 'text-[var(--m3-secondary)]' : 'text-[var(--m3-on-surface)]'}`}>
+                            {role.label}
+                          </span>
+                          {selectedRole === role.id && <CheckCircle className="w-4 h-4 text-[var(--m3-secondary)]" />}
+                        </div>
+                        <div className="text-[9px] text-[var(--m3-on-surface-variant)] opacity-50 uppercase tracking-tighter">{role.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -638,36 +671,38 @@ export default function UserManagement() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
-                        status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                        status.type === 'success' 
+                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
+                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
                       }`}
                     >
                       {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p>{status.message}</p>
+                      <p className="uppercase tracking-wide">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
+              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
                 <button 
                   onClick={() => setIsAddingUser(false)}
                   disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-[var(--m3-surface-container-highest)] transition-all"
                 >
-                  Cancel
+                   Abort
                 </button>
                 <button 
                   onClick={handleCreateUser}
                   disabled={actionLoading || !newUserEmail || !newPassword}
-                  className="flex-[2] px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                  className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20 disabled:opacity-30"
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <Plus className="w-4 h-4" />
-                      <span>Create User Account</span>
+                      <Plus className="w-5 h-5" />
+                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Provision Entry</span>
                     </>
                   )}
                 </button>
@@ -680,65 +715,67 @@ export default function UserManagement() {
       {/* Role Management Modal */}
       <AnimatePresence>
         {modifyingRoleUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]"
+              initial={{ scale: 0.95, opacity: 0, x: 20 }}
+              animate={{ scale: 1, opacity: 1, x: 0 }}
+              exit={{ scale: 0.95, opacity: 0, x: 20 }}
+              className="m3-card-elevated p-8 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <Shield className="w-6 h-6 text-emerald-600" />
-                  Update Access Role
-                </h3>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[var(--m3-tertiary-container)] rounded-2xl text-[var(--m3-on-tertiary-container)]">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Clearance Escalation</h3>
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Subject role modification</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setModifyingRoleUser(null)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
                 >
-                  <Search className="w-5 h-5 rotate-45" />
+                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
                 </button>
               </div>
 
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl mb-6">
-                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                  Changing access level for: <span className="font-bold underline">{modifyingRoleUser.email}</span>
+              <div className="p-4 bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] rounded-2xl mb-8 border border-[var(--m3-tertiary)]/20">
+                <p className="text-xs font-bold">
+                  Escalating status for: <span className="font-black underline">{modifyingRoleUser.email}</span>
                 </p>
               </div>
 
               <div className="overflow-y-auto pr-2 flex-1 scrollbar-hide">
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
-                      Select New Role
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        { id: 'admin', label: 'Administrator', desc: 'Full system access' },
-                        { id: 'staff', label: 'Immigration Staff', desc: 'Standard records access' },
-                        { id: 'airport_staff', label: 'Airport Staff', desc: 'Bole Airport records only' },
-                        { id: 'viewer', label: 'Viewer', desc: 'Read-only standard records' },
-                        { id: 'airport_viewer', label: 'Airport Viewer', desc: 'Read-only airport records' }
-                      ].map((role) => (
-                        <button
-                          key={role.id}
-                          onClick={() => setSelectedRole(role.id)}
-                          className={`text-left p-4 rounded-2xl border-2 transition-all group ${
-                            selectedRole === role.id 
-                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
-                              : 'border-gray-100 dark:border-gray-800 hover:border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-sm text-gray-900 dark:text-white leading-tight">{role.label}</span>
-                            <div className={`w-4 h-4 rounded-full border-2 transition-colors ${
-                              selectedRole === role.id ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 dark:border-gray-700'
-                            }`} />
-                          </div>
-                          <p className="text-[10px] text-gray-500 leading-relaxed">{role.desc}</p>
-                        </button>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      { id: 'admin', label: 'Command/Admin', desc: 'Full matrix oversight' },
+                      { id: 'staff', label: 'Immigration Staff', desc: 'Standard records processing' },
+                      { id: 'airport_staff', label: 'Hub Personnel', desc: 'Bole localized access' },
+                      { id: 'viewer', label: 'Standard Observer', desc: 'Global read-only clearance' },
+                      { id: 'airport_viewer', label: 'Hub Observer', desc: 'Bole restricted monitoring' }
+                    ].map((role) => (
+                      <button
+                        key={role.id}
+                        onClick={() => setSelectedRole(role.id)}
+                        className={`text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-1 ${
+                          selectedRole === role.id 
+                            ? 'border-[var(--m3-tertiary)] bg-[var(--m3-tertiary-container)]/20' 
+                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-tertiary)]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`font-bold text-sm ${selectedRole === role.id ? 'text-[var(--m3-tertiary)]' : 'text-[var(--m3-on-surface)]'}`}>
+                            {role.label}
+                          </span>
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all ${
+                            selectedRole === role.id ? 'bg-[var(--m3-tertiary)] border-[var(--m3-tertiary)]' : 'border-[var(--m3-outline)]/40'
+                          }`} />
+                        </div>
+                        <p className="text-[10px] text-[var(--m3-on-surface-variant)] opacity-50 leading-relaxed font-medium">{role.desc}</p>
+                      </button>
+                    ))}
                   </div>
 
                   <AnimatePresence>
@@ -747,37 +784,39 @@ export default function UserManagement() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
-                          status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                        className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                          status.type === 'success' 
+                            ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
+                            : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
                         }`}
                       >
                         {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                        <p>{status.message}</p>
+                        <p className="uppercase tracking-wide">{status.message}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
+              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
                 <button 
                   onClick={() => setModifyingRoleUser(null)}
                   disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleUpdateRole}
                   disabled={actionLoading || !selectedRole}
-                  className="flex-[2] px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                  className="m3-button-filled flex-[2] bg-[var(--m3-tertiary)] text-[var(--m3-on-tertiary)] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-tertiary)]/20"
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <Shield className="w-4 h-4" />
-                      <span>Update Role</span>
+                      <Shield className="w-5 h-5" />
+                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Commit Tier Shift</span>
                     </>
                   )}
                 </button>
@@ -790,42 +829,47 @@ export default function UserManagement() {
       {/* Reset Password Modal */}
       <AnimatePresence>
         {resettingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
+              initial={{ scale: 0.9, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 10 }}
+              className="m3-card-elevated p-8 max-w-md w-full shadow-2xl space-y-8"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <Key className="w-6 h-6 text-blue-600" />
-                  Reset Password
-                </h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
+                    <Key className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Auth Override</h3>
+                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Critical password shift</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setResettingUser(null)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
                 >
-                  <Search className="w-5 h-5 rotate-45" />
+                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
                 </button>
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl mb-6">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Changing password for: <span className="font-bold underline">{resettingUser.email}</span>
+              <div className="p-4 bg-[var(--m3-primary-container)]/10 text-[var(--m3-on-surface)] rounded-2xl border border-[var(--m3-primary)]/10">
+                <p className="text-xs font-bold truncate">
+                  Resetting for: <span className="font-black underline">{resettingUser.email}</span>
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                    New Password
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">
+                    New Security Key
                   </label>
                   <input 
                     type="password"
                     autoFocus
-                    placeholder="Minimal 6 characters"
-                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                    placeholder="Minimal 6 characters required"
+                    className="m3-input w-full font-mono text-center tracking-widest"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
@@ -837,35 +881,37 @@ export default function UserManagement() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-2 p-4 rounded-xl text-sm font-medium ${
-                        status.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                        status.type === 'success' 
+                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
+                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
                       }`}
                     >
                       {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p>{status.message}</p>
+                      <p className="uppercase tracking-wide">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-4 pt-4">
                   <button 
                     onClick={() => setResettingUser(null)}
                     disabled={actionLoading}
-                    className="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                    className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleResetPassword}
                     disabled={actionLoading || !newPassword}
-                    className="flex-[2] px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                    className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
                   >
                     {actionLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <>
-                        <Key className="w-4 h-4" />
-                        <span>Confirm Reset</span>
+                        <Key className="w-5 h-5" />
+                        <span className="uppercase tracking-[0.2em] text-[10px] font-black">Commit Shift</span>
                       </>
                     )}
                   </button>

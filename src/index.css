@@ -1,12 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2rem;
+}
 
 @layer base {
   :root {
-    --tooltip-bg: #ffffff;
-    --tooltip-text: #111827;
+    /* Material 3 Tonal Palette - Light (Flutter Default) */
+    --m3-primary: #0066cc;
+    --m3-on-primary: #ffffff;
+    --m3-primary-container: #d1e4ff;
+    --m3-on-primary-container: #001d36;
+    
+    --m3-secondary: #535f70;
+    --m3-on-secondary: #ffffff;
+    --m3-secondary-container: #d7e3f7;
+    --m3-on-secondary-container: #101c2b;
+
+    --m3-surface: #fdfcff;
+    --m3-on-surface: #1a1c1e;
+    --m3-surface-container: #f1f0f4;
+    --m3-surface-container-high: #ebe9ee;
+    --m3-outline: #73777f;
+    --m3-outline-variant: #c3c7cf;
+
+    /* Semantic Aliases */
+    --clr-background: var(--m3-surface);
+    --clr-heading: var(--m3-on-surface);
+    --clr-text: #44474e;
+    --clr-primary: var(--m3-primary);
   }
-  .dark {
-    --tooltip-bg: #111827;
-    --tooltip-text: #f9fafb;
+
+  body {
+    @apply bg-[var(--m3-surface)] text-[var(--clr-text)] selection:bg-[var(--m3-primary-container)] selection:text-[var(--m3-on-primary-container)] antialiased;
+  }
+}
+
+@layer components {
+  .flutter-card {
+    @apply bg-white rounded-[28px] border border-[var(--m3-outline-variant)] shadow-sm transition-all duration-300 hover:shadow-md;
+  }
+
+  .flutter-card-elevated {
+    @apply bg-white rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 transition-all duration-300;
+  }
+
+  /* Navigation Drawer Style */
+  .sidebar-link {
+    @apply flex items-center gap-4 px-6 py-4 rounded-[100px] text-sm font-medium transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-link-active {
+    @apply bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] font-bold shadow-sm;
+  }
+
+  .sidebar-link-inactive {
+    @apply text-[var(--clr-text)] hover:bg-[var(--m3-surface-container-high)] hover:text-[var(--m3-on-surface)];
+  }
+
+  /* Material 3 Bottom Nav Link */
+  .bottom-nav-link {
+    @apply flex flex-col items-center justify-center flex-1 gap-1 py-1 transition-all;
+  }
+
+  .bottom-nav-icon-container {
+    @apply w-16 h-8 flex items-center justify-center rounded-[100px] transition-all;
+  }
+
+  .bottom-nav-link-active .bottom-nav-icon-container {
+    @apply bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)];
+  }
+
+  .bottom-nav-link-inactive .bottom-nav-icon-container {
+    @apply text-[var(--clr-text)];
+  }
+
+  .m3-button-filled {
+    @apply bg-[var(--m3-primary)] text-[var(--m3-on-primary)] px-8 py-4 rounded-[100px] text-sm font-bold shadow-lg shadow-blue-500/5 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2;
+  }
+  
+  .m3-input {
+    @apply w-full px-5 py-4 bg-[var(--m3-surface-container)] border border-transparent rounded-[12px] text-sm outline-none focus:ring-2 focus:ring-[var(--m3-primary)]/20 focus:border-[var(--m3-primary)] transition-all;
+  }
+
+  .m3-fab {
+    @apply fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-[16px] md:rounded-[24px] shadow-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-40;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
