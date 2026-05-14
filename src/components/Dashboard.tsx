@@ -233,9 +233,9 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     const isAirportContext = activeTab === 'AIRPORT';
 
     return (
-      <div className="flex flex-col h-full bg-white border-r border-slate-100 transition-all duration-300 overflow-hidden">
+      <div className="flex flex-col h-full w-full bg-[var(--m3-surface)] border-r border-slate-100 transition-all duration-300">
         {/* Branding Area */}
-        <div className={`pt-10 pb-8 px-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
+        <div className={`pt-10 pb-8 px-8 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
           <div className="w-12 h-12 bg-blue-600 rounded-[14px] flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
             <Fingerprint className="w-6 h-6 text-white" />
           </div>
@@ -254,7 +254,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 py-4">
+        <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto scrollbar-hide min-h-0">
           <AnimatePresence mode="wait">
             {isAirportContext ? (
               <motion.div
@@ -315,7 +315,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         </nav>
 
         {/* Bottom Profile Section */}
-        <div className="p-4 md:p-6 mt-auto flex flex-col items-center border-t border-slate-50">
+        <div className="p-4 md:p-6 mt-auto flex flex-col items-center border-t border-[var(--m3-outline-variant)]/20 flex-shrink-0">
           <div className="w-full mb-4">
             <div className={`flex items-center gap-4 px-2 py-2 mb-4 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs md:text-sm font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
@@ -439,10 +439,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       </nav>
 
       {/* Sidebar (Navigation Drawer) */}
-      <aside className={`fixed inset-y-0 left-0 z-50 md:sticky md:top-0 md:h-screen md:translate-x-0 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) transform ${
+      <aside className={`fixed inset-y-0 left-0 z-50 md:sticky md:top-0 md:h-screen transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) transform ${
         isSidebarCollapsed ? 'w-24' : 'w-72'
       } ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       } flex flex-col shadow-2xl md:shadow-none bg-[var(--m3-surface)] md:border-r md:border-[var(--m3-outline-variant)]/30`}>
         <SidebarContent />
       </aside>
