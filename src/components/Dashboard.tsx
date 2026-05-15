@@ -331,14 +331,6 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             
             <div className="space-y-1">
               <button 
-                className={`sidebar-link sidebar-link-inactive w-full ${isSidebarCollapsed ? 'p-3 justify-center' : ''}`}
-                onClick={() => navigate('/settings')}
-                title="Settings"
-              >
-                <Activity className="w-5 h-5 flex-shrink-0" />
-                {!isSidebarCollapsed && <span>Settings</span>}
-              </button>
-              <button 
                 onClick={() => supabase.auth.signOut()}
                 className={`sidebar-link sidebar-link-inactive w-full text-red-500 hover:text-red-600 hover:bg-red-50 ${isSidebarCollapsed ? 'p-3 justify-center' : ''}`}
                 title="Log Out"
