@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, logger } from '../lib/supabase';
-import { Shield, Key, Loader2, Search, CheckCircle, AlertCircle, UserCog, Calendar, Clock, Mail, Users, LayoutDashboard, Plus, Activity, X } from 'lucide-react';
+import { Shield, Key, Loader2, Search, CheckCircle, AlertCircle, UserCog, Calendar, Clock, Mail, Users, LayoutDashboard, Plus, Activity, X, MoreHorizontal, User, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminUser {
@@ -31,6 +31,12 @@ export default function UserManagement() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchUsers();
@@ -248,196 +254,251 @@ export default function UserManagement() {
     }
   }
 
-  const filteredUsers = users.filter(u => 
-    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === 'ALL' || u.role.toUpperCase() === roleFilter;
+    // Status filter is mocked as everything is "ACTIVE" in this view
+    return matchesSearch && matchesRole;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function formatDate(dateStr: string | null) {
     if (!dateStr) return 'Never';
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   }
 
-  return (
-    <div className="p-8 space-y-10 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[var(--m3-on-surface)] tracking-tight flex items-center gap-4">
-            <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
-              <UserCog className="w-8 h-8" />
-            </div>
-            User Management
-          </h1>
-          <p className="text-xs text-[var(--m3-on-surface-variant)] font-black uppercase tracking-[0.2em] mt-2 opacity-50">Operational Access Control & Security</p>
-        </div>
+  const toggleSelectAll = () => {
+    if (selectedUserIds.size === paginatedUsers.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(paginatedUsers.map(u => u.id)));
+    }
+  };
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <button 
-            onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
-            className="m3-button-filled flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
-          >
-            <Users className="w-5 h-5" />
-            <span className="uppercase tracking-widest text-[10px] font-black">Provision User</span>
-          </button>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--m3-on-surface-variant)] opacity-40" />
+  const toggleSelectUser = (id: string) => {
+    const newSelected = new Set(selectedUserIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedUserIds(newSelected);
+  };
+
+  return (
+    <div className="p-8 space-y-6 animate-in fade-in duration-700 bg-[#f8fafc] min-h-screen">
+      {/* Search and Filters Header */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-1 items-center gap-4 w-full">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input 
               type="text"
-              placeholder="Search Subject ID..."
-              className="m3-input w-full pl-12 pr-4 py-3.5"
+              placeholder="Search identities..."
+              className="w-full pl-12 pr-4 py-3 bg-[#eef2f6] border-none rounded-full text-slate-600 font-medium focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-        </div>
-      </div>
+          
+          <select 
+            className="px-4 py-3 bg-[#eef2f6] border-none rounded-xl text-slate-600 font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="ALL">ALL ROLES</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="STAFF">STAFF</option>
+            <option value="VIEWER">VIEWER</option>
+          </select>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)]">
-          <p className="text-[10px] font-black text-[var(--m3-primary)] uppercase tracking-[0.2em] mb-2 opacity-60">Registry Total</p>
-          <div className="flex items-end justify-between">
-            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.length}</p>
-            <Users className="w-10 h-10 text-[var(--m3-primary)] opacity-10" />
-          </div>
+          <select 
+            className="px-4 py-3 bg-[#eef2f6] border-none rounded-xl text-slate-600 font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">ALL STATUS</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
         </div>
-        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)] border-l-4 border-l-[var(--m3-secondary)]">
-          <p className="text-[10px] font-black text-[var(--m3-secondary)] uppercase tracking-[0.2em] mb-2 opacity-60">Command Units</p>
-          <div className="flex items-end justify-between">
-            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.filter(u => u.role === 'admin').length}</p>
-            <Shield className="w-10 h-10 text-[var(--m3-secondary)] opacity-10" />
-          </div>
-        </div>
-        <div className="m3-card-elevated p-6 bg-[var(--m3-surface-container-low)] border-l-4 border-l-[var(--m3-tertiary)]">
-          <p className="text-[10px] font-black text-[var(--m3-tertiary)] uppercase tracking-[0.2em] mb-2 opacity-60">Field Personnel</p>
-          <div className="flex items-end justify-between">
-            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">{users.filter(u => ['staff', 'airport_staff'].includes(u.role)).length}</p>
-            <CheckCircle className="w-10 h-10 text-[var(--m3-tertiary)] opacity-10" />
-          </div>
-        </div>
-        <div className="m3-card p-6 bg-[var(--m3-surface-container-highest)]">
-          <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em] mb-2 opacity-40">Active Pulse</p>
-          <div className="flex items-end justify-between">
-            <p className="text-4xl font-bold text-[var(--m3-on-surface)]">
-              {users.filter(u => u.last_sign_in_at && new Date(u.last_sign_in_at).toDateString() === new Date().toDateString()).length}
-            </p>
-            <Activity className="w-10 h-10 text-[var(--m3-on-surface-variant)] opacity-10" />
-          </div>
-        </div>
+
+        <button 
+          onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
+          className="flex items-center gap-2 px-6 py-3.5 bg-[#0d47a1] text-white rounded-full font-black text-[11px] uppercase tracking-widest shadow-lg shadow-blue-900/20 hover:bg-[#1565c0] transition-all active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          Invite User
+        </button>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32">
-          <Loader2 className="w-16 h-16 text-[var(--m3-primary)] animate-spin opacity-20 mb-6" />
-          <p className="text-xs font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.3em] opacity-40">Synchronizing Identity Manifest...</p>
+        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2rem] shadow-sm border border-slate-100">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin opacity-20 mb-4" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Synchronizing Registry...</p>
         </div>
       ) : error ? (
-        <div className="flex items-center justify-center py-24 px-6">
-          <div className="max-w-xl w-full m3-card bg-[var(--m3-error-container)] border border-[var(--m3-error)] p-10 text-center space-y-6">
-            <div className="w-20 h-20 bg-[var(--m3-on-error-container)]/10 rounded-3xl flex items-center justify-center mx-auto text-[var(--m3-error)]">
-              <AlertCircle className="w-10 h-10" />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--m3-on-error-container)]">Communication Protocol Failure</h3>
-            <p className="text-sm text-[var(--m3-on-error-container)] opacity-80 font-medium leading-relaxed">
-              {error}
-            </p>
-            <button 
-              onClick={() => fetchUsers()}
-              className="px-10 py-4 bg-[var(--m3-error)] text-[var(--m3-on-error)] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-[var(--m3-error)]/20 transition-all active:scale-95"
-            >
-              Retry Handshake
-            </button>
-          </div>
+        <div className="bg-red-50 border border-red-100 rounded-[2rem] p-12 text-center">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-red-900 mb-2">Protocol Error</h3>
+          <p className="text-sm text-red-600 mb-6">{error}</p>
+          <button onClick={() => fetchUsers()} className="px-8 py-3 bg-red-600 text-white rounded-full text-xs font-bold uppercase tracking-widest">Retry</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filteredUsers.map((user) => (
-              <motion.div 
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                key={user.id}
-                className="m3-card-elevated p-8 hover:ring-2 hover:ring-[var(--m3-primary)]/20 transition-all group overflow-hidden relative"
+        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-50">
+                  <th className="p-6 text-left w-12">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      checked={paginatedUsers.length > 0 && selectedUserIds.size === paginatedUsers.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">User Details</th>
+                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Active</th>
+                  <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                <AnimatePresence mode="popLayout">
+                  {paginatedUsers.map((user) => (
+                    <motion.tr 
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      key={user.id}
+                      className="hover:bg-slate-50/50 transition-colors group"
+                    >
+                      <td className="p-6">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          checked={selectedUserIds.has(user.id)}
+                          onChange={() => toggleSelectUser(user.id)}
+                        />
+                      </td>
+                      <td className="p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shadow-inner">
+                            <User className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 tracking-tight leading-tight">{user.full_name || 'System Subject'}</p>
+                            <p className="text-[11px] font-medium text-slate-400 mt-1">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        {user.role === 'admin' ? (
+                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-100 shadow-sm">
+                            <Shield className="w-3 h-3" />
+                            Standard Access
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => { setModifyingRoleUser(user); setSelectedRole(user.role); }}
+                            className="flex items-center justify-between w-44 px-4 py-2 bg-[#eef2f6] rounded-full text-[10px] font-black text-slate-700 uppercase tracking-widest hover:bg-slate-200 transition-all border border-transparent focus:border-blue-500/30"
+                          >
+                            <span>{user.role}</span>
+                            <ChevronDown className="w-4 h-4 opacity-40" />
+                          </button>
+                        )}
+                      </td>
+                      <td className="p-6">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#e6f4f1] text-[#2e8b79] rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          Active
+                        </span>
+                      </td>
+                      <td className="p-6">
+                        <span className="text-xs font-medium text-slate-500">
+                          {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}
+                        </span>
+                      </td>
+                      <td className="p-6 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button 
+                            onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); }}
+                            className="px-5 py-2 text-[10px] font-black text-slate-900 uppercase tracking-[0.1em] hover:bg-slate-100 rounded-lg transition-all active:scale-95"
+                          >
+                            Edit
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
+                            <MoreHorizontal className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {paginatedUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-24 text-center">
+                      <div className="max-w-xs mx-auto">
+                        <Search className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No matching subjects found</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div className="p-6 flex items-center justify-between border-t border-slate-50 bg-white">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} users
+            </p>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-lg disabled:opacity-30 transition-all"
               >
-                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Shield className={`w-20 h-20 ${user.role === 'admin' ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface-variant)]'}`} />
-                </div>
-
-                <div className="flex items-start gap-5 relative z-10">
-                  <div className={`p-4 rounded-3xl shadow-inner ${
-                    user.role === 'admin' ? 'bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)]' : 'bg-[var(--m3-surface-container-highest)] text-[var(--m3-on-surface-variant)]'
-                  }`}>
-                    {user.role === 'admin' ? <Shield className="w-8 h-8" /> : <Users className="w-8 h-8" />}
-                  </div>
-                  <div className="space-y-2 flex-1 min-w-0">
-                    <div className="flex flex-col gap-1">
-                      <h3 className="text-lg font-bold text-[var(--m3-on-surface)] truncate leading-tight">
-                        {user.full_name || 'Unidentified Unit'}
-                      </h3>
-                      <span className={`inline-flex w-fit text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${
-                        user.role === 'admin' 
-                          ? 'bg-[var(--m3-primary)] text-[var(--m3-on-primary)] shadow-sm' 
-                          : 'bg-[var(--m3-surface-container)] text-[var(--m3-on-surface-variant)]'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--m3-on-surface-variant)] opacity-60 truncate">
-                      <Mail className="w-3.5 h-3.5" />
-                      {user.email}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-[var(--m3-outline-variant)]/30 relative z-10">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-40">Registry</p>
-                    <p className="text-xs font-bold text-[var(--m3-on-surface)] font-mono">
-                      {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-40">Last Pulse</p>
-                    <p className={`text-xs font-bold font-mono ${user.last_sign_in_at ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface-variant)] opacity-30'}`}>
-                      {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'STALED'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 mt-8 relative z-10">
-                  <button 
-                    onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); setStatus(null); }}
-                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-primary-container)] hover:text-[var(--m3-on-primary-container)] transition-all flex-1 flex flex-col items-center gap-1"
-                    title="Control Matrix Access"
+                Prev
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-full text-[10px] font-black transition-all ${
+                      currentPage === i + 1 
+                        ? 'bg-blue-900 text-white shadow-lg shadow-blue-900/20' 
+                        : 'text-slate-400 hover:bg-slate-50'
+                    }`}
                   >
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Modules</span>
+                    {i + 1}
                   </button>
-                  <button 
-                    onClick={() => { setModifyingRoleUser(user); setSelectedRole(user.role); setStatus(null); }}
-                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-secondary-container)] hover:text-[var(--m3-on-secondary-container)] transition-all flex-1 flex flex-col items-center gap-1"
-                  >
-                    <UserCog className="w-5 h-5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Role</span>
-                  </button>
-                  <button 
-                    onClick={() => { setResettingUser(user); setStatus(null); }}
-                    className="p-3 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl hover:bg-[var(--m3-surface-container-highest)] transition-all flex-1 flex flex-col items-center gap-1"
-                  >
-                    <Key className="w-5 h-5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Auth</span>
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-lg disabled:opacity-30 transition-all"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
