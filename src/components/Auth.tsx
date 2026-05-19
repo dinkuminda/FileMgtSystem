@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import { supabase } from '../lib/supabase';
-import { Loader2, Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Auth() {
@@ -61,25 +62,21 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-[#071c35] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#07132a] flex items-center justify-center p-6 font-sans">
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[500px] bg-[#eef4fb] rounded-[3rem] p-8 md:p-12 shadow-2xl relative overflow-hidden"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-[440px] bg-[#f0f4fa] rounded-[3.5rem] p-8 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative flex flex-col items-center"
       >
-        {/* Header Section */}
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-24 h-24 bg-[#cfdef3] rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
-            <Fingerprint className="w-12 h-12 text-[#1b54ac]" />
+        {/* Logo Section */}
+        <div className="flex flex-col items-center mb-10 text-center w-full">
+          <div className="w-32 h-32 bg-[#d7e2f1] rounded-[3rem] flex items-center justify-center mb-10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-white/20">
+            <EthiopiaFingerprint className="w-16 h-16 drop-shadow-md" />
           </div>
           
-          <h1 className="text-5xl font-black text-[#0c213d] tracking-tighter mb-2">
-            ICS ITA
-          </h1>
-          
           <div className="space-y-1">
-            <p className="text-[#0c213d] font-bold text-sm tracking-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
-            <p className="text-[#4b607a] text-[10px] font-bold uppercase tracking-widest opacity-80">
+            <p className="text-[#1a2b4b] font-extrabold text-sm tracking-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
+            <p className="text-[#3c5071] text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
               Immigration and Citizenship Service
             </p>
           </div>
@@ -92,55 +89,28 @@ export default function Auth() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="space-y-8 w-full"
             >
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold text-[#0c213d]">Reset Password</h2>
-                <p className="text-sm text-[#4b607a] font-medium leading-relaxed">
-                  We'll send a recovery link to your registered email.
-                </p>
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-[#1a2b4b]">Reset Password</h2>
               </div>
-
               <form onSubmit={handleAuth} className="space-y-6">
-                <div className="relative group">
-                  <input
-                    type="email"
-                    required
-                    className="w-full px-6 py-4 bg-white/50 border border-transparent focus:border-[#1b54ac]/30 rounded-2xl outline-none transition-all placeholder:text-[#5e6d82] text-[#0c213d] font-medium"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email Address"
-                  />
-                </div>
-
-                {message && (
-                  <p className="text-[10px] font-bold text-green-600 bg-green-50 p-3 rounded-xl border border-green-100 uppercase tracking-wider">
-                    {message}
-                  </p>
-                )}
-
-                {error && (
-                  <p className="text-[10px] font-bold text-red-600 bg-red-50 p-3 rounded-xl border border-red-100 uppercase tracking-wider">
-                    {error}
-                  </p>
-                )}
-
+                <input
+                  type="email"
+                  required
+                  className="w-full px-6 py-4 bg-[#e6edf7] border border-transparent focus:bg-white focus:shadow-sm rounded-2xl outline-none transition-all placeholder:text-[#9fb0c7] text-[#1a2b4b] font-medium"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address"
+                />
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-4 bg-[#1b54ac] hover:bg-[#164894] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#1b54ac]/20 active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
+                  className="w-full py-4.5 bg-[#1b54ac] hover:bg-[#164894] text-white text-lg font-bold rounded-2xl transition-all active:scale-[0.98] shadow-lg shadow-[#1b54ac]/20"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Send Reset Link</span>}
+                  Send Reset Link
                 </button>
-
                 <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => { setView('login'); setError(null); setMessage(null); }}
-                    className="text-[#1b54ac] text-sm font-bold hover:underline"
-                  >
-                    Back to Login
-                  </button>
+                  <button type="button" onClick={() => setView('login')} className="text-[#1b54ac] text-base font-bold">Back to Login</button>
                 </div>
               </form>
             </motion.div>
@@ -150,38 +120,34 @@ export default function Auth() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="space-y-4"
+              className="space-y-8 w-full"
             >
               <form onSubmit={handleAuth} className="space-y-4">
                 {view === 'signup' && (
-                  <div className="relative group">
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-6 py-4 bg-white/50 border border-transparent focus:border-[#1b54ac]/30 rounded-2xl outline-none transition-all placeholder:text-gray-400 text-gray-700"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Full Name"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-6 py-4 bg-[#e6edf7] border border-transparent focus:bg-white focus:shadow-sm rounded-2xl outline-none transition-all placeholder:text-[#9fb0c7] text-[#1a2b4b] font-medium"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Full Name"
+                  />
                 )}
 
-                <div className="relative group">
-                  <input
-                    type="email"
-                    required
-                    className="w-full px-6 py-4 bg-white/50 border border-transparent focus:border-[#1b54ac]/30 rounded-2xl outline-none transition-all placeholder:text-[#5e6d82] text-[#0c213d] font-medium"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email Address"
-                  />
-                </div>
+                <input
+                  type="email"
+                  required
+                  className="w-full px-6 py-4 bg-[#e6edf7] border border-transparent focus:bg-white focus:shadow-sm rounded-2xl outline-none transition-all placeholder:text-[#9fb0c7] text-[#1a2b4b] font-medium"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address"
+                />
 
-                <div className="relative group">
+                <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    className="w-full px-6 py-4 bg-white/50 border border-transparent focus:border-[#1b54ac]/30 rounded-2xl outline-none transition-all placeholder:text-[#5e6d82] text-[#0c213d] font-medium pr-14"
+                    className="w-full px-6 py-4 bg-[#e6edf7] border border-transparent focus:bg-white focus:shadow-sm rounded-2xl outline-none transition-all placeholder:text-[#9fb0c7] text-[#1a2b4b] font-medium pr-14"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
@@ -189,75 +155,39 @@ export default function Auth() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 text-[#5e6d82] hover:text-[#1b54ac] transition-colors"
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-[#9fb0c7] hover:text-[#1b54ac] transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
 
-                {view === 'signup' && (
-                  <div className="relative group">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      className="w-full px-6 py-4 bg-white/50 border border-transparent focus:border-[#1b54ac]/30 rounded-2xl outline-none transition-all placeholder:text-[#5e6d82] text-[#0c213d] font-medium pr-14"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm Password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-[#5e6d82] hover:text-[#1b54ac] transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                )}
-
                 {view === 'login' && (
-                  <div className="flex justify-end pr-2">
+                  <div className="flex justify-end pt-1">
                     <button 
                       type="button" 
-                      onClick={() => { setView('forgot-password'); setError(null); setMessage(null); }}
-                      className="text-[#1b54ac] text-xs font-bold hover:underline"
+                      onClick={() => setView('forgot-password')}
+                      className="text-[#1b54ac] text-sm font-bold opacity-80 hover:opacity-100 transition-opacity"
                     >
                       Forgot password?
                     </button>
                   </div>
                 )}
 
-                {message && (
-                  <p className="text-[10px] font-bold text-green-600 bg-green-50 p-3 rounded-xl border border-green-100 uppercase tracking-wider">
-                    {message}
-                  </p>
-                )}
-
-                {error && (
-                  <p className="text-[10px] font-bold text-red-600 bg-red-50 p-3 rounded-xl border border-red-100 uppercase tracking-wider">
-                    {error}
-                  </p>
-                )}
-
-                <div className="pt-4">
+                <div className="pt-6">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 bg-[#1b54ac] hover:bg-[#164894] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#1b54ac]/20 active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
+                    className="w-full py-4.5 bg-[#1b54ac] hover:bg-[#164894] text-white text-lg font-bold rounded-2xl transition-all shadow-xl shadow-[#1b54ac]/20 active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {loading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <span>{view === 'signup' ? 'Create Account' : 'Sign In'}</span>
-                    )}
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <span>{view === 'signup' ? 'Sign Up' : 'Sign In'}</span>}
                   </button>
                 </div>
               </form>
 
-              <div className="mt-8 text-center">
+              <div className="text-center">
                 <button
-                  onClick={() => { setView(view === 'login' ? 'signup' : 'login'); setError(null); setMessage(null); }}
-                  className="text-[#1b54ac] text-sm font-bold hover:underline"
+                  onClick={() => setView(view === 'login' ? 'signup' : 'login')}
+                  className="text-[#1b54ac] text-sm font-bold opacity-80 hover:opacity-100 transition-opacity"
                 >
                   {view === 'signup' ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                 </button>
@@ -265,6 +195,13 @@ export default function Auth() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="w-1/2 h-px bg-[#d7e2f1] my-10" />
+
+        <div className="flex items-center justify-center gap-2.5">
+          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
+          <span className="text-[9px] font-black text-[#1a2b4b] uppercase tracking-[0.15em] opacity-40">System Status: Online</span>
+        </div>
       </motion.div>
     </div>
   );

@@ -10,6 +10,9 @@
   --radius-3xl: 2rem;
 }
 
+@layer utilities {
+}
+
 @layer base {
   :root {
     /* Material 3 Tonal Palette - Light (Flutter Default) */
