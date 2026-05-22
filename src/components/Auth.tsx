@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import { supabase } from '../lib/supabase';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Auth() {
@@ -15,6 +16,12 @@ export default function Auth() {
   const [message, setMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const changeView = (newView: 'login' | 'signup' | 'forgot-password') => {
+    setView(newView);
+    setError(null);
+    setMessage(null);
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +46,7 @@ export default function Auth() {
           }
         });
         if (error) throw error;
-        setMessage('Check your email for the confirmation link! (Check spam folder if not received)');
+        setMessage('Check your email for the confirmation link!');
       } else if (view === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -51,7 +58,7 @@ export default function Auth() {
           redirectTo: `${window.location.origin}/`,
         });
         if (error) throw error;
-        setMessage('Reset link sent to your registered email. (Check spam folder)');
+        setMessage('Reset link sent to your email.');
       }
     } catch (err: any) {
       console.error('Auth action failed:', err);
@@ -66,8 +73,16 @@ export default function Auth() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-[440px] bg-[#f0f4fa] rounded-[3.5rem] p-8 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative flex flex-col items-center"
+        className="w-full max-w-[440px] bg-[#f0f4fa] rounded-[3.5rem] p-8 md:p-14 pt-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative flex flex-col items-center"
       >
+        {/* Back link */}
+        <Link 
+          to="/" 
+          className="absolute left-8 top-8 flex items-center gap-1.5 text-xs font-bold text-[#1a2b4b]/60 hover:text-[#1b54ac] transition-all group"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> 
+          Back to Home System Info
+        </Link>
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-10 text-center w-full">
           <div className="w-32 h-32 bg-[#d7e2f1] rounded-[3rem] flex items-center justify-center mb-10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-white/20">
@@ -103,6 +118,18 @@ export default function Auth() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email Address"
                 />
+
+                {error && (
+                  <div className="text-xs font-semibold text-rose-600 bg-rose-50/50 border border-rose-100/50 p-3.5 rounded-xl text-center">
+                    {error}
+                  </div>
+                )}
+                {message && (
+                  <div className="text-xs font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/50 p-3.5 rounded-xl text-center">
+                    {message}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   className="w-full py-4.5 bg-[#1b54ac] hover:bg-[#164894] text-white text-lg font-bold rounded-2xl transition-all active:scale-[0.98] shadow-lg shadow-[#1b54ac]/20"
@@ -110,7 +137,7 @@ export default function Auth() {
                   Send Reset Link
                 </button>
                 <div className="text-center">
-                  <button type="button" onClick={() => setView('login')} className="text-[#1b54ac] text-base font-bold">Back to Login</button>
+                  <button type="button" onClick={() => changeView('login')} className="text-[#1b54ac] text-base font-bold">Back to Login</button>
                 </div>
               </form>
             </motion.div>
@@ -161,15 +188,46 @@ export default function Auth() {
                   </button>
                 </div>
 
+                {view === 'signup' && (
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      className="w-full px-6 py-4 bg-[#e6edf7] border border-transparent focus:bg-white focus:shadow-sm rounded-2xl outline-none transition-all placeholder:text-[#9fb0c7] text-[#1a2b4b] font-medium pr-14"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm Password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-[#9fb0c7] hover:text-[#1b54ac] transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                )}
+
                 {view === 'login' && (
                   <div className="flex justify-end pt-1">
                     <button 
                       type="button" 
-                      onClick={() => setView('forgot-password')}
+                      onClick={() => changeView('forgot-password')}
                       className="text-[#1b54ac] text-sm font-bold opacity-80 hover:opacity-100 transition-opacity"
                     >
                       Forgot password?
                     </button>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-xs font-semibold text-rose-600 bg-rose-50/50 border border-rose-100/50 p-3.5 rounded-xl text-center">
+                    {error}
+                  </div>
+                )}
+                {message && (
+                  <div className="text-xs font-semibold text-emerald-600 bg-emerald-50/50 border border-emerald-100/50 p-3.5 rounded-xl text-center">
+                    {message}
                   </div>
                 )}
 
@@ -186,7 +244,8 @@ export default function Auth() {
 
               <div className="text-center">
                 <button
-                  onClick={() => setView(view === 'login' ? 'signup' : 'login')}
+                  type="button"
+                  onClick={() => changeView(view === 'login' ? 'signup' : 'login')}
                   className="text-[#1b54ac] text-sm font-bold opacity-80 hover:opacity-100 transition-opacity"
                 >
                   {view === 'signup' ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
