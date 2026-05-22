@@ -5,9 +5,10 @@ import {
   Plane, Users, FileText, CheckCircle, 
   Clock, AlertCircle, Search, Plus,
   LayoutGrid, List, Filter, Paperclip, ExternalLink, FileIcon,
-  Loader2, Activity
+  Loader2, Activity, Eye, Edit2, Trash2, Download, X,
+  ImageIcon, FileText as FileTextIcon
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Cell 
@@ -59,6 +60,7 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
   const [searching, setSearching] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [matchAttachments, setMatchAttachments] = useState<Record<string, any[]>>({});
+  const [viewingDetailsRecord, setViewingDetailsRecord] = useState<ImmigrationRecord | null>(null);
 
   useEffect(() => {
     if (refreshCounter && refreshCounter > 0) {
@@ -427,36 +429,14 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
                  <p className="text-gray-400">No records found matching "{searchQuery}"</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {exactMatches.map(match => (
-                  <div key={match.id} className="p-6 rounded-[2rem] bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className="text-lg font-black mb-1">{match.full_name}</h4>
-                        <p className="text-xs font-mono text-blue-600 truncate">{match.passport_number}</p>
-                      </div>
-                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest bg-white dark:bg-gray-800 px-1.5 py-1 rounded shadow-sm">
-                        {(match as any)._table?.replace('_records', '').replace('_', ' ')}
-                      </span>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => onEditRecord(match)}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors"
-                      >
-                        Edit Details
-                      </button>
-                      <button 
-                        onClick={() => onDeleteRecord(match.id)}
-                        className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AirportRecordTable 
+                records={exactMatches}
+                canEdit={canEdit}
+                onEdit={onEditRecord}
+                onDelete={onDeleteRecord}
+                onViewDetails={setViewingDetailsRecord}
+                matchAttachments={matchAttachments}
+              />
             )}
           </div>
         </div>
@@ -512,184 +492,395 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
                 <p className="text-gray-500 mt-2">We couldn't find any immigration files matching "{searchQuery}"</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-                {exactMatches.map(match => (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    key={match.id} 
-                    className="group m3-card-elevated flex flex-col transition-all hover:bg-[var(--m3-surface-container-highest)]"
-                  >
-                    <div className="flex justify-between items-start mb-8">
-                      <div className="w-14 h-14 bg-[var(--m3-primary)] rounded-2xl flex items-center justify-center shadow-lg shadow-[var(--m3-primary)]/30">
-                        <FileText className="w-7 h-7 text-[var(--m3-on-primary)]" />
-                      </div>
-                      <div className="text-right flex flex-col items-end gap-1.5">
-                        <span className="inline-block px-3 py-1 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                          {match.document_type || (match as any)._table?.replace('_records', '').replace('_', ' ') || 'Record'}
-                        </span>
-                        <span className="text-[10px] font-bold text-[var(--m3-on-surface-variant)] opacity-50 uppercase tracking-widest">
-                          {(match as any)._table?.replace('_records', '').replace('_', ' ')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <h4 className="text-2xl font-bold text-[var(--m3-on-surface)] tracking-tight leading-tight group-hover:text-[var(--m3-primary)] transition-colors">
-                        {match.full_name}
-                      </h4>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        <span className="text-[11px] font-bold bg-[var(--m3-surface-container-highest)] px-2.5 py-1 rounded-lg text-[var(--m3-on-surface)] uppercase tracking-wide border border-[var(--m3-outline)]/5">{match.citizenship}</span>
-                        <span className="text-[11px] font-mono font-bold text-[var(--m3-primary)] px-2.5 py-1 bg-[var(--m3-primary-container)]/30 rounded-lg">REQ: {match.request_number}</span>
-                      </div>
-                    </div>
-
-                    {/* Scanned Files Visualization */}
-                    <div className="flex-1 space-y-4 mb-8">
-                      <div className="flex items-center justify-between px-1">
-                        <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-widest flex items-center gap-2">
-                          <Paperclip className="w-4 h-4 text-[var(--m3-primary)]" />
-                          Registry Artifacts
-                        </p>
-                        <span className="px-2 py-0.5 bg-[var(--m3-surface-container)] rounded-md text-[10px] font-bold text-[var(--m3-on-surface-variant)]">
-                          {Math.max(matchAttachments[match.id]?.length || 0, (match.attachment_url && match.attachment_url !== 'null') ? 1 : 0)} FILES
-                        </span>
-                      </div>
-
-                      {(matchAttachments[match.id]?.length > 0 || (match.attachment_url && match.attachment_url !== 'null')) ? (
-                        <div className="space-y-4">
-                          {matchAttachments[match.id]?.length > 0 ? (
-                            matchAttachments[match.id].map(file => {
-                              const isImage = file.content_type?.startsWith('image/');
-                              const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
-                              
-                              return (
-                                <div key={file.id} className="relative group/doc animate-in fade-in zoom-in duration-500">
-                                  {isImage ? (
-                                    <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-[var(--m3-outline)]/5 shadow-inner bg-[var(--m3-surface-container)]">
-                                      <img 
-                                        src={fileUrl} 
-                                        alt="Scan"
-                                        className="w-full h-full object-cover group-hover/doc:scale-110 transition-transform duration-1000"
-                                        referrerPolicy="no-referrer"
-                                      />
-                                      <div className="absolute inset-0 bg-black/0 group-hover/doc:bg-black/30 transition-all flex items-center justify-center backdrop-blur-0 group-hover/doc:backdrop-blur-[2px]">
-                                        <button 
-                                          onClick={() => window.open(fileUrl)}
-                                          className="p-4 bg-[var(--m3-surface-container-high)]/90 rounded-2xl shadow-2xl text-[var(--m3-primary)] opacity-0 group-hover/doc:opacity-100 transition-all transform translate-y-2 group-hover/doc:translate-y-0"
-                                        >
-                                          <ExternalLink className="w-6 h-6" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <button 
-                                      onClick={() => window.open(fileUrl)}
-                                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--m3-surface-container)] hover:bg-[var(--m3-surface-container-high)] border border-transparent hover:border-[var(--m3-primary)] transition-all text-left group/file"
-                                    >
-                                      <div className="flex items-center gap-4 truncate">
-                                        <div className="p-3 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-xl group-hover/file:bg-[var(--m3-primary)] group-hover/file:text-[var(--m3-on-primary)] transition-colors">
-                                          <FileIcon className="w-5 h-5" />
-                                        </div>
-                                        <div className="truncate pr-2">
-                                          <span className="text-sm font-bold text-[var(--m3-on-surface)] block truncate uppercase">
-                                            {file.file_name}
-                                          </span>
-                                          <span className="text-[10px] text-[var(--m3-on-surface-variant)] font-bold uppercase">
-                                            {(file.size_bytes / 1024).toFixed(1)} KB • {file.content_type?.split('/')[1] || 'DOC'}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <ExternalLink className="w-5 h-5 text-[var(--m3-primary)] opacity-0 group-hover/file:opacity-100 transition-opacity" />
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <div className="relative group/doc animate-in fade-in zoom-in duration-500">
-                              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-[var(--m3-outline)]/5 shadow-inner bg-[var(--m3-surface-container)] flex items-center justify-center">
-                                {match.attachment_url?.match(/\.(jpg|jpeg|png|gif|webp)/i) || match.attachment_url?.includes('?token=') ? (
-                                  <img 
-                                    src={match.attachment_url} 
-                                    alt="Scan"
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ) : (
-                                  <FileText className="w-12 h-12 text-[var(--m3-outline)] opacity-20" />
-                                )}
-                                <div className="absolute inset-0 bg-black/5 hover:bg-black/30 transition-all flex items-center justify-center backdrop-blur-0 hover:backdrop-blur-[2px]">
-                                  <button 
-                                    onClick={() => window.open(match.attachment_url!)}
-                                    className="p-4 bg-[var(--m3-surface-container-high)]/90 rounded-2xl shadow-2xl text-[var(--m3-primary)]"
-                                  >
-                                    <ExternalLink className="w-6 h-6" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-10 rounded-[2rem] bg-[var(--m3-surface-container)]/50 text-center border-2 border-dashed border-[var(--m3-outline)]/10">
-                          <AlertCircle className="w-8 h-8 text-[var(--m3-on-surface-variant)] opacity-20 mx-auto mb-3" />
-                          <p className="text-xs text-[var(--m3-on-surface-variant)] font-bold uppercase tracking-widest">Metadata Only</p>
-                          <p className="text-[10px] text-[var(--m3-on-surface-variant)] font-medium italic mt-2 opacity-60">Physical artifact not yet digitized.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-6 border-t border-[var(--m3-outline)]/5 flex items-center justify-between gap-4">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-[var(--m3-on-surface-variant)] uppercase tracking-widest">ID Reference</span>
-                        <span className="text-sm font-bold font-mono tracking-tighter text-[var(--m3-on-surface)]">{match.passport_number}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {((match.attachment_url && match.attachment_url !== 'null') || matchAttachments[match.id]?.length > 0) ? (
-                          <button 
-                            onClick={() => {
-                              const attachments = matchAttachments[match.id];
-                              const effectiveUrl = (match.attachment_url && match.attachment_url !== 'null') 
-                                ? match.attachment_url 
-                                : (attachments && attachments.length > 0 
-                                    ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl 
-                                    : null);
-                              
-                              if (effectiveUrl) {
-                                window.open(effectiveUrl);
-                              }
-                            }}
-                            className="m3-button-filled px-6 py-3 text-xs shadow-none group-hover:scale-105 transition-transform"
-                          >
-                            Digital Scan
-                          </button>
-                        ) : canEdit ? (
-                          <button 
-                            onClick={() => onEditRecord(match)}
-                            className="bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Upload
-                          </button>
-                        ) : (
-                          <button 
-                            disabled
-                            className="bg-[var(--m3-surface-container)] text-[var(--m3-on-surface-variant)] opacity-50 px-6 py-3 rounded-2xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 cursor-not-allowed"
-                          >
-                            Unavailable
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <AirportRecordTable 
+                records={exactMatches}
+                canEdit={canEdit}
+                onEdit={onEditRecord}
+                onDelete={onDeleteRecord}
+                onViewDetails={setViewingDetailsRecord}
+                matchAttachments={matchAttachments}
+              />
             )}
           </div>
         </div>
       )}
+
+      {/* Modern Detail View Modal Overlay */}
+      <AnimatePresence>
+        {viewingDetailsRecord && (
+          <AirportDetailsModal 
+            record={viewingDetailsRecord} 
+            matchAttachments={matchAttachments} 
+            onClose={() => setViewingDetailsRecord(null)} 
+          />
+        )}
+      </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+function AirportRecordTable({ 
+  records, 
+  canEdit, 
+  onEdit, 
+  onDelete, 
+  onViewDetails, 
+  matchAttachments
+}: { 
+  records: ImmigrationRecord[]; 
+  canEdit: boolean; 
+  onEdit: (r: ImmigrationRecord) => void; 
+  onDelete: (id: string) => void | Promise<void>; 
+  onViewDetails: (r: ImmigrationRecord) => void;
+  matchAttachments: Record<string, any[]>;
+}) {
+  return (
+    <div className="w-full bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-850 overflow-hidden shadow-xs">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse min-w-[850px]">
+          <thead>
+            <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/10">
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] w-1/4">Identity / Bio</th>
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] w-1/5">Passport & Req</th>
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] w-1/6">Origin</th>
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] w-1/6 pointer-events-none">Source Registry</th>
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] w-1/6">Digital Scan</th>
+              <th className="px-6 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-right">Operations</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+            {records.map((record) => {
+              const table_label = (record as any)._table?.replace('_records', '').replace('_', ' ') || 'Airport';
+              const attachments = matchAttachments[record.id] || [];
+              const hasAttachment = (record.attachment_url && record.attachment_url !== 'null') || attachments.length > 0;
+              const attachmentCount = attachments.length || (hasAttachment ? 1 : 0);
+              const fileUrl = (record.attachment_url && record.attachment_url !== 'null') 
+                ? record.attachment_url 
+                : (attachments.length > 0 ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl : null);
+
+              return (
+                <tr key={record.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/5 transition-colors group">
+                  <td className="px-6 py-5">
+                    <div className="text-sm font-bold text-gray-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{record.full_name}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">{record.sex || 'Not Specified'}</div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">{record.passport_number}</div>
+                    <div className="text-[10px] text-blue-600 dark:text-blue-400 font-black tracking-tight mt-0.5 uppercase">REQ: {record.request_number}</div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
+                      {record.citizenship}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="inline-flex px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/20">
+                      {table_label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    {hasAttachment ? (
+                      <button
+                        type="button"
+                        onClick={() => fileUrl && window.open(fileUrl, '_blank')}
+                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer bg-transparent border-none p-0 outline-none"
+                      >
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Scan ({attachmentCount})</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-bold text-gray-405 dark:text-gray-500 uppercase tracking-widest leading-none">
+                        No Scans
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button 
+                        type="button"
+                        onClick={() => onViewDetails(record)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-xl transition-all cursor-pointer border-none bg-transparent"
+                        title="View Full Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {canEdit && (
+                        <>
+                          <button 
+                            type="button"
+                            onClick={() => onEdit(record)}
+                            className="p-2 text-gray-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-xl transition-all cursor-pointer border-none bg-transparent"
+                            title="Edit Record"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => onDelete(record.id)}
+                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer border-none bg-transparent"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AirportDetailsModal({ 
+  record, 
+  matchAttachments,
+  onClose 
+}: { 
+  record: ImmigrationRecord; 
+  matchAttachments: Record<string, any[]>;
+  onClose: () => void; 
+}) {
+  const attachments = matchAttachments[record.id] || [];
+  const table_label = (record as any)._table?.replace('_records', '').replace('_', ' ') || 'Airport';
+
+  const getFileIcon = (type: string) => {
+    if (type?.startsWith('image/')) return <ImageIcon className="w-4 h-4 text-emerald-500" />;
+    if (type === 'application/pdf') return <FileTextIcon className="w-4 h-4 text-rose-500" />;
+    return <FileIcon className="w-4 h-4 text-blue-500" />;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 30, scale: 0.98 }}
+        className="bg-white dark:bg-gray-900 text-slate-700 dark:text-slate-200 rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-100 dark:border-gray-800 overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        {/* Header */}
+        <header className="px-8 py-6 bg-slate-50 dark:bg-gray-800/50 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
+              <Eye className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">{table_label} Details</h3>
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">National Database & Border Control Registry</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2.5 hover:bg-slate-100 dark:hover:bg-gray-800 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-full transition-all cursor-pointer border-none bg-transparent outline-none"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </header>
+
+        {/* Content Body */}
+        <div className="p-8 overflow-y-auto space-y-6 flex-1">
+          {/* Main Info Blocks */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 dark:bg-gray-800/10 p-6 rounded-3xl border border-slate-100 dark:border-gray-800">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Full Name</p>
+              <p className="text-base font-extrabold text-slate-900 dark:text-white mt-1">{record.full_name}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Citizenship / Origin</p>
+              <p className="text-base font-bold text-slate-800 dark:text-slate-300 mt-1">{record.citizenship}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Sex / Gender</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-300 mt-1">{record.sex || 'Not Specified'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Box Number</p>
+              <span className="inline-block text-xs font-black font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-gray-700 mt-1">
+                {record.box_number || 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          {/* Travel & Service Metadata */}
+          <div>
+            <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5">Registration Metadata</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Passport Number</p>
+                <p className="text-sm font-black text-slate-800 dark:text-white font-mono mt-1">{record.passport_number}</p>
+              </div>
+              <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Request Reference #</p>
+                <p className="text-sm font-black text-blue-600 dark:text-blue-400 font-mono mt-1">{record.request_number}</p>
+              </div>
+              {record.service_provided && (
+                <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Service Unit</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">{record.service_provided}</p>
+                </div>
+              )}
+              {record.document_type && (
+                <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Document Type</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">{record.document_type}</p>
+                </div>
+              )}
+              <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Registry Date</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">
+                  {new Date(record.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional database-specific parameters */}
+          {(record.eoid_number || record.residence_id_no || record.etd || record.letter_number) && (
+            <div>
+              <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5">Extended Fields</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {record.eoid_number && (
+                  <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">EOID No.</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-white font-mono mt-1">{record.eoid_number}</p>
+                  </div>
+                )}
+                {record.residence_id_no && (
+                  <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Residence ID No.</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-white font-mono mt-1">{record.residence_id_no}</p>
+                  </div>
+                )}
+                {record.etd && (
+                  <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-white dark:bg-gray-900 shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">ETD Reference</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">{record.etd}</p>
+                  </div>
+                )}
+                {record.letter_number && (
+                  <div className="border border-slate-100 dark:border-gray-800 p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Letter Number</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">{record.letter_number}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* System Audit trace */}
+          <div className="bg-slate-50 dark:bg-gray-800/10 border border-slate-100 dark:border-gray-800 rounded-2xl p-4 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <div className="flex justify-between">
+              <span>Database Origin:</span>
+              <span className="font-extrabold capitalize text-blue-600 dark:text-blue-400 font-mono">{table_label} Registry</span>
+            </div>
+            <div className="flex justify-between mt-1.5">
+              <span>Record Creation Timestamp:</span>
+              <span className="font-bold font-mono">
+                {new Date(record.created_at || record.date).toLocaleString()}
+              </span>
+            </div>
+            {record.created_by && (
+              <div className="flex justify-between mt-1.5">
+                <span>Created By Registrar:</span>
+                <span className="font-bold font-mono text-blue-600 dark:text-blue-400">{record.created_by}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Attached Scans */}
+          <div>
+            <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5">Digitized Registry Uploads ({attachments.length || ((record.attachment_url && record.attachment_url !== 'null') ? 1 : 0)})</h4>
+            {attachments.length === 0 && (!record.attachment_url || record.attachment_url === 'null') ? (
+              <div className="text-center py-6 bg-slate-50 dark:bg-gray-800/10 border border-dashed border-slate-200 dark:border-gray-700 rounded-2xl">
+                <Paperclip className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto mb-1.5" />
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">No file attachment uploads found for this record</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Legacy simple URL attachment placeholder */}
+                {record.attachment_url && record.attachment_url !== 'null' && (
+                  <div className="border border-slate-100 dark:border-gray-800 p-3 rounded-2xl flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-gray-850 transition-all bg-white dark:bg-gray-900 shadow-xs">
+                    <div className="flex items-center gap-3 truncate">
+                      <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-800 rounded-xl flex items-center justify-center overflow-hidden">
+                        {record.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)/i) || record.attachment_url.includes('?token=') ? (
+                          <img 
+                            src={record.attachment_url} 
+                            alt="legacy preview"
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <FileTextIcon className="w-4 h-4 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">Primary Registry Document</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase font-sans">External Endpoint Link</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.open(record.attachment_url!, '_blank')}
+                      className="p-2 bg-slate-50 dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-750 text-slate-500 dark:text-slate-300 rounded-full transition-all cursor-pointer border-none flex items-center justify-center outline-none"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* DB record_attachments files */}
+                {attachments.map((file) => {
+                  const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                  return (
+                    <div key={file.id} className="border border-slate-100 dark:border-gray-800 p-3 rounded-2xl flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-gray-850 transition-all bg-white dark:bg-gray-900 shadow-xs">
+                      <div className="flex items-center gap-3 truncate">
+                        <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-800 rounded-xl flex items-center justify-center overflow-hidden">
+                          {file.content_type?.startsWith('image/') ? (
+                            <img 
+                              src={fileUrl} 
+                              alt="preview"
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : getFileIcon(file.content_type)}
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{file.file_name}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{(file.size_bytes / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => window.open(fileUrl, '_blank')}
+                        className="p-2 bg-slate-50 dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-750 text-slate-500 dark:text-slate-300 rounded-full transition-all cursor-pointer border-none flex items-center justify-center outline-none"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="bg-slate-50 dark:bg-gray-800/10 border-t border-slate-100 dark:border-gray-800 px-8 py-5 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 font-black uppercase text-xs rounded-full transition-all active:scale-95 cursor-pointer outline-none border-none"
+          >
+            Close Details
+          </button>
+        </footer>
+      </motion.div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import ReportingSystem from './ReportingSystem';
 import AirportView from './AirportView';
 import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
+import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import Papa from 'papaparse';
 
 interface DashboardProps {
@@ -103,6 +104,18 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Elegant React Custom UI feedback system replacing browser native alerts/confirms
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
+  const [recordToDelete, setRecordToDelete] = useState<ImmigrationRecord | null>(null);
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 7);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4500);
+  };
+
   useEffect(() => {
     // If current tab is not allowed, switch to Overview or first allowed
     if (userProfile && !tabs.find(t => t.type === activeTab)) {
@@ -132,11 +145,16 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this record?')) return;
-    
+  const handleDelete = (id: string) => {
+    const rec = records.find(r => r.id === id);
+    if (rec) {
+      setRecordToDelete(rec);
+    }
+  };
+
+  const executeDelete = async (id: string) => {
     setLoading(true);
-    const recordToDelete = records.find(r => r.id === id);
+    const record = records.find(r => r.id === id);
     const tableName = TABLE_MAP[activeTab as RecordType];
     
     try {
@@ -153,13 +171,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
       if (error) throw error;
       
-      await logger.log('DELETE', activeTab, `Deleted record for ${recordToDelete?.full_name || 'unknown'}`, id);
+      await logger.log('DELETE', activeTab, `Deleted record for ${record?.full_name || 'unknown'}`, id);
       setRecords(records.filter(r => r.id !== id));
+      addToast(`Record for ${record?.full_name || 'unknown'} was successfully deleted from the register.`, 'success');
     } catch (err: any) {
       console.error('Error deleting record:', err);
-      alert('Error deleting record: ' + err.message);
+      addToast('Error deleting record: ' + err.message, 'error');
     } finally {
       setLoading(false);
+      setRecordToDelete(null);
     }
   };
 
@@ -176,6 +196,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    addToast(`Successfully exported ${records.length} records to CSV file.`, 'success');
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,10 +225,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           if (error) throw error;
           
           await logger.log('IMPORT', activeTab, `Imported ${processedData.length} records via CSV`);
-          alert(`Successfully imported ${processedData.length} records!`);
+          addToast(`Successfully imported ${processedData.length} document entries into ${activeTab}!`, 'success');
           fetchRecords();
         } catch (err: any) {
-          alert('Error importing CSV: ' + err.message);
+          addToast('Error importing CSV: ' + err.message, 'error');
         } finally {
           setLoading(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
@@ -235,9 +256,9 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     return (
       <div className="flex flex-col h-full w-full bg-[var(--m3-surface)] border-r border-slate-100 transition-all duration-300">
         {/* Branding Area */}
-        <div className={`pt-10 pb-8 px-8 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
-          <div className="w-12 h-12 bg-blue-600 rounded-[14px] flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-            <Fingerprint className="w-6 h-6 text-white" />
+        <div className={`pt-10 pb-8 px-8 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
+          <div className="w-12 h-12 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
+            <EthiopiaFingerprint className="w-10 h-10 drop-shadow-xs" />
           </div>
           {!isSidebarCollapsed && (
             <motion.div 
@@ -245,10 +266,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               animate={{ opacity: 1, x: 0 }}
               className="overflow-hidden"
             >
-              <h1 className="font-bold text-xl tracking-tight text-slate-800 leading-none mb-1">
-                CLOUDINV
+              <h1 className="font-black text-xl tracking-tight text-slate-900 leading-none mb-1">
+                ICS Portal
               </h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Inventory Sys</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1b54ac]">File Registry</p>
             </motion.div>
           )}
         </div>
@@ -608,11 +629,107 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               if (activeTab === 'AIRPORT' && record.passport_number) {
                 setSearchQuery(record.request_number || record.passport_number);
               }
+              addToast(`Record for ${record.full_name} was successfully saved!`, 'success');
               fetchRecords();
             }}
           />
         )}
       </AnimatePresence>
+
+      {/* Modern React Confirmation Modal */}
+      <AnimatePresence>
+        {recordToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setRecordToDelete(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-[28px] max-w-md w-full p-8 shadow-2xl border border-slate-100 relative z-10"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3.5 bg-rose-50 rounded-2xl text-rose-500">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">Delete Registry Entry?</h3>
+                  <p className="text-xs text-slate-500 font-medium">This action is permanent and cannot be undone.</p>
+                </div>
+              </div>
+              
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 mb-6 text-xs text-slate-700 font-medium space-y-1">
+                <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Registry:</span> <strong className="font-extrabold text-[#1b54ac]">{activeTab}</strong></p>
+                <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Full Name:</span> <strong className="text-slate-900">{recordToDelete.full_name}</strong></p>
+                {recordToDelete.passport_number && (
+                  <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Passport No:</span> <code className="font-mono bg-slate-200/50 px-1 py-0.5 rounded text-slate-800 font-bold">{recordToDelete.passport_number}</code></p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setRecordToDelete(null)}
+                  className="px-5 py-3.5 hover:bg-slate-100 rounded-full text-xs font-black uppercase text-slate-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeDelete(recordToDelete.id)}
+                  className="px-6 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-black uppercase shadow-lg shadow-rose-500/10 transition-colors"
+                >
+                  Delete Record
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modern React Toasts Notification Hub */}
+      <div className="fixed bottom-6 right-6 z-[110] flex flex-col gap-2 max-w-md w-full pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+              className="pointer-events-auto w-full p-4.5 bg-white/95 backdrop-blur shadow-[0_12px_32px_rgba(0,0,0,0.08)] border border-slate-200/60 rounded-[20px] flex items-start gap-3.5 relative overflow-hidden"
+            >
+              {/* Indicator bar */}
+              <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${
+                toast.type === 'success' ? 'bg-emerald-500' :
+                toast.type === 'error' ? 'bg-rose-500' : 'bg-blue-500'
+              }`} />
+              
+              <div className="flex-1 text-left pl-1.5 space-y-0.5">
+                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                  toast.type === 'success' ? 'text-emerald-600' :
+                  toast.type === 'error' ? 'text-rose-600' : 'text-blue-600'
+                }`}>
+                  {toast.type === 'success' ? 'Operation Success' :
+                   toast.type === 'error' ? 'System Warning' : 'Notice Info'}
+                </span>
+                <p className="text-xs text-slate-700 font-bold leading-normal">{toast.message}</p>
+              </div>
+
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

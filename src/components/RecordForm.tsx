@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, type ImmigrationRecord, type RecordType, TABLE_MAP, type RecordAttachment, logger } from '../lib/supabase';
 import { X, Save, AlertCircle, Loader2, Paperclip, Trash2, FileIcon, ImageIcon, FileTextIcon, Scan, Download } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { CITIZENSHIPS } from '../constants';
 
 interface RecordFormProps {
@@ -20,6 +20,9 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom dialog state for deleting attachments
+  const [attachmentToDelete, setAttachmentToDelete] = useState<RecordAttachment | null>(null);
 
   useEffect(() => {
     // Cleanup previews on unmount
@@ -156,9 +159,11 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
     }
   };
 
-  const deleteAttachment = async (attachment: RecordAttachment) => {
-    if (!confirm('Delete this attachment?')) return;
+  const deleteAttachment = (attachment: RecordAttachment) => {
+    setAttachmentToDelete(attachment);
+  };
 
+  const executeDeleteAttachment = async (attachment: RecordAttachment) => {
     try {
       await supabase.storage.from('immigration-docs').remove([attachment.file_path]);
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
@@ -171,6 +176,8 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
       setAttachments(attachments.filter(a => a.id !== attachment.id));
     } catch (err: any) {
       setError('Delete failed: ' + err.message);
+    } finally {
+      setAttachmentToDelete(null);
     }
   };
 
@@ -572,6 +579,59 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
           </button>
         </footer>
       </motion.div>
+
+      {/* Modern React Custom Confirmation Modal for Attachments */}
+      <AnimatePresence>
+        {attachmentToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAttachmentToDelete(null)}
+              className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-[24px] max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative z-10"
+            >
+              <div className="flex items-center gap-3.5 mb-5">
+                <div className="p-3 bg-red-50 text-red-500 rounded-xl">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Remove Attachment?</h3>
+                  <p className="text-xs text-slate-500 font-medium">This deletes the digitized scan file permanently.</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-5 text-xs text-slate-700 font-medium truncate">
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] block mb-0.5">Filename:</span>
+                <span className="font-bold text-slate-900 truncate block">{attachmentToDelete.file_name}</span>
+              </div>
+
+              <div className="flex items-center gap-2.5 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAttachmentToDelete(null)}
+                  className="px-4 py-2.5 hover:bg-slate-100 rounded-full text-xs font-black uppercase text-slate-500 transition-colors"
+                >
+                  Keep File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeDeleteAttachment(attachmentToDelete)}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -5,7 +5,12 @@ import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 
-export default function Auth() {
+interface AuthProps {
+  onClose?: () => void;
+  isModal?: boolean;
+}
+
+export default function Auth({ onClose, isModal = false }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'login' | 'signup' | 'forgot-password'>('login');
   const [email, setEmail] = useState('');
@@ -69,30 +74,46 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07132a] flex items-center justify-center p-6 font-sans">
+    <div className={isModal ? "fixed inset-0 z-50 bg-[#07132a]/85 backdrop-blur-md flex items-center justify-center p-6 font-sans overflow-y-auto" : "min-h-screen bg-[#07132a] flex items-center justify-center p-6 font-sans"}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-[440px] bg-[#f0f4fa] rounded-[3.5rem] p-8 md:p-14 pt-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative flex flex-col items-center"
+        className="w-full max-w-[440px] bg-[#f0f4fa] rounded-[3.5rem] p-8 md:p-14 pt-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative flex flex-col items-center my-auto"
       >
         {/* Back link */}
-        <Link 
-          to="/" 
-          className="absolute left-8 top-8 flex items-center gap-1.5 text-xs font-bold text-[#1a2b4b]/60 hover:text-[#1b54ac] transition-all group"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> 
-          Back to Home System Info
-        </Link>
+        {onClose ? (
+          <button 
+            type="button"
+            onClick={onClose}
+            className="absolute left-8 top-8 flex items-center gap-1.5 text-xs font-bold text-[#1a2b4b]/60 hover:text-[#1b54ac] transition-all group cursor-pointer border-none bg-transparent outline-none"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> 
+            Back to Home Info
+          </button>
+        ) : (
+          <Link 
+            to="/" 
+            className="absolute left-8 top-8 flex items-center gap-1.5 text-xs font-bold text-[#1a2b4b]/60 hover:text-[#1b54ac] transition-all group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> 
+            Back to Home System Info
+          </Link>
+        )}
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-10 text-center w-full">
-          <div className="w-32 h-32 bg-[#d7e2f1] rounded-[3rem] flex items-center justify-center mb-10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-white/20">
-            <EthiopiaFingerprint className="w-16 h-16 drop-shadow-md" />
+          <div className="flex items-center gap-4 justify-center mb-8 select-none">
+            <div className="w-20 h-20 bg-[#d7e2f1]/80 rounded-[2rem] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-white/30">
+              <EthiopiaFingerprint className="w-12 h-12 drop-shadow-md" />
+            </div>
+            <div className="text-5xl font-black text-[#1b54ac] tracking-tighter select-none">
+              ICS
+            </div>
           </div>
           
           <div className="space-y-1">
             <p className="text-[#1a2b4b] font-extrabold text-sm tracking-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
-            <p className="text-[#3c5071] text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
-              Immigration and Citizenship Service
+            <p className="text-[#3c5071] text-[10px] font-black uppercase tracking-[0.15em] opacity-85">
+              Immigration and Citizenship Services
             </p>
           </div>
         </div>
