@@ -64,13 +64,15 @@ export default function Home() {
       {/* Top Header navbar */}
       <header className="border-b border-slate-200/80 backdrop-blur-md bg-white/80 sticky top-0 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-slate-50 hover:bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200/60 transition-all duration-300">
-              <EthiopiaFingerprint className="w-8 h-8 drop-shadow-sm" />
+          <div className="flex items-center gap-2 sm:gap-4 select-none">
+            <EthiopiaFingerprint className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-sm flex-shrink-0" />
+            <div className="text-2xl sm:text-4xl font-black text-[#1b54ac] tracking-tighter leading-none select-none">
+              ICS
             </div>
-            <div>
-              <h1 className="text-slate-900 font-extrabold text-sm tracking-tight leading-none">የኢሚግሬሽንና የዜግነት አገልግሎት</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-[0.1em] mt-1 font-bold">Immigration & Citizenship Service</p>
+            <div className="w-px h-8 sm:h-10 bg-slate-200/80 mx-1 sm:mx-2" />
+            <div className="flex flex-col justify-center">
+              <h1 className="text-slate-900 font-extrabold text-xs sm:text-base tracking-tight leading-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</h1>
+              <p className="text-[8px] sm:text-[11px] text-[#1b54ac] uppercase tracking-[0.08em] mt-0.5 sm:mt-1 font-black">Immigration and Citizenship Services</p>
             </div>
           </div>
 
@@ -213,7 +215,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <EthiopiaFingerprint className="w-6 h-6 opacity-80" />
             <span className="text-xs text-slate-500 font-bold">
-              © {new Date().getFullYear()} ICS File Management System. For Internal Staff Use Only.
+              © {new Date().getFullYear()} ICS (Immigration and Citizenship Services). For Internal Staff Use Only.
             </span>
           </div>
 
