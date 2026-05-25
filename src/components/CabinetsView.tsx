@@ -3,7 +3,7 @@ import { supabase, TABLE_MAP, type RecordType, type UserProfile, type Immigratio
 import { 
   Loader2, Archive, Folder, FolderOpen, Search, Info, CheckCircle, Tag,
   Eye, Edit2, Trash2, Plus, Paperclip, ChevronDown, X, ExternalLink,
-  Lock, Unlock, ShieldAlert, Thermometer, Droplets, RefreshCw
+  Lock, Unlock, ShieldAlert, Thermometer, Droplets, RefreshCw, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm, { MODULE_BOX_MAP } from './RecordForm';

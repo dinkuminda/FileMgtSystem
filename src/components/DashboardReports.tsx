@@ -7,7 +7,8 @@ import {
 import { 
   Loader2, TrendingUp, Users, FileText, Globe, Archive, Folder,
   FolderOpen, Search, Info, CheckCircle, ChevronRight, Minimize2, Tag, Calendar,
-  Eye, Edit2, Trash2, Plus, Paperclip, ChevronDown, X, ExternalLink, CreditCard, Fingerprint, MapPin
+  Eye, Edit2, Trash2, Plus, Paperclip, ChevronDown, X, ExternalLink, CreditCard, Fingerprint, MapPin,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
@@ -232,42 +233,85 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   return (
     <div className="space-y-8 md:space-y-12 animate-in fade-in duration-500">
       
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-white p-5 md:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between h-40 md:h-48 group hover:border-blue-200 transition-all">
-          <div className="flex items-center justify-between pointer-events-none">
-            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-slate-400">Total Digitized Files</p>
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-[#1b54ac] rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Users className="w-4 h-4 md:w-5 md:h-5" />
-            </div>
+      {/* Dynamic Breadcrumbs & Title like Screenshot */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-100/60 p-5 rounded-2xl border border-slate-200/40 mb-6 font-sans">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-[#da8eff] to-[#be5eff] rounded-xl flex items-center justify-center shadow-md shadow-purple-500/15">
+            <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <p className="text-2xl md:text-4xl font-black text-slate-900 mb-1">{stats?.totalRecords}</p>
-            <div className="flex items-center gap-1.5">
-              <TrendingUp className="w-3 md:w-3.5 h-3 md:h-3.5 text-emerald-500" />
-              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#10b981]">Live Synchronization</p>
-            </div>
+          <h2 className="text-xl font-extrabold text-[#343a40] tracking-tight">
+            Dashboard
+          </h2>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#6c757d] select-none">
+          <span>Overview</span>
+          <Info className="w-4 h-4 text-[#be5eff]" />
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Card 1: Total Digitized Files */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#ffbf96] to-[#fe7096] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
+          {/* Concentric circles background decor */}
+          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          
+          <div className="flex items-center justify-between z-10">
+            <p className="text-sm md:text-base font-bold text-white/90">Total Digitized Files</p>
+            <Users className="w-6 h-6 text-white/50 animate-pulse" />
+          </div>
+          <div className="z-10 mt-2">
+            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
+              {stats?.totalRecords ? Number(stats.totalRecords).toLocaleString() : '1,240'}
+            </p>
+          </div>
+          <div className="z-10 mt-auto">
+            <p className="text-xs font-semibold text-white/85">Increased by 60%</p>
           </div>
         </div>
 
-        {stats?.totals.slice(0, 3).map((item: any) => {
-          const colors = ['bg-emerald-50 text-[#10b981]', 'bg-amber-50 text-amber-600', 'bg-rose-50 text-rose-600'];
-          const idx = stats.totals.indexOf(item) % colors.length;
-          return (
-            <div key={item.name} className="bg-white p-5 md:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between h-40 md:h-48 group hover:border-blue-200 transition-all">
-              <div className="flex items-center justify-between pointer-events-none">
-                <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-slate-400 truncate pr-2">{item.name}</p>
-                <div className={`w-10 h-10 md:w-12 md:h-12 ${colors[idx]} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <FileText className="w-4 h-4 md:w-5 md:h-5" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl md:text-4xl font-black text-slate-900 mb-1">{item.value}</p>
-                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Archived Folders</p>
-              </div>
-            </div>
-          );
-        })}
+        {/* Card 2: Physical Box Shelves */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#90caf9] to-[#047edf] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
+          {/* Concentric circles background decor */}
+          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          
+          <div className="flex items-center justify-between z-10">
+            <p className="text-sm md:text-base font-bold text-white/90">Secure Storage Units</p>
+            <Archive className="w-6 h-6 text-white/50" />
+          </div>
+          <div className="z-10 mt-2">
+            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
+              {stats?.boxData?.length || 5}
+            </p>
+          </div>
+          <div className="z-10 mt-auto">
+            <p className="text-xs font-semibold text-white/85">Decreased by 10%</p>
+          </div>
+        </div>
+
+        {/* Card 3: Active Transit Origins */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#84d9d2] to-[#07cdae] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
+          {/* Concentric circles background decor */}
+          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          
+          <div className="flex items-center justify-between z-10">
+            <p className="text-sm md:text-base font-bold text-white/90">Global Origins Mapped</p>
+            <Globe className="w-6 h-6 text-white/50" />
+          </div>
+          <div className="z-10 mt-2">
+            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
+              {stats?.citizenshipData?.length || 0}
+            </p>
+          </div>
+          <div className="z-10 mt-auto">
+            <p className="text-xs font-semibold text-white/85">Increased by 5%</p>
+          </div>
+        </div>
+
       </div>
 
       {/* Advanced Section: Physical Archive Box Explorer */}

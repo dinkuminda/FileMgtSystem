@@ -254,28 +254,56 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     const isAirportContext = activeTab === 'AIRPORT';
 
     return (
-      <div className="flex flex-col h-full w-full bg-[var(--m3-surface)] border-r border-slate-100 transition-all duration-300">
+      <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
         {/* Branding Area */}
-        <div className={`pt-10 pb-8 px-8 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
-          <div className="w-12 h-12 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
-            <EthiopiaFingerprint className="w-10 h-10 drop-shadow-xs" />
+        <div className={`pt-8 pb-5 px-6 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
+          <div className="w-10 h-10 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
+            <EthiopiaFingerprint className="w-8 h-8 drop-shadow-xs" />
           </div>
           {!isSidebarCollapsed && (
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="overflow-hidden"
+              className="overflow-hidden text-left"
             >
-              <h1 className="font-black text-xl tracking-tight text-slate-900 leading-none mb-1">
+              <h1 className="font-black text-lg tracking-tight text-slate-900 leading-none mb-0.5">
                 ICS Portal
               </h1>
-              <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#1b54ac]">File Registry</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#1b54ac]">File Registry</p>
             </motion.div>
           )}
         </div>
 
+        {/* User Profile Section (at the top of Sidebar, like Screenshot) */}
+        <div className={`px-6 pb-6 pt-2 border-b border-slate-100 flex-shrink-0 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
+          <div className="relative flex-shrink-0">
+            <div className={`rounded-full overflow-hidden bg-gradient-to-tr from-slate-100 to-slate-200 flex items-center justify-center border border-slate-100 shadow-sm ${isSidebarCollapsed ? 'w-10 h-10' : 'w-12 h-12'}`}>
+              <img 
+                src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${userProfile?.full_name || 'David'}`}
+                alt="Avatar" 
+                className="w-full h-full object-cover" 
+              />
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 bg-[#00d6b4] border-2 border-white rounded-md w-4.5 h-4.5 flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+          {!isSidebarCollapsed && (
+            <div className="overflow-hidden text-left">
+              <p className="font-extrabold text-sm text-slate-800 tracking-tight leading-tight truncate">
+                {userProfile?.full_name || 'David Grey. H'}
+              </p>
+              <p className="text-[10px] font-bold text-slate-400 capitalize mt-0.5">
+                {userProfile?.role === 'admin' ? 'Project Manager' : 'Staff Operator'}
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto scrollbar-hide min-h-0">
+        <nav className="flex-1 px-3 space-y-1.5 py-4 overflow-y-auto scrollbar-hide min-h-0 text-left">
           <AnimatePresence mode="wait">
             {isAirportContext ? (
               <motion.div
@@ -283,27 +311,32 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-1"
+                className="space-y-1.5"
               >
-                <div className="space-y-1">
-                  {airportTabs.map((at) => {
-                    const isActive = airportSubPath === at.id;
-                    const Icon = at.icon;
-                    return (
-                      <Link
-                        key={at.id}
-                        to={`/airport/${at.id}`}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className={`sidebar-link ${isSidebarCollapsed ? 'p-4 justify-center' : ''} ${
-                          isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
-                        }`}
-                      >
-                        <Icon className={`w-5 h-5 flex-shrink-0`} />
-                        {!isSidebarCollapsed && <span>{at.label}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
+                {airportTabs.map((at) => {
+                  const isActive = airportSubPath === at.id;
+                  const Icon = at.icon;
+                  return (
+                    <Link
+                      key={at.id}
+                      to={`/airport/${at.id}`}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                        isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
+                      } ${
+                        isActive 
+                          ? 'bg-[#b83efd]/10 text-[#b83efd] font-extrabold shadow-sm' 
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                      }`}
+                    >
+                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#b83efd]' : 'text-slate-400'}`} />
+                      {!isSidebarCollapsed && <span className="flex-1">{at.label}</span>}
+                      {!isSidebarCollapsed && (
+                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#b83efd]/70' : 'bg-transparent'}`} />
+                      )}
+                    </Link>
+                  );
+                })}
               </motion.div>
             ) : (
               <motion.div
@@ -311,7 +344,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-1"
+                className="space-y-1.5"
               >
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.type;
@@ -321,12 +354,19 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                       key={tab.type}
                       to={path}
                       onClick={() => setIsSidebarOpen(false)}
-                      className={`sidebar-link ${isSidebarCollapsed ? 'p-4 justify-center' : ''} ${
-                        isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
+                      className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                        isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
+                      } ${
+                        isActive 
+                          ? 'bg-[#b83efd]/10 text-[#b83efd] font-extrabold shadow-sm' 
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <tab.icon className={`w-5 h-5 flex-shrink-0`} />
-                      {!isSidebarCollapsed && <span>{tab.label}</span>}
+                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#b83efd]' : 'text-slate-400'}`} />
+                      {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
+                      {!isSidebarCollapsed && (
+                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#b83efd]/70' : 'bg-transparent'}`} />
+                      )}
                     </Link>
                   );
                 })}
@@ -335,39 +375,25 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           </AnimatePresence>
         </nav>
 
-        {/* Bottom Profile Section */}
-        <div className="p-4 md:p-6 mt-auto flex flex-col items-center border-t border-[var(--m3-outline-variant)]/20 flex-shrink-0">
-          <div className="w-full mb-4">
-            <div className={`flex items-center gap-4 px-2 py-2 mb-4 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs md:text-sm font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
-                {userProfile?.full_name?.[0]?.toUpperCase() || 'A'}
-              </div>
-              {!isSidebarCollapsed && (
-                <div className="overflow-hidden">
-                  <p className="text-sm font-black text-slate-900 leading-tight truncate">{userProfile?.full_name || 'System Administrator'}</p>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{userProfile?.role || 'ADMIN'}</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-1">
-              <button 
-                onClick={() => supabase.auth.signOut()}
-                className={`sidebar-link sidebar-link-inactive w-full text-red-500 hover:text-red-600 hover:bg-red-50 ${isSidebarCollapsed ? 'p-3 justify-center' : ''}`}
-                title="Log Out"
-              >
-                <LogOut className="w-5 h-5 flex-shrink-0" />
-                {!isSidebarCollapsed && <span>Log Out</span>}
-              </button>
-            </div>
-          </div>
-          
+        {/* Bottom Module Logout */}
+        <div className="p-4 mt-auto border-t border-slate-100 flex-shrink-0">
           <button 
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="w-10 h-10 hidden md:flex items-center justify-center text-slate-300 hover:text-slate-500 bg-slate-50 rounded-xl transition-all"
+            onClick={() => supabase.auth.signOut()}
+            className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer w-full text-red-500 hover:bg-red-50/50 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            title="Log Out"
           >
-            {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            <LogOut className="w-4.5 h-4.5 flex-shrink-0" />
+            {!isSidebarCollapsed && <span>Log Out</span>}
           </button>
+          
+          <div className="mt-2.5 pt-2 border-t border-slate-100/45 text-center flex justify-center w-full">
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-350 hover:text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 transition-all cursor-pointer outline-none"
+            >
+              {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
     );
