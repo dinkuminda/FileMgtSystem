@@ -412,9 +412,9 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-          className="m3-fab shadow-blue-500/20"
+          className="fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 bg-[#2b825a] hover:bg-[#206243] text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none"
         >
-          <Plus className="w-8 h-8" />
+          <Plus className="w-7 h-7 text-white" />
         </button>
       )}
 
@@ -431,8 +431,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Navigation Bar (Material 3 style) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--m3-surface-container)] border-t border-[var(--m3-outline-variant)] flex items-center justify-around px-2 z-40">
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-slate-200 flex items-center justify-around px-2 z-40 shadow-lg">
         {tabs.slice(0, 4).map((tab) => {
           const isActive = activeTab === tab.type;
           const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
@@ -440,12 +440,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             <Link
               key={tab.type}
               to={path}
-              className={`bottom-nav-link ${isActive ? 'bottom-nav-link-active' : 'bottom-nav-link-inactive'}`}
+              className={`flex flex-col items-center justify-center flex-1 gap-1 py-1 transition-all ${isActive ? 'text-[#2b825a]' : 'text-slate-500'}`}
             >
-              <div className="bottom-nav-icon-container">
-                <tab.icon className="w-6 h-6" />
+              <div className={`w-16 h-8 flex items-center justify-center rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-[#2b825a]' : 'text-slate-400'}`}>
+                <tab.icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'text-[var(--m3-on-primary-container)]' : 'text-[var(--clr-text)]'}`}>
+              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`}>
                 {tab.label.split(' ')[0]}
               </span>
             </Link>
@@ -454,12 +454,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         {/* Toggle Sidebar Button for Mobile */}
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          className="bottom-nav-link bottom-nav-link-inactive"
+          className="flex flex-col items-center justify-center flex-1 gap-1 py-1 transition-all text-slate-500"
         >
-          <div className="bottom-nav-icon-container">
-            <List className="w-6 h-6" />
+          <div className="w-16 h-8 flex items-center justify-center rounded-xl transition-all text-slate-400">
+            <List className="w-5 h-5" />
           </div>
-          <span className="text-[10px] font-bold tracking-tight text-[var(--clr-text)]">More</span>
+          <span className="text-[10px] font-bold tracking-tight text-slate-400">More</span>
         </button>
       </nav>
 
@@ -468,7 +468,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
         isSidebarCollapsed ? 'w-24' : 'w-72'
       } ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      } flex flex-col shadow-2xl md:shadow-none bg-[var(--m3-surface)] md:border-r md:border-[var(--m3-outline-variant)]/30`}>
+      } flex flex-col shadow-sm md:shadow-none bg-white md:border-r md:border-slate-100`}>
         <SidebarContent />
       </aside>
 
@@ -592,7 +592,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/reports" element={<ReportingSystem />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/yellow-card" element={
-                  <div className="flutter-card p-4">
+                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
                       loading={loading}
                       records={filteredRecords}
@@ -604,7 +604,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   </div>
                 } />
                 <Route path="/visa" element={
-                  <div className="flutter-card p-4">
+                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
                       loading={loading}
                       records={filteredRecords}
@@ -616,7 +616,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   </div>
                 } />
                 <Route path="/eoid" element={
-                   <div className="flutter-card p-4">
+                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
                       loading={loading}
                       records={filteredRecords}
@@ -628,7 +628,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   </div>
                 } />
                 <Route path="/residence-id" element={
-                   <div className="flutter-card p-4">
+                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
                       loading={loading}
                       records={filteredRecords}
@@ -640,7 +640,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                   </div>
                 } />
                 <Route path="/etd" element={
-                   <div className="flutter-card p-4">
+                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
                       loading={loading}
                       records={filteredRecords}

@@ -80,7 +80,7 @@ export default function RecordTable({
             {loading ? (
               <tr>
                 <td colSpan={10} className="px-6 py-20 text-center">
-                  <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[var(--m3-primary)] opacity-20" />
+                  <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[#2b825a] opacity-40" />
                   <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Synchronizing Registry...</p>
                 </td>
               </tr>
@@ -166,7 +166,7 @@ export default function RecordTable({
       <div className="lg:hidden space-y-4">
         {loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[var(--m3-primary)] opacity-20" />
+            <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[#2b825a] opacity-30" />
             <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Fetching data...</p>
           </div>
         ) : records.length === 0 ? (
@@ -493,8 +493,8 @@ function RecordDetailsModal({
         {/* Header */}
         <header className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="p-3 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-2xl flex items-center justify-center">
-              <Eye className="w-5 h-5 text-[var(--m3-on-primary-container)]" />
+            <span className="p-3 bg-emerald-50 text-[#2b825a] rounded-2xl flex items-center justify-center">
+              <Eye className="w-5 h-5 text-[#2b825a]" />
             </span>
             <div>
               <h3 className="text-lg font-black text-slate-900">{isVisa ? 'Official Personal VISA Record Specimen' : `${activeTab} Record Information`}</h3>
@@ -550,7 +550,7 @@ function RecordDetailsModal({
                 </div>
                 <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Request Reference #</p>
-                  <p className="text-sm font-black text-[var(--m3-primary)] font-mono mt-1">{record.request_number}</p>
+                  <p className="text-sm font-black text-[#2b825a] font-mono mt-1">{record.request_number}</p>
                 </div>
                 <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Service Unit</p>
@@ -616,7 +616,7 @@ function RecordDetailsModal({
             {record.created_by && (
               <div className="flex justify-between mt-1.5">
                 <span>Registrar Email:</span>
-                <span className="font-bold font-mono text-[var(--m3-primary)]">{record.created_by}</span>
+                <span className="font-bold font-mono text-[#2b825a]">{record.created_by}</span>
               </div>
             )}
           </div>
@@ -626,7 +626,7 @@ function RecordDetailsModal({
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3.5">Digitized Scans / Attachments ({loading ? '...' : attachments.length})</h4>
             {loading ? (
               <div className="flex items-center gap-2.5 text-slate-400 py-3 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-[var(--m3-primary)]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#2b825a]" />
                 <span>Loading attachments...</span>
               </div>
             ) : attachments.length === 0 ? (

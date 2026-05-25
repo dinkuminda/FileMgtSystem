@@ -100,7 +100,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--m3-surface)] text-[var(--m3-on-surface)] font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans transition-colors duration-300">
       <Routes>
         <Route 
           path="/login" 

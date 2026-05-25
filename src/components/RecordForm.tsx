@@ -337,137 +337,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             </div>
           </div>
 
-          {/* ATTACHED DOCUMENTS block (Pristinely matching Screenshot 1) */}
-          <div className="space-y-4">
-            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left">
-              ATTACHED DOCUMENTS ({attachments.length + pendingFiles.length})
-            </h4>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#2b825a] hover:bg-[#206243] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Paperclip className="w-4 h-4" />}
-                <span>Upload Files</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  if (fileInputRef.current) fileInputRef.current.click();
-                }}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1a73e8] hover:bg-[#155cb8] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
-              >
-                <Scan className="w-4 h-4" />
-                <span>Scan via Camera</span>
-              </button>
-              
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={handleFileSelect}
-                accept="image/*,application/pdf"
-              />
-            </div>
-
-            {/* Grid of attached documents matching Screenshot 1 */}
-            <div className="flex flex-wrap gap-4 pt-2">
-              {attachments.map((file) => {
-                const isImg = file.content_type?.startsWith('image/');
-                const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
-                return (
-                  <div key={file.id} className="relative bg-[#ebeee9] border border-slate-200/60 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group transition-all shadow-xs">
-                    <button
-                      type="button"
-                      onClick={() => deleteAttachment(file)}
-                      className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors border-2 border-white shadow-md font-bold text-xs"
-                      title="Delete document"
-                    >
-                      ×
-                    </button>
-                    
-                    <div 
-                      className="w-full h-24 bg-white border border-slate-200/40 rounded-xl overflow-hidden flex items-center justify-center self-center cursor-pointer"
-                      onClick={() => window.open(fileUrl, '_blank')}
-                    >
-                      {isImg ? (
-                        <img 
-                          src={fileUrl} 
-                          alt="preview" 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1.5 text-[#1b8b58]">
-                          {getFileIcon(file.content_type)}
-                          <span className="text-[9px] font-black uppercase text-[#1b8b58] tracking-wider">PDF SCAN</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 text-left truncate">
-                      <span className="text-[11px] font-bold text-slate-800 truncate block w-full" title={file.file_name}>
-                        {file.file_name}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
-                        {(file.size_bytes / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {pendingFiles.map((file, idx) => (
-                <div key={idx} className="relative bg-emerald-50 border border-emerald-200/50 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group animate-pulse shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => removePendingFile(idx)}
-                    className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer border-2 border-white shadow-sm font-bold text-xs"
-                  >
-                    ×
-                  </button>
-                  
-                  <div className="w-full h-24 bg-white border border-emerald-100/50 rounded-xl overflow-hidden flex items-center justify-center self-center">
-                    {file.type.startsWith('image/') && previews[file.name] ? (
-                      <img 
-                        src={previews[file.name]} 
-                        alt="preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-slate-400">
-                        {getFileIcon(file.type)}
-                        <span className="text-[8px] font-bold text-slate-400">PENDING</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-2.5 text-left">
-                    <span className="text-[11px] font-bold text-emerald-800 truncate block w-full">
-                      {file.name}
-                    </span>
-                    <span className="text-[9px] text-emerald-500 font-bold block mt-0.5">
-                      Uploading...
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {attachments.length === 0 && pendingFiles.length === 0 && (
-                <div className="w-full py-8 border border-dashed border-slate-200 rounded-2xl text-center bg-white/50">
-                  <span className="text-2xl block mb-1.5">📄</span>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">No active document scans attached</p>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Core Biodata Form Parameters */}
-          <div className="pt-6 border-t border-slate-100 space-y-5 text-left">
+          <div className="space-y-5 text-left">
             <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
               REGISTRY BIODATA SECTION
             </h4>
@@ -605,6 +476,135 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   value={MODULE_BOX_MAP[type]}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* ATTACHED DOCUMENTS block (Pristinely matching Screenshot 1) */}
+          <div className="pt-6 border-t border-slate-100 space-y-4">
+            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left">
+              ATTACHED DOCUMENTS ({attachments.length + pendingFiles.length})
+            </h4>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#2b825a] hover:bg-[#206243] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Paperclip className="w-4 h-4" />}
+                <span>Upload Files</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.click();
+                }}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1a73e8] hover:bg-[#155cb8] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
+              >
+                <Scan className="w-4 h-4" />
+                <span>Scan via Camera</span>
+              </button>
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                onChange={handleFileSelect}
+                accept="image/*,application/pdf"
+              />
+            </div>
+
+            {/* Grid of attached documents matching Screenshot 1 */}
+            <div className="flex flex-wrap gap-4 pt-2">
+              {attachments.map((file) => {
+                const isImg = file.content_type?.startsWith('image/');
+                const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                return (
+                  <div key={file.id} className="relative bg-[#ebeee9] border border-slate-200/60 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group transition-all shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => deleteAttachment(file)}
+                      className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors border-2 border-white shadow-md font-bold text-xs"
+                      title="Delete document"
+                    >
+                      ×
+                    </button>
+                    
+                    <div 
+                      className="w-full h-24 bg-white border border-slate-200/40 rounded-xl overflow-hidden flex items-center justify-center self-center cursor-pointer"
+                      onClick={() => window.open(fileUrl, '_blank')}
+                    >
+                      {isImg ? (
+                        <img 
+                          src={fileUrl} 
+                          alt="preview" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-[#1b8b58]">
+                          {getFileIcon(file.content_type)}
+                          <span className="text-[9px] font-black uppercase text-[#1b8b58] tracking-wider">PDF SCAN</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 text-left truncate">
+                      <span className="text-[11px] font-bold text-slate-800 truncate block w-full" title={file.file_name}>
+                        {file.file_name}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
+                        {(file.size_bytes / 1024).toFixed(1)} KB
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {pendingFiles.map((file, idx) => (
+                <div key={idx} className="relative bg-emerald-50 border border-emerald-200/50 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group animate-pulse shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => removePendingFile(idx)}
+                    className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer border-2 border-white shadow-sm font-bold text-xs"
+                  >
+                    ×
+                  </button>
+                  
+                  <div className="w-full h-24 bg-white border border-emerald-100/50 rounded-xl overflow-hidden flex items-center justify-center self-center">
+                    {file.type.startsWith('image/') && previews[file.name] ? (
+                      <img 
+                        src={previews[file.name]} 
+                        alt="preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-slate-400">
+                        {getFileIcon(file.type)}
+                        <span className="text-[8px] font-bold text-slate-400">PENDING</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2.5 text-left">
+                    <span className="text-[11px] font-bold text-emerald-800 truncate block w-full">
+                      {file.name}
+                    </span>
+                    <span className="text-[9px] text-emerald-500 font-bold block mt-0.5">
+                      Uploading...
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {attachments.length === 0 && pendingFiles.length === 0 && (
+                <div className="w-full py-8 border border-dashed border-slate-200 rounded-2xl text-center bg-white/50">
+                  <span className="text-2xl block mb-1.5">📄</span>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">No active document scans attached</p>
+                </div>
+              )}
             </div>
           </div>
 
