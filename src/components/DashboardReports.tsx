@@ -20,7 +20,7 @@ export const BOX_MODULE_DESC: Record<string, string> = {
   'EOID-000002': 'EOID National Registry',
   'Residence-000003': 'Residence Permits',
   'ETD-000004': 'Emergency Travel Docs',
-  'Airport-000005': 'Bole Airport Logs'
+  'Yellow-000005': 'Yellow Card Logs'
 };
 
 interface DashboardReportsProps {
@@ -58,7 +58,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
-    if (record.document_type) return "AIRPORT";
+    if (record.document_type || record.letter_number) return "Yellow Card";
     return "VISA";
   };
 
@@ -99,7 +99,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     if (record.eoid_number) return "EOID Logs";
     if (record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD Records";
-    if (record.document_type) return "Bole Airport";
+    if (record.document_type) return "Yellow Card Logs";
     return "VISA Records";
   };
 
@@ -183,7 +183,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         'EOID-000002': [],
         'Residence-000003': [],
         'ETD-000004': [],
-        'Airport-000005': []
+        'Yellow-000005': []
       };
       
       allData.forEach(r => {

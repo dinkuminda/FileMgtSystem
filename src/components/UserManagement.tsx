@@ -547,10 +547,7 @@ export default function UserManagement() {
                     { id: 'EOID', label: 'EOID Feed', desc: 'Exit/Entry event logistics' },
                     { id: 'Residence ID', label: 'Residency', desc: 'Permanent subject data' },
                     { id: 'ETD', label: 'Emergency', desc: 'Travel document exceptions' },
-                    { id: 'AIRPORT', label: 'Bole Hub', desc: 'Main airport operations center' },
-                    { id: 'AIRPORT_ADD', label: 'Hub: Intake', desc: 'Create new localized entries' },
-                    { id: 'AIRPORT_VIEW', label: 'Hub: Search', desc: 'Scan localized database' },
-                    { id: 'AIRPORT_EDIT', label: 'Hub: Mod', desc: 'Edit existing unit data' },
+                    { id: 'AIRPORT', label: 'Yellow Card', desc: 'Yellow Card / Diaspora file registry' },
                     { id: 'AUDIT', label: 'Black Box', desc: 'Immutable system audit logs' }
                   ].map((module) => {
                     const isSelected = selectedModules.includes(module.id);

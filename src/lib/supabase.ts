@@ -27,14 +27,14 @@ export interface UserProfile {
   modules?: string[];
 }
 
-export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'AIRPORT';
+export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card';
 
 export const TABLE_MAP: Record<RecordType, string> = {
   'VISA': 'visa_records',
   'EOID': 'eoid_records',
   'Residence ID': 'residence_id_records',
   'ETD': 'etd_records',
-  'AIRPORT': 'airport_records'
+  'Yellow Card': 'airport_records'
 };
 
 export const REVERSE_TABLE_MAP: Record<string, RecordType> = Object.entries(TABLE_MAP).reduce((acc, [key, value]) => {

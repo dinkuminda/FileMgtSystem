@@ -9,7 +9,7 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'EOID': 'EOID-000002',
   'Residence ID': 'Residence-000003',
   'ETD': 'ETD-000004',
-  'AIRPORT': 'Airport-000005'
+  'Yellow Card': 'Yellow-000005'
 };
 
 interface RecordFormProps {
@@ -194,8 +194,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       await supabase.storage.from('immigration-docs').remove([attachment.file_path]);
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
       
-      // Clear attachment_url if this was the last one and it's an AIRPORT record
-      if (type === 'AIRPORT' && record && attachments.length === 1) {
+      // Clear attachment_url if this was the last one and it's an Yellow Card record
+      if (type === 'Yellow Card' && record && attachments.length === 1) {
         await supabase.from('airport_records').update({ attachment_url: null }).eq('id', record.id);
       }
       
@@ -234,7 +234,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       if (type === 'EOID') basePayload.eoid_number = formData.eoid_number;
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
-      if (type === 'AIRPORT') {
+      if (type === 'Yellow Card') {
         basePayload.letter_number = formData.letter_number;
         basePayload.document_type = formData.document_type;
       }
@@ -290,192 +290,81 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface)]/80 backdrop-blur-xl transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all">
       <motion.div 
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        className="bg-[var(--m3-surface-container-high)] w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-[var(--m3-outline-variant)]/30 transition-all font-sans"
+        className="bg-[#f8faf9] w-full max-w-3xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-slate-200 transition-all font-sans"
       >
-        <header className="px-8 py-6 flex items-center justify-between">
-          <div className="flex flex-col">
-            <h3 className="text-2xl font-bold text-[var(--m3-on-surface)] tracking-tight">
-              {record ? 'Review & Edit' : 'New Registration'} 
+        <header className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex flex-col text-left">
+            <h3 className="text-xl font-semibold text-slate-800 tracking-tight">
+              {record ? 'Edit Record' : 'Register Record'} — <span className="text-[#2b825a] font-extrabold">{type}</span> 
             </h3>
-            <p className="text-xs font-medium text-[var(--m3-on-surface-variant)] uppercase tracking-widest">{type} MODULE</p>
           </div>
-          <button onClick={onClose} className="p-3 text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors">
-            <X className="w-6 h-6" />
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer border-none bg-transparent">
+            <X className="w-5 h-5" />
           </button>
         </header>
 
-        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 pb-8 space-y-10 scrollbar-hide">
-          {/* Main Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1 flex items-center justify-between">
-                <span>Box Number</span>
-                <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-[#1b54ac] dark:text-blue-300 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Locked to Module</span>
-              </label>
-              <input
-                readOnly
-                className="m3-input font-mono bg-slate-100 dark:bg-slate-800 opacity-75 cursor-not-allowed"
-                value={MODULE_BOX_MAP[type]}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Full Name</label>
-              <input
-                required
-                className="m3-input"
-                value={formData.full_name}
-                onChange={e => setFormData({ ...formData, full_name: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Sex</label>
-                <select
-                  className="m3-input"
-                  value={formData.sex}
-                  onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Citizenship</label>
-                <input
-                  required
-                  list="citizenships-list"
-                  className="m3-input"
-                  value={formData.citizenship}
-                  onChange={e => setFormData({ ...formData, citizenship: e.target.value })}
-                  placeholder="Search..."
-                />
-                <datalist id="citizenships-list">
-                  {CITIZENSHIPS.map(c => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Passport Number</label>
-              <input
-                required
-                className="m3-input font-mono"
-                value={formData.passport_number}
-                onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
-              />
-            </div>
-
-            {type === 'EOID' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">EOID Number</label>
-                <input
-                  required
-                  className="m3-input font-mono"
-                  value={formData.eoid_number}
-                  onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
-                />
-              </div>
-            )}
-            {type === 'Residence ID' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Residence ID No.</label>
-                <input
-                  required
-                  className="m3-input font-mono"
-                  value={formData.residence_id_no}
-                  onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
-                />
-              </div>
-            )}
-            {type === 'ETD' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">ETD</label>
-                <input
-                  required
-                  className="m3-input font-mono"
-                  value={formData.etd}
-                  onChange={e => setFormData({ ...formData, etd: e.target.value })}
-                />
-              </div>
-            )}
-            {type === 'AIRPORT' && (
-              <>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Letter Number</label>
-                  <input
-                    required
-                    className="m3-input font-mono"
-                    value={formData.letter_number}
-                    onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
-                    placeholder="ICS/BOLE/XXX"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Document Type</label>
-                  <select
-                    className="m3-input"
-                    value={formData.document_type}
-                    onChange={e => setFormData({ ...formData, document_type: e.target.value })}
-                  >
-                    <option value="Scanned Letter">Scanned Letter</option>
-                    <option value="Official Document">Official Document</option>
-                    <option value="Evidence Scan">Evidence Scan</option>
-                    <option value="Airport Clearance">Airport Clearance</option>
-                  </select>
-                </div>
-              </>
-            )}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Request Number</label>
-              <input
-                required
-                className="m3-input font-mono"
-                value={formData.request_number}
-                onChange={e => setFormData({ ...formData, request_number: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Date</label>
+        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-hide">
+          {/* Flat Inline Row for Date & Service Provided */}
+          <div className="grid grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
+            <div className="relative">
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
               <input
                 required
                 type="date"
-                className="m3-input"
+                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
                 value={formData.date}
                 onChange={e => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
+            <div>
+              <select
+                required
+                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
+                value={formData.service_provided || 'VISA EXTENSION'}
+                onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
+              >
+                <option value="VISA EXTENSION">VISA EXTENSION</option>
+                <option value="NEW ENTRY REGISTRATION">NEW ENTRY REGISTRATION</option>
+                <option value="ID CARD VERIFICATION">ID CARD VERIFICATION</option>
+                <option value="EXIT PERMIT EXEMPT">EXIT PERMIT EXEMPT</option>
+                <option value="YELLOW CARD HEALTH CHECK">YELLOW CARD HEALTH CHECK</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Service Details</label>
-            <textarea
-              required
-              rows={4}
-              className="m3-input resize-none"
-              value={formData.service_provided}
-              onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
-              placeholder="Record any critical service information here..."
-            />
-          </div>
+          {/* ATTACHED DOCUMENTS block (Pristinely matching Screenshot 1) */}
+          <div className="space-y-4">
+            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left">
+              ATTACHED DOCUMENTS ({attachments.length + pendingFiles.length})
+            </h4>
 
-          {/* Attachments Section */}
-          <div className="pt-10 border-t border-[var(--m3-outline)]/10">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
-                  <Paperclip className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-[var(--m3-on-surface)]">Document Attachments</h4>
-                  <p className="text-xs text-[var(--m3-on-surface-variant)] font-medium">Scanned copies & legal evidence</p>
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#2b825a] hover:bg-[#206243] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Paperclip className="w-4 h-4" />}
+                <span>Upload Files</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.click();
+                }}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1a73e8] hover:bg-[#155cb8] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
+              >
+                <Scan className="w-4 h-4" />
+                <span>Scan via Camera</span>
+              </button>
+              
               <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -483,122 +372,269 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                 onChange={handleFileSelect}
                 accept="image/*,application/pdf"
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-6 py-3 bg-[var(--m3-secondary-container)] text-[var(--m3-on-secondary-container)] rounded-full text-sm font-bold hover:opacity-90 transition-all active:scale-95"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
-                <span>{uploading ? 'Processing...' : 'Upload File'}</span>
-              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {attachments.map((file) => (
-                <div key={file.id} className="m3-card group p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3 truncate">
-                    <div className="w-14 h-14 bg-[var(--m3-surface-container)] rounded-2xl flex items-center justify-center overflow-hidden border border-[var(--m3-outline)]/5">
-                      {file.content_type?.startsWith('image/') ? (
-                        <img 
-                          src={supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl} 
-                          alt="preview"
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : getFileIcon(file.content_type)}
-                    </div>
-                    <div className="truncate pr-2">
-                      <p className="text-sm font-bold text-[var(--m3-on-surface)] truncate">{file.file_name}</p>
-                      <p className="text-xs text-[var(--m3-on-surface-variant)] font-black uppercase tracking-tighter opacity-50">{(file.size_bytes / 1024).toFixed(1)} KB</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => window.open(supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl)}
-                      className="p-2 text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+            {/* Grid of attached documents matching Screenshot 1 */}
+            <div className="flex flex-wrap gap-4 pt-2">
+              {attachments.map((file) => {
+                const isImg = file.content_type?.startsWith('image/');
+                const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                return (
+                  <div key={file.id} className="relative bg-[#ebeee9] border border-slate-200/60 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group transition-all shadow-xs">
                     <button
                       type="button"
                       onClick={() => deleteAttachment(file)}
-                      className="p-2 text-[var(--m3-error)] hover:bg-[var(--m3-error-container)]/20 rounded-full transition-colors"
+                      className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors border-2 border-white shadow-md font-bold text-xs"
+                      title="Delete document"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      ×
                     </button>
+                    
+                    <div 
+                      className="w-full h-24 bg-white border border-slate-200/40 rounded-xl overflow-hidden flex items-center justify-center self-center cursor-pointer"
+                      onClick={() => window.open(fileUrl, '_blank')}
+                    >
+                      {isImg ? (
+                        <img 
+                          src={fileUrl} 
+                          alt="preview" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-[#1b8b58]">
+                          {getFileIcon(file.content_type)}
+                          <span className="text-[9px] font-black uppercase text-[#1b8b58] tracking-wider">PDF SCAN</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 text-left truncate">
+                      <span className="text-[11px] font-bold text-slate-800 truncate block w-full" title={file.file_name}>
+                        {file.file_name}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
+                        {(file.size_bytes / 1024).toFixed(1)} KB
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {pendingFiles.map((file, idx) => (
-                <div key={idx} className="m3-card bg-[var(--m3-primary-container)]/10 border-[var(--m3-primary)]/20 group p-3 flex items-center justify-between animate-pulse">
-                  <div className="flex items-center gap-3 truncate">
-                    <div className="w-14 h-14 bg-[var(--m3-surface-container)] rounded-2xl flex items-center justify-center overflow-hidden border border-[var(--m3-primary)]/10">
-                      {file.type.startsWith('image/') && previews[file.name] ? (
-                        <img 
-                          src={previews[file.name]} 
-                          alt="preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : getFileIcon(file.type)}
-                    </div>
-                    <div className="truncate">
-                      <p className="text-sm font-bold text-[var(--m3-primary)] truncate">{file.name}</p>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[var(--m3-primary)] opacity-70">Enqueuing...</span>
-                    </div>
-                  </div>
+                <div key={idx} className="relative bg-emerald-50 border border-emerald-200/50 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group animate-pulse shadow-xs">
                   <button
                     type="button"
                     onClick={() => removePendingFile(idx)}
-                    className="p-2 text-[var(--m3-error)] hover:bg-[var(--m3-error-container)]/20 rounded-full"
+                    className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer border-2 border-white shadow-sm font-bold text-xs"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    ×
                   </button>
+                  
+                  <div className="w-full h-24 bg-white border border-emerald-100/50 rounded-xl overflow-hidden flex items-center justify-center self-center">
+                    {file.type.startsWith('image/') && previews[file.name] ? (
+                      <img 
+                        src={previews[file.name]} 
+                        alt="preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-slate-400">
+                        {getFileIcon(file.type)}
+                        <span className="text-[8px] font-bold text-slate-400">PENDING</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2.5 text-left">
+                    <span className="text-[11px] font-bold text-emerald-800 truncate block w-full">
+                      {file.name}
+                    </span>
+                    <span className="text-[9px] text-emerald-500 font-bold block mt-0.5">
+                      Uploading...
+                    </span>
+                  </div>
                 </div>
               ))}
-            </div>
 
-            {attachments.length === 0 && pendingFiles.length === 0 && (
-              <div className="py-10 border-2 border-dashed border-[var(--m3-outline)]/10 rounded-[2rem] text-center">
-                <div className="inline-flex p-4 bg-[var(--m3-surface-container)] rounded-2xl mb-4">
-                  <Scan className="w-8 h-8 text-[var(--m3-on-surface-variant)] opacity-20" />
+              {attachments.length === 0 && pendingFiles.length === 0 && (
+                <div className="w-full py-8 border border-dashed border-slate-200 rounded-2xl text-center bg-white/50">
+                  <span className="text-2xl block mb-1.5">📄</span>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">No active document scans attached</p>
                 </div>
-                <p className="text-sm font-bold text-[var(--m3-on-surface-variant)] opacity-50">Drag files here or use upload button</p>
+              )}
+            </div>
+          </div>
+
+          {/* Core Biodata Form Parameters */}
+          <div className="pt-6 border-t border-slate-100 space-y-5 text-left">
+            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+              REGISTRY BIODATA SECTION
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Full Identification Name</label>
+                <input
+                  required
+                  placeholder="e.g. Hasan Abdu"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all"
+                  value={formData.full_name}
+                  onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+                />
               </div>
-            )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sex</label>
+                  <select
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                    value={formData.sex}
+                    onChange={e => setFormData({ ...formData, sex: e.target.value as any })}
+                  >
+                    <option value="Male">MALE</option>
+                    <option value="Female">FEMALE</option>
+                    <option value="Other">OTHER</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Citizenship</label>
+                  <input
+                    required
+                    list="citizenships-list"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all"
+                    value={formData.citizenship}
+                    onChange={e => setFormData({ ...formData, citizenship: e.target.value })}
+                    placeholder="Search..."
+                  />
+                  <datalist id="citizenships-list">
+                    {CITIZENSHIPS.map(c => <option key={c} value={c} />)}
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Passport Number</label>
+                <input
+                  required
+                  placeholder="e.g. EP0192837"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                  value={formData.passport_number}
+                  onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Request / Reference Number</label>
+                <input
+                  required
+                  placeholder="e.g. REQ-00122"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                  value={formData.request_number}
+                  onChange={e => setFormData({ ...formData, request_number: e.target.value })}
+                />
+              </div>
+
+              {/* Dynamic Module Conditional Parameters */}
+              {type === 'EOID' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Number</label>
+                  <input
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    value={formData.eoid_number}
+                    onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
+                  />
+                </div>
+              )}
+              {type === 'Residence ID' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Residence ID No.</label>
+                  <input
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    value={formData.residence_id_no}
+                    onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
+                  />
+                </div>
+              )}
+              {type === 'ETD' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ETD Reference Code</label>
+                  <input
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    value={formData.etd}
+                    onChange={e => setFormData({ ...formData, etd: e.target.value })}
+                  />
+                </div>
+              )}
+              {type === 'Yellow Card' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Yellow Card Registration ID</label>
+                    <input
+                      required
+                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                      value={formData.letter_number}
+                      onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
+                      placeholder="ETH-YC-XXXXX"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Document Classification Type</label>
+                    <select
+                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                      value={formData.document_type}
+                      onChange={e => setFormData({ ...formData, document_type: e.target.value })}
+                    >
+                      <option value="Yellow Card Scan">Yellow Card Scan</option>
+                      <option value="Origin ID Card">Origin ID Card</option>
+                      <option value="Diaspora Clearance Certificate">Diaspora Clearance Certificate</option>
+                      <option value="Temporary Diaspora Permit">Temporary Diaspora Permit</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Division File Box ID</label>
+                <input
+                  readOnly
+                  className="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-xl text-xs font-bold text-slate-400 font-mono outline-none cursor-not-allowed"
+                  value={MODULE_BOX_MAP[type]}
+                />
+              </div>
+            </div>
           </div>
 
           {error && (
-            <div className="p-5 bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] rounded-[1.5rem] flex items-start gap-4 shadow-sm">
-              <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
-              <p className="text-sm font-bold leading-tight">{error}</p>
+            <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-start gap-3 shadow-xs text-left">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
+              <p className="text-xs font-bold leading-tight">{error}</p>
             </div>
           )}
         </form>
 
-        <footer className="px-8 py-6 bg-[var(--m3-surface-container)] border-t border-[var(--m3-outline-variant)]/30 flex items-center justify-end gap-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <footer className="px-8 py-5 bg-white border-t border-slate-100 flex items-center justify-end gap-3.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-8 py-3 text-sm font-bold text-[var(--m3-on-surface-variant)] hover:bg-[var(--m3-surface-container-highest)] rounded-full transition-colors"
+            className="px-5 py-2.5 text-xs font-extrabold text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all cursor-pointer border-none bg-transparent"
           >
-            Discard
+            Cancel
           </button>
+          
           <button
             form="record-form"
             type="submit"
             disabled={loading}
-            className="m3-button-filled flex items-center gap-3 px-12 py-3 shadow-xl shadow-[var(--m3-primary)]/20"
+            className="px-8 py-2.5 bg-[#2b825a] hover:bg-[#206243] text-white rounded-lg text-xs font-extrabold transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none outline-none"
           >
             {loading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
-              <>
-                <Save className="w-5 h-5" />
-                <span>{record ? 'Apply Changes' : 'Finalize Record'}</span>
-              </>
+              <span>Save Record</span>
             )}
           </button>
         </footer>

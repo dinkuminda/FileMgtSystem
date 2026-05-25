@@ -58,7 +58,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
-    if (record.document_type) return "AIRPORT";
+    if (record.document_type) return "Yellow Card";
     return "VISA";
   };
 
@@ -67,7 +67,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     if (rType === 'EOID') return "EOID Logs";
     if (rType === 'Residence ID') return "Residence ID";
     if (rType === 'ETD') return "Emergency Travel Docs";
-    if (rType === 'AIRPORT') return "Airport Registry";
+    if (rType === 'Yellow Card') return "Yellow Card Registry";
     return "VISA Records";
   };
 
@@ -77,7 +77,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     setLoading(true);
     try {
       // Execute all fetches in parallel
-      const tables: RecordType[] = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'];
+      const tables: RecordType[] = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'];
       const fetches = tables.map(async (type) => {
         const { data, error } = await supabase.from(TABLE_MAP[type]).select('*');
         if (error) throw error;
@@ -92,7 +92,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
         'EOID-000002': [],
         'Residence-000003': [],
         'ETD-000004': [],
-        'Airport-000005': []
+        'Yellow-000005': []
       };
 
       allData.forEach(r => {
@@ -110,7 +110,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
         'EOID-000002': { desc: 'EOID National Biometric File Drawers', type: 'EOID', color: 'from-emerald-600 to-emerald-800', temp: 20.1, hum: 38 },
         'Residence-000003': { desc: 'Residence Permit Physical Registry Drawer', type: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, hum: 45 },
         'ETD-000004': { desc: 'Emergency Travel Document Secure Vault', type: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, hum: 35 },
-        'Airport-000005': { desc: 'Bole Airport Entry/Exit Hand-Scribbled Logs Box', type: 'AIRPORT', color: 'from-purple-600 to-purple-800', temp: 22.0, hum: 40 },
+        'Yellow-000005': { desc: 'Yellow Card / Origin ID Physical Registry Box', type: 'Yellow Card', color: 'from-yellow-600 to-amber-700', temp: 22.1, hum: 41 },
       };
 
       const builtCabinets: CabinetInfo[] = Object.keys(boxMap).map((boxName) => {

@@ -6,7 +6,8 @@ import {
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Activity, BarChart3, Plane, Paperclip,
-  ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight
+  ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -32,13 +33,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
-    { type: 'USERS', icon: Users, label: 'User Management' },
-    { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
-    { type: 'VISA', icon: FileText, label: 'VISA Records' },
-    { type: 'EOID', icon: Fingerprint, label: 'EOID Logs' },
+    { type: 'VISA', icon: FileText, label: 'VISA Division' },
+    { type: 'EOID', icon: Fingerprint, label: 'EOID Division' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
-    { type: 'ETD', icon: MapPin, label: 'ETD Records' },
-    { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
+    { type: 'ETD', icon: MapPin, label: 'ETD Division' },
+    { type: 'Yellow Card', icon: Shield, label: 'Yellow Card' },
+    { type: 'USERS', icon: Users, label: 'User Directory' },
+    { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
   ];
 
@@ -61,12 +62,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
     // If user has specific modules assigned, use those
     if (userProfile.modules && userProfile.modules.length > 0) {
+      if (tab.type === 'Yellow Card') {
+        return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+      }
       return userProfile.modules.includes(tab.type);
     }
 
     // Role-based fallbacks for users without explicit modules
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
-      return tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
+      return tab.type === 'Yellow Card' || tab.type === 'OVERVIEW';
     }
 
     // Staff can see records and reports, but not system level management
@@ -126,7 +130,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   }, [userProfile, activeTab, tabs, navigate]);
 
   useEffect(() => {
-    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS' && activeTab !== 'AIRPORT') {
+    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
       fetchRecords();
     }
   }, [activeTab]);
@@ -240,7 +244,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const canEdit = () => {
     if (!userProfile) return false;
     if (userProfile.role === 'admin' || userProfile.role === 'staff') return true;
-    if (userProfile.role === 'airport_staff' && activeTab === 'AIRPORT') return true;
+    if (userProfile.role === 'airport_staff' && activeTab === 'Yellow Card') return true;
     return false;
   };
 
@@ -251,7 +255,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   );
 
   const SidebarContent = () => {
-    const isAirportContext = activeTab === 'AIRPORT';
+    const isAirportContext = activeTab === 'Yellow Card';
 
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
@@ -264,41 +268,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="overflow-hidden text-left"
+              className="overflow-hidden text-left animate-none"
             >
-              <h1 className="font-black text-lg tracking-tight text-slate-900 leading-none mb-0.5">
-                ICS Portal
+              <h1 className="font-extrabold text-xl tracking-tight text-[#0f3c83] leading-none mb-1">
+                ICS
               </h1>
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#1b54ac]">File Registry</p>
+              <p className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-400">FILE MANAGEMENT SYSTEM</p>
             </motion.div>
-          )}
-        </div>
-
-        {/* User Profile Section (at the top of Sidebar, like Screenshot) */}
-        <div className={`px-6 pb-6 pt-2 border-b border-slate-100 flex-shrink-0 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-4'}`}>
-          <div className="relative flex-shrink-0">
-            <div className={`rounded-full overflow-hidden bg-gradient-to-tr from-slate-100 to-slate-200 flex items-center justify-center border border-slate-100 shadow-sm ${isSidebarCollapsed ? 'w-10 h-10' : 'w-12 h-12'}`}>
-              <img 
-                src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${userProfile?.full_name || 'David'}`}
-                alt="Avatar" 
-                className="w-full h-full object-cover" 
-              />
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 bg-[#00d6b4] border-2 border-white rounded-md w-4.5 h-4.5 flex items-center justify-center">
-              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-          {!isSidebarCollapsed && (
-            <div className="overflow-hidden text-left">
-              <p className="font-extrabold text-sm text-slate-800 tracking-tight leading-tight truncate">
-                {userProfile?.full_name || 'David Grey. H'}
-              </p>
-              <p className="text-[10px] font-bold text-slate-400 capitalize mt-0.5">
-                {userProfile?.role === 'admin' ? 'Project Manager' : 'Staff Operator'}
-              </p>
-            </div>
           )}
         </div>
 
@@ -325,15 +301,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
                       } ${
                         isActive 
-                          ? 'bg-[#b83efd]/10 text-[#b83efd] font-extrabold shadow-sm' 
+                          ? 'bg-[#ecf7f1] text-[#2b825a] font-extrabold shadow-xs border-l-4 border-[#2b825a]' 
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#b83efd]' : 'text-slate-400'}`} />
+                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`} />
                       {!isSidebarCollapsed && <span className="flex-1">{at.label}</span>}
-                      {!isSidebarCollapsed && (
-                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#b83efd]/70' : 'bg-transparent'}`} />
-                      )}
                     </Link>
                   );
                 })}
@@ -358,15 +331,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
                       } ${
                         isActive 
-                          ? 'bg-[#b83efd]/10 text-[#b83efd] font-extrabold shadow-sm' 
+                          ? 'bg-[#ecf7f1] text-[#2b825a] font-extrabold shadow-sm border-l-4 border-[#2b825a]' 
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#b83efd]' : 'text-slate-400'}`} />
+                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`} />
                       {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
-                      {!isSidebarCollapsed && (
-                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#b83efd]/70' : 'bg-transparent'}`} />
-                      )}
                     </Link>
                   );
                 })}
@@ -375,18 +345,34 @@ export default function Dashboard({ userProfile }: DashboardProps) {
           </AnimatePresence>
         </nav>
 
-        {/* Bottom Module Logout */}
+        {/* Bottom Module Logout / Profile (Exactly resembling the laptop screenshot) */}
         <div className="p-4 mt-auto border-t border-slate-100 flex-shrink-0">
+          {!isSidebarCollapsed && (
+            <div className="flex items-center gap-3.5 mb-4 text-left px-2">
+              <div className="w-10 h-10 rounded-full bg-[#8c1d1d] text-white flex items-center justify-center font-black text-sm shadow-md flex-shrink-0">
+                {userProfile?.full_name?.[0]?.toUpperCase() || 'S'}
+              </div>
+              <div className="overflow-hidden">
+                <p className="font-extrabold text-xs text-slate-800 tracking-tight leading-tight truncate">
+                  {userProfile?.full_name || 'System Administrator'}
+                </p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  {userProfile?.role || 'ADMIN'}
+                </p>
+              </div>
+            </div>
+          )}
+
           <button 
             onClick={() => supabase.auth.signOut()}
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer w-full text-red-500 hover:bg-red-50/50 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer w-full text-red-600 bg-red-50/50 hover:bg-red-50/80 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
             title="Log Out"
           >
-            <LogOut className="w-4.5 h-4.5 flex-shrink-0" />
-            {!isSidebarCollapsed && <span>Log Out</span>}
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {!isSidebarCollapsed && <span>Log Out Terminal</span>}
           </button>
           
-          <div className="mt-2.5 pt-2 border-t border-slate-100/45 text-center flex justify-center w-full">
+          <div className="mt-3 pt-2 border-t border-slate-100/45 text-center flex justify-center w-full">
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-350 hover:text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 transition-all cursor-pointer outline-none"
@@ -423,7 +409,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       </AnimatePresence>
 
       {/* FAB */}
-      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && activeTab !== 'AIRPORT' && (
+      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
           className="m3-fab shadow-blue-500/20"
@@ -489,48 +475,27 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       {/* Scaffold */}
       <main className="flex-1 flex flex-col w-full pb-20 md:pb-0">
         {/* Header Bar */}
-        <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-[var(--m3-surface)] md:bg-white/40 md:backdrop-blur-md sticky top-0 z-30 transition-colors border-b border-[var(--m3-outline-variant)] md:border-slate-50">
-          <div className="flex items-center gap-4 md:gap-6">
-            <div className="md:hidden w-10 h-10 bg-[var(--m3-primary-container)] rounded-xl flex items-center justify-center">
-              <Fingerprint className="w-5 h-5 text-[var(--m3-on-primary-container)]" />
-            </div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-base md:text-sm font-bold text-slate-800">
-                {activeTab === 'OVERVIEW' ? 'Dashboard' : activeTab}
-              </h2>
+        <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-white border-b border-slate-100 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-slate-400 font-extrabold text-[11px] uppercase tracking-[0.1em]">
+              <Shield className="w-4 h-4 text-emerald-500 animate-pulse" />
+              <span>System Secure</span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-             {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-              <div className="hidden md:flex items-center relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[var(--m3-primary)] transition-colors" />
-                <input 
-                  type="text"
-                  placeholder="Universal search..."
-                  className="pl-12 pr-6 py-2 bg-slate-50 border border-transparent focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-[var(--m3-primary)]/20 rounded-xl text-xs font-bold text-slate-800 outline-none w-64 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="flex items-center gap-3">
+              {/* Active IP Status capsule mimicking the screen photo */}
+              <div className="flex items-center gap-2 bg-[#ecf7f1] rounded-[10px] px-4 py-1.5 text-[10px] font-mono font-bold text-[#1b8b58] border border-[#d2eedf]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2b825a] animate-pulse" />
+                <span>10.40.20.125 / SECURE</span>
               </div>
-            )}
 
-            <div className="flex items-center gap-2 md:gap-3">
-              <button 
-                onClick={() => supabase.auth.signOut()}
-                className="md:hidden p-2.5 text-red-500 bg-red-50 rounded-xl active:scale-95 transition-all"
-                title="Log Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-               {['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'].includes(activeTab) && (
-                <button 
-                  onClick={exportToCSV}
-                  className="p-2.5 bg-white text-slate-400 rounded-xl hover:bg-slate-50 hover:text-[var(--m3-primary)] border border-slate-100 transition-all"
-                >
-                  <FileOutput className="w-4 h-4" />
-                </button>
-              )}
+              {/* Notification bell with red feedback dot */}
+              <div className="relative p-2 text-slate-400 hover:text-slate-600 cursor-pointer rounded-lg hover:bg-slate-50 transition-colors">
+                <Bell className="w-4.5 h-4.5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600 border border-white" />
+              </div>
             </div>
           </div>
         </header>
@@ -546,15 +511,79 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
               <div className="mb-8 md:mb-10">
-                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                  {activeTab === 'OVERVIEW' ? 'Overview' : 
-                   activeTab === 'AIRPORT' ? 'Hub Operations' : 
-                   activeTab}
-                </h1>
-                <p className="text-slate-500 text-sm md:text-base font-medium">
-                  {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
-                   `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
-                </p>
+                {['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'].includes(activeTab) ? (
+                  <div className="space-y-6">
+                    {/* FSD Division style heading row */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-[#2b825a] pl-5 py-1">
+                      <div className="text-left">
+                        <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight">
+                          {activeTab === 'VISA' ? 'VISA Structuring Division' : 
+                           activeTab === 'EOID' ? 'EOID Structuring Division' : 
+                           activeTab === 'Residence ID' ? 'Residence ID Division' : 
+                           activeTab === 'ETD' ? 'ETD Structuring Division' : 
+                           activeTab === 'Yellow Card' ? 'Yellow Card Division' : activeTab}
+                        </h1>
+                        <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
+                          {activeTab === 'VISA' ? 'Source: - FSD Division Data structuring' : 
+                           activeTab === 'EOID' ? 'Source: - National ID verification feeds' : 
+                           activeTab === 'Residence ID' ? 'Source: - Permanent ID verification records' : 
+                           activeTab === 'ETD' ? 'Source: - Non-resident exception travels' : 
+                           'Source: - Diaspora Registration Hub'}
+                        </p>
+                      </div>
+
+                      {/* Header Buttons matching the screen exact colors */}
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {canEdit() && (
+                          <button 
+                            onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-[#2b825a] hover:bg-[#206243] text-white rounded-lg text-xs font-extrabold transition-all shadow-sm shadow-[#2b825a]/10 cursor-pointer outline-none border-none"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Add Entry</span>
+                          </button>
+                        )}
+                        <button 
+                          onClick={exportToCSV}
+                          disabled={records.length === 0}
+                          className="flex items-center gap-2 px-4.5 py-2.5 bg-[#f4f7f5] hover:bg-[#e2ede6] text-slate-600 disabled:opacity-50 border border-slate-200/50 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
+                        >
+                          <FileOutput className="w-4 h-4 text-slate-400" />
+                          <span>Export CSV</span>
+                        </button>
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4.5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
+                        >
+                          <FileInput className="w-4 h-4 text-slate-400" />
+                          <span>Import CSV</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Integrated custom search bar */}
+                    <div className="relative w-full group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors" />
+                      <input 
+                        type="text"
+                        placeholder="Filter this division by Box, Name, Passport or Request Number..."
+                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 focus:bg-white focus:ring-4 focus:ring-emerald-500/5 focus:border-[#2b825a]/40 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all text-slate-800"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-left">
+                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
+                      {activeTab === 'OVERVIEW' ? 'Overview' : activeTab}
+                    </h1>
+                    <p className="text-slate-500 text-sm md:text-base font-medium">
+                      {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
+                       `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Routes>
@@ -562,27 +591,17 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/audit" element={<AuditLogView />} />
                 <Route path="/reports" element={<ReportingSystem />} />
                 <Route path="/users" element={<UserManagement />} />
-                <Route path="/airport" element={
-                  <AirportView 
-                    userProfile={userProfile}
-                    refreshCounter={refreshCounter}
-                    onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                    onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDeleteRecord={handleDelete}
-                    searchQuery={searchQuery}
-                    canEdit={canEdit()}
-                  />
-                } />
-                <Route path="/airport/:subTab" element={
-                  <AirportView 
-                    userProfile={userProfile}
-                    refreshCounter={refreshCounter}
-                    onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                    onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                    onDeleteRecord={handleDelete}
-                    searchQuery={searchQuery}
-                    canEdit={canEdit()}
-                  />
+                <Route path="/yellow-card" element={
+                  <div className="flutter-card p-4">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 } />
                 <Route path="/visa" element={
                   <div className="flutter-card p-4">
@@ -652,7 +671,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             onSuccess={(record) => {
               setIsFormOpen(false);
               setRefreshCounter(prev => prev + 1);
-              if (activeTab === 'AIRPORT' && record.passport_number) {
+              if (activeTab === 'Yellow Card' && record.passport_number) {
                 setSearchQuery(record.request_number || record.passport_number);
               }
               addToast(`Record for ${record.full_name} was successfully saved!`, 'success');
