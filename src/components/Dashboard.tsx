@@ -532,7 +532,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               </div>
 
               <Routes>
-                <Route path="/" element={<DashboardReports />} />
+                <Route path="/" element={<DashboardReports userProfile={userProfile} />} />
                 <Route path="/audit" element={<AuditLogView />} />
                 <Route path="/reports" element={<ReportingSystem />} />
                 <Route path="/users" element={<UserManagement />} />

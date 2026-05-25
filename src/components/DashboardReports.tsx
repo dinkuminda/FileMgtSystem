@@ -1,26 +1,98 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, TABLE_MAP, type RecordType } from '../lib/supabase';
+import { supabase, TABLE_MAP, type RecordType, type UserProfile, type ImmigrationRecord, type RecordAttachment, logger } from '../lib/supabase';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, LineChart, Line, Legend 
 } from 'recharts';
 import { 
   Loader2, TrendingUp, Users, FileText, Globe, Archive, Folder,
-  FolderOpen, Search, Info, CheckCircle, ChevronRight, Minimize2, Tag, Calendar
+  FolderOpen, Search, Info, CheckCircle, ChevronRight, Minimize2, Tag, Calendar,
+  Eye, Edit2, Trash2, Plus, Paperclip, ChevronDown, X, ExternalLink, CreditCard, Fingerprint, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
 
 const COLORS = ['#1b54ac', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#06b6d4'];
 
-export default function DashboardReports() {
+export const BOX_MODULE_DESC: Record<string, string> = {
+  'Visa-000001': 'Visa Portal Logs',
+  'EOID-000002': 'EOID National Registry',
+  'Residence-000003': 'Residence Permits',
+  'ETD-000004': 'Emergency Travel Docs',
+  'Airport-000005': 'Bole Airport Logs'
+};
+
+interface DashboardReportsProps {
+  userProfile?: UserProfile | null;
+}
+
+export default function DashboardReports({ userProfile }: DashboardReportsProps) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [selectedBox, setSelectedBox] = useState<string | null>(null);
   const [boxSearchQuery, setBoxSearchQuery] = useState('');
 
+  // States for CRUD of module records inside Archived Folders
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formType, setFormType] = useState<RecordType>('VISA');
+  const [editingRecord, setEditingRecord] = useState<ImmigrationRecord | null>(null);
+  const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
+  const [viewingRecordAttachments, setViewingRecordAttachments] = useState<RecordAttachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<ImmigrationRecord | null>(null);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  
+  // High contrast custom toast system
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 7);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4500);
+  };
+
+  const getRecordType = (record: any): RecordType => {
+    if (record.eoid_number) return "EOID";
+    if (record.residence_id_no) return "Residence ID";
+    if (record.etd) return "ETD";
+    if (record.document_type) return "AIRPORT";
+    return "VISA";
+  };
+
+  const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
+
   useEffect(() => {
     fetchStats();
   }, []);
+
+  // Set up attachment loader for selected file details
+  useEffect(() => {
+    if (viewingRecord) {
+      const loadAttachments = async () => {
+        setLoadingAttachments(true);
+        try {
+          const rType = getRecordType(viewingRecord);
+          const { data, error } = await supabase
+            .from('record_attachments')
+            .select('*')
+            .eq('record_id', viewingRecord.id)
+            .eq('record_table', TABLE_MAP[rType]);
+          if (!error && data) {
+            setViewingRecordAttachments(data as RecordAttachment[]);
+          }
+        } catch (err) {
+          console.error("Error loading viewing attachments:", err);
+        } finally {
+          setLoadingAttachments(false);
+        }
+      };
+      loadAttachments();
+    } else {
+      setViewingRecordAttachments([]);
+    }
+  }, [viewingRecord]);
 
   const getRecordCategory = (record: any) => {
     if (record.eoid_number) return "EOID Logs";
@@ -28,6 +100,39 @@ export default function DashboardReports() {
     if (record.etd) return "ETD Records";
     if (record.document_type) return "Bole Airport";
     return "VISA Records";
+  };
+
+  const executeDeleteRecord = async (record: ImmigrationRecord) => {
+    try {
+      const rType = getRecordType(record);
+      const tableName = TABLE_MAP[rType];
+      
+      // Delete database attachments
+      await supabase
+        .from('record_attachments')
+        .delete()
+        .eq('record_id', record.id)
+        .eq('record_table', tableName);
+
+      // Delete master record
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', record.id);
+
+      if (error) throw error;
+
+      await logger.log('DELETE', rType, `Deleted record for ${record.full_name} via Archived Folders`, record.id);
+      addToast(`Record for ${record.full_name} was successfully deleted.`, 'success');
+      
+      // Refresh calculations
+      await fetchStats();
+    } catch (err: any) {
+      console.error("Error deleting physical record:", err);
+      addToast('Deletion failed: ' + err.message, 'error');
+    } finally {
+      setRecordToDelete(null);
+    }
   };
 
   const fetchStats = async () => {
@@ -72,9 +177,17 @@ export default function DashboardReports() {
         .slice(-10);
 
       // Box Grouping for File Management View
-      const boxMap: Record<string, any[]> = {};
+      const boxMap: Record<string, any[]> = {
+        'Visa-000001': [],
+        'EOID-000002': [],
+        'Residence-000003': [],
+        'ETD-000004': [],
+        'Airport-000005': []
+      };
+      
       allData.forEach(r => {
-        const box = r.box_number?.trim() || 'Box 01';
+        const rType = getRecordType(r);
+        const box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
         if (!boxMap[box]) {
           boxMap[box] = [];
         }
@@ -218,7 +331,9 @@ export default function DashboardReports() {
                   <div className="mt-8">
                     <p className={`text-[10px] font-black uppercase tracking-widest ${
                       isSelected ? 'text-blue-200' : 'text-slate-400'
-                    }`}>PHYSICAL CABINET</p>
+                    }`}>
+                      {BOX_MODULE_DESC[box.boxName] || 'PHYSICAL CABINET'}
+                    </p>
                     <p className="text-lg font-black tracking-tight leading-none mt-1">
                       {box.boxName}
                     </p>
@@ -246,21 +361,84 @@ export default function DashboardReports() {
                       <Archive className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-900 text-lg">Digitized Records inside {selectedBox}</h4>
+                      <h4 className="font-extrabold text-slate-900 text-lg">Digitized Records inside {selectedBox} - {BOX_MODULE_DESC[selectedBox]}</h4>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Physical location code verified</p>
                     </div>
                   </div>
 
-                  {/* Micro Search container */}
-                  <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Filter records inside this box..."
-                      value={boxSearchQuery}
-                      onChange={(e) => setBoxSearchQuery(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-bold text-slate-800 outline-none focus:border-[#1b54ac] focus:ring-4 focus:ring-blue-500/5 transition-all"
-                    />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+                    {canEditOrDelete && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-[0.98] shadow-sm shadow-blue-500/15 cursor-pointer border-none outline-none"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Digitize Personal File
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isAddMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isAddMenuOpen && (
+                          <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto bg-white border border-slate-200 rounded-2xl shadow-xl py-2 w-56 z-30 font-semibold text-slate-700 text-xs flex flex-col items-stretch overflow-hidden">
+                            <span className="px-4 py-1.5 text-[9px] font-black uppercase text-slate-450 text-slate-400 tracking-wider bg-slate-50 border-b border-slate-100">Select Module / Category</span>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                setFormType('VISA');
+                                setIsFormOpen(true);
+                                setIsAddMenuOpen(false);
+                              }}
+                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-blue-500" /> VISA Document
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                setFormType('EOID');
+                                setIsFormOpen(true);
+                                setIsAddMenuOpen(false);
+                              }}
+                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                            >
+                              <Fingerprint className="w-3.5 h-3.5 text-emerald-500" /> EOID Document
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                setFormType('Residence ID');
+                                setIsFormOpen(true);
+                                setIsAddMenuOpen(false);
+                              }}
+                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                            >
+                              <CreditCard className="w-3.5 h-3.5 text-amber-500" /> Residence ID Document
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                setFormType('ETD');
+                                setIsFormOpen(true);
+                                setIsAddMenuOpen(false);
+                              }}
+                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                            >
+                              <MapPin className="w-3.5 h-3.5 text-rose-500" /> ETD Record Document
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Micro Search container */}
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Filter records inside this box..."
+                        value={boxSearchQuery}
+                        onChange={(e) => setBoxSearchQuery(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-bold text-slate-800 outline-none focus:border-[#1b54ac] focus:ring-4 focus:ring-blue-500/5 transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -275,12 +453,13 @@ export default function DashboardReports() {
                         <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Request Ref</th>
                         <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">National Base</th>
                         <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Creation Date</th>
+                        <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 text-slate-700">
                       {filteredBoxItems.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-5 py-12 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">
+                          <td colSpan={7} className="px-5 py-12 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">
                             No matching files inside this box.
                           </td>
                         </tr>
@@ -301,6 +480,39 @@ export default function DashboardReports() {
                             <td className="px-5 py-4 text-xs font-bold text-slate-600">{item.citizenship}</td>
                             <td className="px-5 py-4 text-xs font-mono text-slate-400">
                               {new Date(item.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setViewingRecord(item)}
+                                  className="p-1.5 bg-slate-55 hover:bg-slate-100 border-none rounded-lg text-slate-500 hover:text-blue-600 cursor-pointer transition-colors bg-slate-50"
+                                  title="View Details & PDF Attachments"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                {canEditOrDelete && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingRecord(item);
+                                        setFormType(getRecordType(item));
+                                        setIsFormOpen(true);
+                                      }}
+                                      className="p-1.5 bg-slate-55 hover:bg-slate-100 border-none rounded-lg text-slate-500 hover:text-amber-600 cursor-pointer transition-colors bg-slate-50"
+                                      title="Edit Record"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setRecordToDelete(item)}
+                                      className="p-1.5 bg-slate-55 hover:bg-slate-100 border-none rounded-lg text-slate-500 hover:text-rose-600 cursor-pointer transition-colors bg-slate-50"
+                                      title="Delete Record"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -395,6 +607,231 @@ export default function DashboardReports() {
             <Globe className="w-8 h-8 md:w-10 md:h-10 text-slate-200" />
           </div>
         </div>
+      </div>
+
+      {/* RECORD FORM MODAL TRIGGER */}
+      <AnimatePresence>
+        {isFormOpen && (
+          <RecordForm
+            type={formType}
+            isOpen={isFormOpen}
+            onClose={() => {
+              setIsFormOpen(false);
+              setEditingRecord(null);
+            }}
+            record={editingRecord}
+            defaultBoxNumber={selectedBox || undefined}
+            onSuccess={async () => {
+              setIsFormOpen(false);
+              setEditingRecord(null);
+              addToast(editingRecord ? 'Registry updated successfully!' : 'New file digitized & added successfully!', 'success');
+              await fetchStats();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* REVOLUTIONARY VIEW DETAILS DIALOG WITH SCAN PREVIEWS */}
+      <AnimatePresence>
+        {viewingRecord && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200/60 font-sans"
+            >
+              {/* Header */}
+              <header className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase bg-blue-50 text-[#1b54ac] px-2.5 py-1 rounded-full border border-blue-100/40">
+                    <Tag className="w-3.5 h-3.5 text-[#1b54ac]/70" /> {getRecordCategory(viewingRecord)}
+                  </span>
+                  <h3 className="text-xl font-black text-slate-800 tracking-tight mt-1.5 leading-none">Personal File Registration Details</h3>
+                </div>
+                <button 
+                  onClick={() => setViewingRecord(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer border-none bg-transparent"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </header>
+
+              {/* Body */}
+              <div className="px-8 py-6 space-y-6 overflow-y-auto max-h-[70vh] text-left">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Full Name</span>
+                    <p className="text-sm font-black text-slate-800 mt-0.5">{viewingRecord.full_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sex / Gender</span>
+                    <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.sex}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Passport Number</span>
+                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.passport_number}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Citizenship / Origin</span>
+                    <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.citizenship}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Request Reference</span>
+                    <p className="text-sm font-mono font-black text-[#1b54ac] mt-0.5">{viewingRecord.request_number}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Box Location</span>
+                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.box_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Registry Creation Date</span>
+                    <p className="text-sm font-medium text-slate-600 mt-0.5">
+                      {new Date(viewingRecord.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Service Provided</span>
+                    <p className="text-xs font-bold text-slate-600 mt-0.5">{viewingRecord.service_provided || 'None Specified'}</p>
+                  </div>
+
+                  {/* Conditional fields based on modules */}
+                  {viewingRecord.eoid_number && (
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">EOID Reference</span>
+                      <p className="text-sm font-mono font-bold text-emerald-600 mt-0.5">{viewingRecord.eoid_number}</p>
+                    </div>
+                  )}
+                  {viewingRecord.residence_id_no && (
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residence ID No.</span>
+                      <p className="text-sm font-mono font-bold text-amber-600 mt-0.5">{viewingRecord.residence_id_no}</p>
+                    </div>
+                  )}
+                  {viewingRecord.etd && (
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">ETD Registry No.</span>
+                      <p className="text-sm font-mono font-bold text-rose-600 mt-0.5">{viewingRecord.etd}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Attached Scanned PDFs */}
+                <div className="border-t border-slate-100 pt-6">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3.5 flex items-center gap-1.5 justify-start">
+                    <Paperclip className="w-3.5 h-3.5 text-blue-500" /> Scanned Attachments ({loadingAttachments ? '...' : viewingRecordAttachments.length})
+                  </h4>
+                  
+                  {loadingAttachments ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-400 py-4 justify-start">
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      <span>Loading attachments...</span>
+                    </div>
+                  ) : viewingRecordAttachments.length === 0 ? (
+                    <div className="text-center py-6 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center">
+                      <Paperclip className="w-5 h-5 text-slate-300 mb-1.5" />
+                      <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wide">No paper scans attached</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Edit this file to upload and attach scanned PDF documents</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {viewingRecordAttachments.map((file) => {
+                        const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                        return (
+                          <div key={file.id} className="border border-slate-100 p-3 rounded-2xl flex items-center justify-between hover:bg-slate-50 bg-white">
+                            <div className="flex items-center gap-2.5 truncate">
+                              <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-4.5 h-4.5" />
+                              </div>
+                              <div className="truncate text-left">
+                                <p className="text-xs font-bold text-slate-800 truncate leading-tight">{file.file_name}</p>
+                                <span className="text-[9px] text-[#1b54ac] font-black uppercase">{(file.size_bytes / (1024 * 1024)).toFixed(2)} MB • PDF</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => window.open(fileUrl, '_blank')}
+                              className="p-1.5 hover:bg-blue-50 hover:text-blue-600 text-slate-400 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                              title="View Document"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <footer className="px-8 py-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+                <button
+                  onClick={() => setViewingRecord(null)}
+                  className="px-5 py-2.5 bg-[#1b54ac] hover:bg-[#164894] text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer border-none"
+                >
+                  Close Inspection
+                </button>
+              </footer>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CONFIRM DELETE MODAL */}
+      <AnimatePresence>
+        {recordToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200"
+            >
+              <h4 className="text-lg font-black text-slate-900 tracking-tight text-left">Delete Registry File?</h4>
+              <p className="text-xs text-slate-500 mt-2 text-left">
+                Are you absolutely sure you want to delete the file for <strong className="text-slate-800">{recordToDelete.full_name}</strong>? 
+                This will delete the digitized master record and all attached scans permanently.
+              </p>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => setRecordToDelete(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border-none cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => executeDeleteRecord(recordToDelete)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition-colors"
+                >
+                  Confirm Permanent Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* HIGH CONTRAST CLIENT NOTIFICATION SYSTEM (TOAST OVERLAY) */}
+      <div className="fixed bottom-6 right-6 z-55 flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`p-4 rounded-xl shadow-lg border text-xs font-bold flex items-center gap-2.5 max-w-xs pointer-events-auto bg-white ${
+                toast.type === 'success' ? 'border-emerald-200 text-emerald-800' : 
+                toast.type === 'error' ? 'border-red-200 text-red-800' : 
+                'border-blue-200 text-[#1b54ac]'
+              }`}
+            >
+              <CheckCircle className={`w-4 h-4 ${toast.type === 'success' ? 'text-emerald-500' : 'text-rose-500'}`} />
+              <span className="flex-1 text-left">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );

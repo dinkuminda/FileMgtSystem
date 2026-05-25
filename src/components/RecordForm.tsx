@@ -4,15 +4,24 @@ import { X, Save, AlertCircle, Loader2, Paperclip, Trash2, FileIcon, ImageIcon, 
 import { motion, AnimatePresence } from 'motion/react';
 import { CITIZENSHIPS } from '../constants';
 
+export const MODULE_BOX_MAP: Record<RecordType, string> = {
+  'VISA': 'Visa-000001',
+  'EOID': 'EOID-000002',
+  'Residence ID': 'Residence-000003',
+  'ETD': 'ETD-000004',
+  'AIRPORT': 'Airport-000005'
+};
+
 interface RecordFormProps {
   type: RecordType;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (record: ImmigrationRecord) => void;
   record?: ImmigrationRecord | null;
+  defaultBoxNumber?: string;
 }
 
-export default function RecordForm({ type, onClose, onSuccess, record }: RecordFormProps) {
+export default function RecordForm({ type, onClose, onSuccess, record, defaultBoxNumber }: RecordFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +59,7 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
   useEffect(() => {
     if (record) {
       setFormData({
-        box_number: record.box_number || '',
+        box_number: record.box_number || MODULE_BOX_MAP[type] || 'Visa-000001',
         full_name: record.full_name || '',
         sex: record.sex || 'Male',
         citizenship: record.citizenship || '',
@@ -65,8 +74,25 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         document_type: record.document_type || 'Scanned Letter',
       });
       fetchAttachments(record.id);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        box_number: MODULE_BOX_MAP[type] || 'Visa-000001',
+        full_name: '',
+        sex: 'Male',
+        citizenship: '',
+        passport_number: '',
+        request_number: '',
+        date: new Date().toISOString().split('T')[0],
+        service_provided: '',
+        eoid_number: '',
+        residence_id_no: '',
+        etd: '',
+        letter_number: '',
+        document_type: 'Scanned Letter',
+      }));
     }
-  }, [record]);
+  }, [record, type, defaultBoxNumber]);
 
   const fetchAttachments = async (recordId: string) => {
     const { data, error } = await supabase
@@ -202,9 +228,8 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         created_by: user.id,
       };
 
-      if (type !== 'AIRPORT') {
-        basePayload.box_number = formData.box_number;
-      }
+      // Ensure each module is assigned to its specific box number
+      basePayload.box_number = MODULE_BOX_MAP[type];
 
       if (type === 'EOID') basePayload.eoid_number = formData.eoid_number;
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
@@ -287,18 +312,17 @@ export default function RecordForm({ type, onClose, onSuccess, record }: RecordF
         <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 pb-8 space-y-10 scrollbar-hide">
           {/* Main Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            {type !== 'AIRPORT' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Box Number</label>
-                <input
-                  required
-                  className="m3-input font-mono"
-                  value={formData.box_number}
-                  onChange={e => setFormData({ ...formData, box_number: e.target.value })}
-                  placeholder="BOX-2024-XXX"
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1 flex items-center justify-between">
+                <span>Box Number</span>
+                <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-[#1b54ac] dark:text-blue-300 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Locked to Module</span>
+              </label>
+              <input
+                readOnly
+                className="m3-input font-mono bg-slate-100 dark:bg-slate-800 opacity-75 cursor-not-allowed"
+                value={MODULE_BOX_MAP[type]}
+              />
+            </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-[var(--m3-on-surface-variant)] px-1">Full Name</label>
               <input
