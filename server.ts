@@ -245,6 +245,55 @@ async function startServer() {
     }
   });
 
+  // Admin: Delete User
+  app.post("/api/admin/delete-user", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: "No authorization header" });
+
+    const token = authHeader.split(" ")[1];
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    try {
+      // 1. Verify requester is admin
+      const { data: { user: requester }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !requester) return res.status(401).json({ error: "Unauthorized" });
+
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', requester.id)
+        .single();
+
+      if (profile?.role !== 'admin') {
+        return res.status(403).json({ error: "Forbidden: Admin access required" });
+      }
+
+      // Protect against deleting oneself
+      if (requester.id === userId) {
+        return res.status(400).json({ error: "Security protocol error: Self-deletion is strictly forbidden." });
+      }
+
+      // 2. Delete profile
+      await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      // 3. Delete from Supabase Auth
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (deleteError) throw deleteError;
+
+      res.json({ message: "User account deleted successfully from security directory" });
+    } catch (err: any) {
+      console.error("User deletion error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Admin: List All Users (Internal Auth + Profiles)
   app.get("/api/admin/users", async (req, res) => {
     const authHeader = req.headers.authorization;

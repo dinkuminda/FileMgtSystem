@@ -1,6 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, logger } from '../lib/supabase';
-import { Shield, Key, Loader2, Search, CheckCircle, AlertCircle, UserCog, Calendar, Clock, Mail, Users, LayoutDashboard, Plus, Activity, X, MoreHorizontal, User, ChevronDown } from 'lucide-react';
+import { 
+  Shield, 
+  Key, 
+  Loader2, 
+  Search, 
+  CheckCircle, 
+  AlertCircle, 
+  SlidersHorizontal,
+  Download,
+  Plus, 
+  Activity, 
+  X, 
+  User, 
+  ChevronRight,
+  Pencil,
+  Clock,
+  Trash2,
+  Lock,
+  FileSpreadsheet,
+  Check,
+  ChevronLeft,
+  Palette,
+  AlertTriangle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminUser {
@@ -14,28 +37,111 @@ interface AdminUser {
   modules: string[];
 }
 
+type ThemeAccent = 'emerald' | 'blue' | 'amber' | 'slate';
+
+interface ThemeStyles {
+  primary: string;
+  primaryText: string;
+  borderClass: string;
+  bgLight: string;
+  badge: string;
+  accentHex: string;
+  accentIcon: string;
+  focusRing: string;
+  activeIndicator: string;
+  hoverCard: string;
+}
+
+const THEMES: Record<ThemeAccent, ThemeStyles> = {
+  emerald: {
+    primary: 'bg-[#2b825a] hover:bg-[#1f6041] active:bg-[#1a5036] text-white',
+    primaryText: 'text-[#1b8b58]',
+    borderClass: 'border-[#2b825a]/90',
+    bgLight: 'bg-[#ecf7f1]',
+    badge: 'bg-emerald-50 border border-emerald-250 text-[#1b8b58]',
+    accentHex: '#2b825a',
+    accentIcon: 'text-emerald-500',
+    focusRing: 'focus:ring-[#2b825a]/30 focus:border-[#2b825a]',
+    activeIndicator: 'bg-emerald-500',
+    hoverCard: 'bg-emerald-50/40 border-emerald-250/60 text-emerald-900',
+  },
+  blue: {
+    primary: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white',
+    primaryText: 'text-blue-600',
+    borderClass: 'border-blue-500/90',
+    bgLight: 'bg-blue-50',
+    badge: 'bg-blue-50 border border-blue-200 text-blue-750',
+    accentHex: '#2563eb',
+    accentIcon: 'text-blue-500',
+    focusRing: 'focus:ring-blue-500/30 focus:border-blue-500',
+    activeIndicator: 'bg-blue-500',
+    hoverCard: 'bg-blue-50/40 border-blue-200/60 text-blue-900',
+  },
+  amber: {
+    primary: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white',
+    primaryText: 'text-amber-700',
+    borderClass: 'border-amber-500/90',
+    bgLight: 'bg-amber-50',
+    badge: 'bg-amber-50 border border-amber-200 text-amber-800',
+    accentHex: '#d97706',
+    accentIcon: 'text-amber-500',
+    focusRing: 'focus:ring-amber-500/30 focus:border-amber-500',
+    activeIndicator: 'bg-amber-500',
+    hoverCard: 'bg-amber-50/40 border-amber-200/60 text-amber-900',
+  },
+  slate: {
+    primary: 'bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white',
+    primaryText: 'text-slate-700',
+    borderClass: 'border-slate-500/90',
+    bgLight: 'bg-slate-100',
+    badge: 'bg-slate-100 border border-slate-300 text-slate-800',
+    accentHex: '#475569',
+    accentIcon: 'text-slate-500',
+    focusRing: 'focus:ring-slate-500/30 focus:border-slate-300',
+    activeIndicator: 'bg-slate-500',
+    hoverCard: 'bg-slate-100/60 border-slate-300/80 text-slate-900',
+  }
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Custom Dynamic Color Theme picker state
+  const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
+  const theme = THEMES[themeAccent];
+
+  // Selected user for the right-side profile pane
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+  // Administrative mod operations states
   const [resettingUser, setResettingUser] = useState<AdminUser | null>(null);
   const [modifyingRoleUser, setModifyingRoleUser] = useState<AdminUser | null>(null);
   const [modifyingModulesUser, setModifyingModulesUser] = useState<AdminUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
+  
+  // Form fields
   const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserFullName, setNewUserFullName] = useState('');
+  
+  // Status feedback elements
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
-  const [roleFilter, setRoleFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  // Filters Panel
+  const [showFilters, setShowFilters] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'STAFF' | 'VIEWER' | 'AIRPORT_STAFF'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 8;
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -47,7 +153,7 @@ export default function UserManagement() {
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      if (!session) throw new Error('No active encryption session found. Please sign in again.');
 
       const response = await fetch('/api/admin/users', {
         headers: {
@@ -57,25 +163,32 @@ export default function UserManagement() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('Admin API endpoint not found (404). If you are on Vercel, the backend server might not be configured correctly.');
+          throw new Error('Administrative backend gateway endpoint could not be resolved (404).');
         }
-        throw new Error('Failed to fetch users: ' + response.statusText);
+        throw new Error('Failed to fetch administrative user database directory: ' + response.statusText);
       }
       
       const data = await response.json();
-      setUsers(data.users || []);
+      const loadedUsers = data.users || [];
+      setUsers(loadedUsers);
+      
+      // Select the first user by default if available
+      if (loadedUsers.length > 0) {
+        setSelectedUser(loadedUsers[0]);
+      }
     } catch (err: any) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching users register:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }
 
+  // Handle password reset
   async function handleResetPassword() {
     if (!resettingUser || !newPassword) return;
     if (newPassword.length < 6) {
-      setStatus({ type: 'error', message: 'Password must be at least 6 characters' });
+      setStatus({ type: 'error', message: 'The default security key must contain at least 6 alphanumeric characters.' });
       return;
     }
 
@@ -84,7 +197,7 @@ export default function UserManagement() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      if (!session) throw new Error('Administrative credentials not active.');
 
       const response = await fetch('/api/admin/reset-password', {
         method: 'POST',
@@ -101,14 +214,17 @@ export default function UserManagement() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to reset password');
+        throw new Error(result.error || 'Failed to securely override user credentials.');
       }
 
-      await logger.log('ADMIN_ACTION', 'User', `Reset password for user: ${resettingUser.email}`, resettingUser.id);
+      await logger.log('ADMIN_ACTION', 'User', `Credentials rewrite executed for account: ${resettingUser.email}`, resettingUser.id);
       
-      setStatus({ type: 'success', message: `Password for ${resettingUser.email} has been updated.` });
+      setStatus({ type: 'success', message: `Authentication password rewrite complete for: ${resettingUser.email}` });
       setNewPassword('');
-      setTimeout(() => setResettingUser(null), 2000);
+      setTimeout(() => {
+        setResettingUser(null);
+        setStatus(null);
+      }, 1800);
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message });
     } finally {
@@ -116,6 +232,7 @@ export default function UserManagement() {
     }
   }
 
+  // Handle user role escalations
   async function handleUpdateRole() {
     if (!modifyingRoleUser || !selectedRole) return;
 
@@ -124,7 +241,7 @@ export default function UserManagement() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      if (!session) throw new Error('No admin context active.');
 
       const response = await fetch('/api/admin/update-role', {
         method: 'POST',
@@ -141,17 +258,22 @@ export default function UserManagement() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update role');
+        throw new Error(result.error || 'Failed to update administrative clearance tier.');
       }
 
-      await logger.log('ADMIN_ACTION', 'User', `Updated role for ${modifyingRoleUser.email} to ${selectedRole}`, modifyingRoleUser.id);
+      await logger.log('ADMIN_ACTION', 'User', `Escalated security clearance level for ${modifyingRoleUser.email} to ${selectedRole}`, modifyingRoleUser.id);
       
-      setStatus({ type: 'success', message: `Role for ${modifyingRoleUser.email} updated to ${selectedRole}.` });
+      setStatus({ type: 'success', message: `Authentication clearance elevated to: ${selectedRole.toUpperCase()}` });
       
-      // Update local state
       setUsers(prev => prev.map(u => u.id === modifyingRoleUser.id ? { ...u, role: selectedRole } : u));
+      if (selectedUser?.id === modifyingRoleUser.id) {
+        setSelectedUser(prev => prev ? { ...prev, role: selectedRole } : null);
+      }
       
-      setTimeout(() => setModifyingRoleUser(null), 2000);
+      setTimeout(() => {
+        setModifyingRoleUser(null);
+        setStatus(null);
+      }, 1500);
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message });
     } finally {
@@ -159,9 +281,10 @@ export default function UserManagement() {
     }
   }
 
+  // Handle user provisioning
   async function handleCreateUser() {
     if (!newUserEmail || !newPassword || !selectedRole) {
-      setStatus({ type: 'error', message: 'All fields are required' });
+      setStatus({ type: 'error', message: 'All entry coordinates are essential.' });
       return;
     }
 
@@ -170,7 +293,7 @@ export default function UserManagement() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      if (!session) throw new Error('Authorization layer error');
 
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
@@ -188,14 +311,13 @@ export default function UserManagement() {
 
       const result = await response.json();
 
-      if (!response.ok) throw new Error(result.error || 'Failed to create user');
+      if (!response.ok) throw new Error(result.error || 'Failed to register new secure subject.');
 
-      await logger.log('ADMIN_ACTION', 'User', `Created new user: ${newUserEmail} with role ${selectedRole}`);
+      await logger.log('ADMIN_ACTION', 'User', `Created new secure registry account: ${newUserEmail} (${selectedRole})`);
       
-      setStatus({ type: 'success', message: `User ${newUserEmail} created successfully.` });
+      setStatus({ type: 'success', message: `Provisioned profile established for: ${newUserEmail}` });
       
-      // Refresh list
-      fetchUsers();
+      await fetchUsers();
       
       setTimeout(() => {
         setIsAddingUser(false);
@@ -203,7 +325,8 @@ export default function UserManagement() {
         setNewUserFullName('');
         setNewPassword('');
         setSelectedRole('');
-      }, 2000);
+        setStatus(null);
+      }, 1800);
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message });
     } finally {
@@ -211,6 +334,7 @@ export default function UserManagement() {
     }
   }
 
+  // Handle system modules credentials matrix
   async function handleUpdateModules() {
     if (!modifyingModulesUser) return;
 
@@ -219,7 +343,7 @@ export default function UserManagement() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      if (!session) throw new Error('No authorization token present.');
 
       const response = await fetch('/api/admin/update-modules', {
         method: 'POST',
@@ -236,17 +360,22 @@ export default function UserManagement() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update modules');
+        throw new Error(result.error || 'Error writing clearances schema.');
       }
 
-      await logger.log('ADMIN_ACTION', 'User', `Updated accessible modules for ${modifyingModulesUser.email}`, modifyingModulesUser.id);
+      await logger.log('ADMIN_ACTION', 'User', `Overrode accessible module clearances for ${modifyingModulesUser.email}`, modifyingModulesUser.id);
       
-      setStatus({ type: 'success', message: `Permissions for ${modifyingModulesUser.email} updated successfully.` });
+      setStatus({ type: 'success', message: `Permissions assigned successfully for: ${modifyingModulesUser.email}` });
       
-      // Update local state
       setUsers(prev => prev.map(u => u.id === modifyingModulesUser.id ? { ...u, modules: selectedModules } : u));
+      if (selectedUser?.id === modifyingModulesUser.id) {
+        setSelectedUser(prev => prev ? { ...prev, modules: selectedModules } : null);
+      }
       
-      setTimeout(() => setModifyingModulesUser(null), 2000);
+      setTimeout(() => {
+        setModifyingModulesUser(null);
+        setStatus(null);
+      }, 1800);
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message });
     } finally {
@@ -254,24 +383,145 @@ export default function UserManagement() {
     }
   }
 
+  // Real delete functionality
+  async function handleDeleteUser() {
+    if (!deletingUser) return;
+
+    setActionLoading(true);
+    setStatus(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Session unverified.');
+
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          userId: deletingUser.id
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Account teardown process rejected by core database.');
+      }
+
+      await logger.log('ADMIN_ACTION', 'User', `Permanent security decommission of account: ${deletingUser.email}`);
+      
+      setStatus({ type: 'success', message: `Decommission complete. Account key terminated: ${deletingUser.email}` });
+      
+      // Update local array
+      setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+      setSelectedUser(null);
+
+      setTimeout(() => {
+        setDeletingUser(null);
+        setStatus(null);
+      }, 1600);
+    } catch (err: any) {
+      setStatus({ type: 'error', message: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // Filters computed
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === 'ALL' || u.role.toUpperCase() === roleFilter;
-    // Status filter is mocked as everything is "ACTIVE" in this view
-    return matchesSearch && matchesRole;
+    const s = searchQuery.toLowerCase();
+    const matchesSearch = u.email.toLowerCase().includes(s) || (u.full_name || '').toLowerCase().includes(s);
+    
+    const matchesRole = roleFilter === 'ALL' || u.role.split('_').join('').toUpperCase() === roleFilter.split('_').join('');
+    
+    const isActive = u.last_sign_in_at !== null;
+    const matchesStatus = statusFilter === 'ALL' || 
+                         (statusFilter === 'ACTIVE' && isActive) || 
+                         (statusFilter === 'INACTIVE' && !isActive);
+
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  function formatDate(dateStr: string | null) {
-    if (!dateStr) return 'Never';
+  // Auto-preview alignment
+  useEffect(() => {
+    if (paginatedUsers.length > 0 && (!selectedUser || !paginatedUsers.some(u => u.id === selectedUser.id))) {
+      setSelectedUser(paginatedUsers[0]);
+    }
+  }, [searchQuery, roleFilter, statusFilter, currentPage, users]);
+
+  function getRelativeActiveTime(dateStr: string | null) {
+    if (!dateStr) return 'Offline Directory';
+    const timestamp = new Date(dateStr).getTime();
+    const diffSeconds = Math.floor((Date.now() - timestamp) / 1000);
+    
+    if (diffSeconds < 0) return 'Active now';
+    if (diffSeconds < 60) return 'Just active';
+    
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+ 
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
+  }
+
+  function getGradientAvatar(email: string) {
+    const charCodeSum = email.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+    const gradients = [
+      'from-emerald-500 to-teal-500 text-emerald-50',
+      'from-blue-500 to-cyan-500 text-blue-50',
+      'from-amber-500 to-amber-700 text-amber-50',
+      'from-slate-500 to-slate-700 text-slate-100',
+      'from-indigo-500 to-indigo-700 text-indigo-50',
+      'from-rose-500 to-pink-500 text-rose-50'
+    ];
+    return gradients[charCodeSum % gradients.length];
+  }
+
+  function getInitials(name: string | null, email: string) {
+    if (name && name.trim()) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
+  }
+
+  function handleExportUsersToCSV() {
+    if (filteredUsers.length === 0) return;
+    const headers = ['Record ID', 'Email', 'Full Name', 'Role Level', 'Modules Clearance', 'ConfirmedAt'];
+    const rows = filteredUsers.map(u => [
+      u.id,
+      u.email,
+      u.full_name || 'Anonymous Officer',
+      u.role.toUpperCase(),
+      (u.modules || []).join(';'),
+      u.confirmed_at ? new Date(u.confirmed_at).toISOString() : 'Pending'
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "immigration_system_users.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const toggleSelectAll = () => {
@@ -282,7 +532,8 @@ export default function UserManagement() {
     }
   };
 
-  const toggleSelectUser = (id: string) => {
+  const toggleSelectUser = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     const newSelected = new Set(selectedUserIds);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -293,267 +544,494 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="p-8 space-y-6 animate-in fade-in duration-700 bg-[#f8fafc] min-h-screen">
-      {/* Search and Filters Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex flex-1 items-center gap-4 w-full">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input 
-              type="text"
-              placeholder="Search identities..."
-              className="w-full pl-12 pr-4 py-3 bg-[#eef2f6] border-none rounded-full text-slate-600 font-medium focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <select 
-            className="px-4 py-3 bg-[#eef2f6] border-none rounded-xl text-slate-600 font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-          >
-            <option value="ALL">ALL ROLES</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="STAFF">STAFF</option>
-            <option value="VIEWER">VIEWER</option>
-          </select>
-
-          <select 
-            className="px-4 py-3 bg-[#eef2f6] border-none rounded-xl text-slate-600 font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">ALL STATUS</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-          </select>
-        </div>
-
-        <button 
-          onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
-          className="flex items-center gap-2 px-6 py-3.5 bg-[#0d47a1] text-white rounded-full font-black text-[11px] uppercase tracking-widest shadow-lg shadow-blue-900/20 hover:bg-[#1565c0] transition-all active:scale-95"
-        >
-          <Plus className="w-5 h-5" />
-          Invite User
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2rem] shadow-sm border border-slate-100">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin opacity-20 mb-4" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Synchronizing Registry...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-100 rounded-[2rem] p-12 text-center">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-red-900 mb-2">Protocol Error</h3>
-          <p className="text-sm text-red-600 mb-6">{error}</p>
-          <button onClick={() => fetchUsers()} className="px-8 py-3 bg-red-600 text-white rounded-full text-xs font-bold uppercase tracking-widest">Retry</button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-slate-50">
-                  <th className="p-6 text-left w-12">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      checked={paginatedUsers.length > 0 && selectedUserIds.size === paginatedUsers.length}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">User Details</th>
-                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Active</th>
-                  <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <AnimatePresence mode="popLayout">
-                  {paginatedUsers.map((user) => (
-                    <motion.tr 
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      key={user.id}
-                      className="hover:bg-slate-50/50 transition-colors group"
-                    >
-                      <td className="p-6">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                          checked={selectedUserIds.has(user.id)}
-                          onChange={() => toggleSelectUser(user.id)}
-                        />
-                      </td>
-                      <td className="p-6">
-                        <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shadow-inner">
-                            <User className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-800 tracking-tight leading-tight">{user.full_name || 'System Subject'}</p>
-                            <p className="text-[11px] font-medium text-slate-400 mt-1">{user.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        {user.role === 'admin' ? (
-                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-100 shadow-sm">
-                            <Shield className="w-3 h-3" />
-                            Standard Access
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => { setModifyingRoleUser(user); setSelectedRole(user.role); }}
-                            className="flex items-center justify-between w-44 px-4 py-2 bg-[#eef2f6] rounded-full text-[10px] font-black text-slate-700 uppercase tracking-widest hover:bg-slate-200 transition-all border border-transparent focus:border-blue-500/30"
-                          >
-                            <span>{user.role}</span>
-                            <ChevronDown className="w-4 h-4 opacity-40" />
-                          </button>
-                        )}
-                      </td>
-                      <td className="p-6">
-                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#e6f4f1] text-[#2e8b79] rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          Active
-                        </span>
-                      </td>
-                      <td className="p-6">
-                        <span className="text-xs font-medium text-slate-500">
-                          {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}
-                        </span>
-                      </td>
-                      <td className="p-6 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <button 
-                            onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); }}
-                            className="px-5 py-2 text-[10px] font-black text-slate-900 uppercase tracking-[0.1em] hover:bg-slate-100 rounded-lg transition-all active:scale-95"
-                          >
-                            Edit
-                          </button>
-                          <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
-                            <MoreHorizontal className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-                {paginatedUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-24 text-center">
-                      <div className="max-w-xs mx-auto">
-                        <Search className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No matching subjects found</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Footer */}
-          <div className="p-6 flex items-center justify-between border-t border-slate-50 bg-white">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} users
-            </p>
-            
+    <div className="flex flex-col lg:flex-row gap-6 p-1 min-h-[calc(100vh-140px)] text-slate-700 font-sans transition-all duration-300">
+      
+      {/* LEFT AREA: MAIN SEARCH & STATS TABLE */}
+      <div className="flex-1 space-y-6">
+        
+        {/* Dynamic Theme Customizer Header Controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+          <div>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-lg disabled:opacity-30 transition-all"
-              >
-                Prev
-              </button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }).map((_, i) => (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">Security Credentials Registry</h1>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Active identity entries: <strong className={theme.primaryText}>{filteredUsers.length} files</strong> listed out of {users.length} registered
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Dynamic Accent Color Chooser */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/50 rounded-lg shadow-inner">
+              <Palette className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1.5">Theme:</span>
+              <div className="flex items-center gap-1.5">
+                {(['emerald', 'blue', 'amber', 'slate'] as const).map((themeName) => (
                   <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 rounded-full text-[10px] font-black transition-all ${
-                      currentPage === i + 1 
-                        ? 'bg-blue-900 text-white shadow-lg shadow-blue-900/20' 
-                        : 'text-slate-400 hover:bg-slate-50'
+                    key={themeName}
+                    onClick={() => setThemeAccent(themeName)}
+                    title={`Switch registry theme to ${themeName}`}
+                    className={`w-4 h-4 rounded-full border cursor-pointer transition-all ${
+                      themeName === 'emerald' ? 'bg-[#2b825a]' :
+                      themeName === 'blue' ? 'bg-blue-500' :
+                      themeName === 'amber' ? 'bg-amber-500' : 'bg-slate-500'
+                    } ${
+                      themeAccent === themeName 
+                        ? 'scale-125 ring-2 ring-white border-slate-800 shadow-md' 
+                        : 'opacity-40 hover:opacity-100 border-transparent hover:scale-110'
                     }`}
-                  >
-                    {i + 1}
-                  </button>
+                  />
                 ))}
               </div>
-
-              <button 
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-lg disabled:opacity-30 transition-all"
-              >
-                Next
-              </button>
             </div>
+
+            {/* Fast Clearance Filter Action buttons */}
+            <button 
+              onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
+              className={`px-3.5 py-1.5 ${theme.primary} text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-950/5 cursor-pointer select-none border-none outline-none`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Provision Account
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Customize Modules Modal */}
+        {/* Action filter controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-1">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input 
+                type="text"
+                placeholder="Find officer name, department..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-white border border-slate-200/60 rounded-lg text-slate-800 placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all font-medium"
+              />
+            </div>
+
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-3 py-1.5 border text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer select-none outline-none ${
+                showFilters 
+                ? 'bg-slate-200/60 border-slate-350 text-slate-800 shadow-inner' 
+                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filters
+            </button>
+
+            <button 
+              onClick={handleExportUsersToCSV}
+              disabled={filteredUsers.length === 0}
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none outline-none"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export
+            </button>
+          </div>
+        </div>
+
+        {/* Expandable filters box */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm"
+            >
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Group clearance role</label>
+                <div className="flex flex-wrap gap-1">
+                  {(['ALL', 'ADMIN', 'STAFF', 'VIEWER', 'AIRPORT_STA'] as const).map(role => {
+                    const mappedRoleName = role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role;
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => setRoleFilter(role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role)}
+                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
+                          roleFilter === (role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role)
+                            ? `${theme.primary} border-transparent` 
+                            : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                        }`}
+                      >
+                        {role === 'AIRPORT_STA' ? 'Airport Hub' : role}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Administrative state</label>
+                <div className="flex flex-wrap gap-1">
+                  {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(st => (
+                    <button
+                      key={st}
+                      onClick={() => setStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
+                        statusFilter === st 
+                          ? `${theme.primary} border-transparent` 
+                          : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Directory table grid canvas */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-28 bg-white border border-slate-150 rounded-xl shadow-sm">
+            <Loader2 className={`w-8 h-8 ${theme.primaryText} animate-spin opacity-70 mb-2.5`} />
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] animate-pulse">Synchronizing Authorized Security Registry...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-rose-50 border border-rose-100 rounded-xl p-8 text-center space-y-3 shadow-sm">
+            <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+            <h3 className="text-sm font-bold text-rose-800 uppercase tracking-wider">Gateway Communication Interrupted</h3>
+            <p className="text-xs text-rose-600/80 max-w-sm mx-auto">{error}</p>
+            <button 
+              onClick={fetchUsers} 
+              className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-none"
+            >
+              Refresh Endpoint
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500">
+                    <th className="p-3 w-10 text-center">
+                      <input 
+                        type="checkbox" 
+                        checked={paginatedUsers.length > 0 && selectedUserIds.size === paginatedUsers.length}
+                        onChange={toggleSelectAll}
+                        className="w-3.5 h-3.5 accent-[#2b825a] hover:accent-[#1f6041] bg-slate-100 text-[#2b825a] border-slate-300 focus:ring-0 rounded cursor-pointer"
+                      />
+                    </th>
+                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Security Clearance User</th>
+                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Hierarchy Level</th>
+                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Account status</th>
+                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Latest Session pulse</th>
+                    <th className="p-3 text-center text-[9px] font-extrabold uppercase tracking-wider text-slate-400 w-36">Command Keys</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <AnimatePresence mode="popLayout">
+                    {paginatedUsers.map((user) => {
+                      const isSelected = selectedUser?.id === user.id;
+                      const hasSession = user.last_sign_in_at !== null;
+                      
+                      return (
+                        <motion.tr 
+                          key={user.id}
+                          layout="position"
+                          onClick={() => setSelectedUser(user)}
+                          className={`hover:bg-slate-50/65 text-xs font-semibold select-none cursor-pointer transition-colors duration-100 ${
+                            isSelected ? 'bg-slate-100/60 font-bold border-l-2' : ''
+                          }`}
+                          style={{ borderLeftColor: isSelected ? theme.accentHex : undefined }}
+                        >
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedUserIds.has(user.id)}
+                              onChange={(e) => toggleSelectUser(user.id, e as any)}
+                              className="w-3.5 h-3.5 accent-[#2b825a] hover:accent-[#1f6041] rounded bg-slate-100 border-slate-300 focus:ring-0 cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${getGradientAvatar(user.email)} flex items-center justify-center text-[10px] font-bold shadow-sm`}>
+                                {getInitials(user.full_name, user.email)}
+                              </div>
+                              <div>
+                                <p className="text-slate-900 font-bold leading-none">{user.full_name || 'System Administrator'}</p>
+                                <p className="text-[10px] text-slate-400 mt-1 font-medium">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded text-slate-650">
+                              {user.role === 'admin' ? 'Super Admin' : 
+                               user.role === 'staff' ? 'Admin / Staff' : 
+                               user.role === 'airport_staff' ? 'Airport Staff' : user.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {hasSession ? (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-150 text-[#1b8b58] rounded-full text-[9px] font-bold tracking-wide uppercase">
+                                <span className={`w-1.5 h-1.5 rounded-full ${theme.activeIndicator} animate-pulse`} />
+                                Connected
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 border border-slate-150 text-slate-500 rounded-full text-[9px] font-medium tracking-wide uppercase">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                Dormant
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-500 text-[11px] font-medium">
+                            {getRelativeActiveTime(user.last_sign_in_at)}
+                          </td>
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Edit permissions / modules keys button */}
+                              <button 
+                                onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); setStatus(null); }}
+                                title="Edit Division Clearance Scopes"
+                                className={`p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-md transition-all border-none outline-none cursor-pointer hover:scale-105`}
+                              >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                              </button>
+                              
+                              {/* Override key / passcode action */}
+                              <button 
+                                onClick={() => { setResettingUser(user); setStatus(null); }}
+                                title="Reset User Password"
+                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-md transition-all border border-amber-200/40 outline-none cursor-pointer hover:scale-105"
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                              </button>
+                              
+                              {/* Permanent Terminate user profile */}
+                              <button 
+                                onClick={() => { setDeletingUser(user); setStatus(null); }}
+                                title="Decommission Account From Security Directory"
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/40 text-rose-500 rounded-md transition-all outline-none cursor-pointer hover:scale-105"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-16 text-center">
+                        <div className="max-w-xs mx-auto space-y-2">
+                          <Search className="w-8 h-8 text-slate-300 mx-auto" />
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No matching system registries verified</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination widgets */}
+            <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Index {filteredUsers.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-{Math.min(currentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} records verified
+              </p>
+              
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 flex items-center gap-1 select-none text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white hover:bg-slate-50 border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed outline-none cursor-pointer transition-colors"
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                  Prev
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-6 h-6 rounded-md text-[10px] font-bold transition-all outline-none border-none cursor-pointer ${
+                        currentPage === i + 1 
+                          ? `${theme.primary} shadow-sm` 
+                          : 'text-slate-500 hover:bg-slate-100 bg-transparent'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1 flex items-center gap-1 select-none text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white hover:bg-slate-50 border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed outline-none cursor-pointer transition-colors"
+                >
+                  Next
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* RIGHT AREA: MINI USER PROFILE COMPACT DETAILS PANE */}
+      <div className="w-full lg:w-80 shrink-0">
+        <div className="sticky top-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
+          <div className="border-b border-slate-100 pb-2.5">
+            <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Officer Profile Inspector</h2>
+          </div>
+
+          {selectedUser ? (
+            <div className="space-y-5 text-center lg:text-left">
+              <div className="relative flex flex-col items-center py-2 border-b border-slate-100/70 pb-4">
+                <div className="relative">
+                  <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${getGradientAvatar(selectedUser.email)} flex items-center justify-center text-xl font-bold shadow-md border-2 border-white`}>
+                    {getInitials(selectedUser.full_name, selectedUser.email)}
+                  </div>
+                  <div className={`absolute bottom-0 right-0 w-5 h-5 ${theme.activeIndicator} rounded-full border-2 border-white flex items-center justify-center`}>
+                    <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
+                  </div>
+                </div>
+
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight mt-3 text-center leading-normal mb-0.5">{selectedUser.full_name || 'Immigration Agent'}</h3>
+                <p className="text-[11px] font-semibold text-slate-400 text-center select-all">{selectedUser.email}</p>
+              </div>
+
+              {/* Attributes metrics */}
+              <div className="space-y-4 text-left">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Clearance Tier Level</span>
+                    <button 
+                      onClick={() => { setModifyingRoleUser(selectedUser); setSelectedRole(selectedUser.role); }}
+                      className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] text-slate-600 font-bold rounded cursor-pointer transition-colors"
+                    >
+                      override
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 mt-1 uppercase tracking-wide">
+                    {selectedUser.role === 'admin' ? 'Super Admin' : 
+                     selectedUser.role === 'staff' ? 'Immigration Staff' : 
+                     selectedUser.role === 'airport_staff' ? 'Airport Hub Staff' : 
+                     selectedUser.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Clearance status</span>
+                  <p className="text-[11px] font-bold text-[#1b8b58] mt-1 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${theme.activeIndicator} animate-pulse`} />
+                    Verified Clearance
+                  </p>
+                </div>
+
+                {/* Division Scopes Checklist visualization */}
+                <div className="border-t border-slate-100 pt-3 space-y-2.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Accessible Division Portals</span>
+                  
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {[
+                      { id: 'OVERVIEW', label: 'Command Deck' },
+                      { id: 'USERS', label: 'Credential Registry' },
+                      { id: 'REPORTS', label: 'Intel Analytics' },
+                      { id: 'VISA', label: 'VISA Division' },
+                      { id: 'EOID', label: 'EOID Division' },
+                      { id: 'Residence ID', label: 'Residence Bureau' },
+                      { id: 'ETD', label: 'Emergency Travels' },
+                      { id: 'CABINETS', label: 'Physical Cabinets' },
+                      { id: 'AIRPORT', label: 'Airport Gateway' },
+                      { id: 'Yellow Card', label: 'Yellow Card division' },
+                      { id: 'AUDIT', label: 'Immutable Logs' }
+                    ].map((m) => {
+                      const isCleared = selectedUser.role === 'admin' || (selectedUser.modules || []).includes(m.id);
+                      return (
+                        <div key={m.id} className="flex items-center justify-between text-[11px] font-bold py-0.5 border-b border-slate-50">
+                          <span className={isCleared ? 'text-slate-700' : 'text-slate-350'}>{m.label}</span>
+                          <span className={isCleared ? theme.primaryText : 'text-slate-300'}>
+                            {isCleared ? '✓ Cleared' : '✗ Blocked'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => { setModifyingModulesUser(selectedUser); setSelectedModules(selectedUser.modules || []); }}
+                  className={`w-full mt-2 py-2 border text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-250 text-xs font-bold uppercase tracking-wider rounded-lg transition-all outline-none cursor-pointer text-center select-none`}
+                >
+                  Edit Division Access
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="py-14 text-center space-y-2.5">
+              <User className="w-10 h-10 text-slate-300 mx-auto animate-pulse" />
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                Highlight an officer profile file to verify
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* MODAL 1: SYSTEM MODULE ACCESS MODIFIER POPUP */}
       <AnimatePresence>
         {modifyingModulesUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="m3-card-elevated p-8 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white border border-slate-200 p-6 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
-                    <LayoutDashboard className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 bg-slate-100 text-slate-700 rounded-lg`}>
+                    <SlidersHorizontal className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Subject Matrix Access</h3>
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Feature availability override</p>
+                    <h3 className="text-base font-bold text-slate-900">Custom Division Access Matrix</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configure precise portal reach profiles</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setModifyingModulesUser(null)}
-                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
                 >
-                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
+                  <X className="w-4.5 h-4.5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="p-4 bg-[var(--m3-secondary-container)] text-[var(--m3-on-secondary-container)] rounded-2xl mb-8 border border-[var(--m3-outline-variant)]/30">
-                <p className="text-xs font-bold flex items-center gap-2">
-                  <Activity className="w-4 h-4 opacity-40" />
-                  Target: <span className="font-black underline">{modifyingModulesUser.email}</span>
-                </p>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold mb-4 text-slate-650 flex items-center justify-between">
+                <span>Subject Account: <strong className="font-mono text-slate-850">{modifyingModulesUser.email}</strong></span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Security Override</span>
               </div>
 
-              <div className="overflow-y-auto pr-2 space-y-4 flex-1 scrollbar-hide">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="overflow-y-auto pr-1 space-y-3.5 flex-1 scrollbar-thin">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
-                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Main terminal statistics' },
-                    { id: 'USERS', label: 'Auth Matrix', desc: 'Administrative user controls' },
-                    { id: 'REPORTS', label: 'Intelligence', desc: 'Visual data maps & analytics' },
-                    { id: 'VISA', label: 'VISA Records', desc: 'Standard entry database' },
-                    { id: 'EOID', label: 'EOID Feed', desc: 'Exit/Entry event logistics' },
-                    { id: 'Residence ID', label: 'Residency', desc: 'Permanent subject data' },
-                    { id: 'ETD', label: 'Emergency', desc: 'Travel document exceptions' },
-                    { id: 'AIRPORT', label: 'Yellow Card Division', desc: 'Yellow Card / Diaspora file registry' },
-                    { id: 'AUDIT', label: 'Black Box', desc: 'Immutable system audit logs' }
+                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, & dashboards' },
+                    { id: 'USERS', label: 'Credential matrix', desc: 'Secure database profiles and security keys control' },
+                    { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and document reporting' },
+                    { id: 'VISA', label: 'VISA Division Desk', desc: 'Official permanent / temporary visa document registries' },
+                    { id: 'EOID', label: 'EOID Portals Desk', desc: 'Special security clearance borders controls' },
+                    { id: 'Residence ID', label: 'Residence verification', desc: 'National ID, status, and residence registries' },
+                    { id: 'ETD', label: 'Emergency travels', desc: 'Local Emergency Document check system' },
+                    { id: 'CABINETS', label: 'Physical Cabinets', desc: 'Geographical physical paper filing system metadata' },
+                    { id: 'AIRPORT', label: 'Bole Airport controls', desc: 'Check gate operations, arrivals and flight records' },
+                    { id: 'Yellow Card', label: 'Yellow Card division', desc: 'Yellow Fever immunization registry profiles' },
+                    { id: 'AUDIT', label: 'Immutable security log', desc: 'Black-box tracking audit log monitor' }
                   ].map((module) => {
                     const isSelected = selectedModules.includes(module.id);
                     return (
                       <button
                         key={module.id}
+                        type="button"
                         onClick={() => {
                           if (isSelected) {
                             setSelectedModules(prev => prev.filter(m => m !== module.id));
@@ -561,23 +1039,23 @@ export default function UserManagement() {
                             setSelectedModules(prev => [...prev, module.id]);
                           }
                         }}
-                        className={`text-left p-5 rounded-2xl border-2 transition-all group relative overflow-hidden ${
+                        className={`text-left p-3 rounded-xl border transition-all flex flex-col justify-between cursor-pointer outline-none ${
                           isSelected 
-                            ? 'border-[var(--m3-primary)] bg-[var(--m3-primary-container)]/20' 
-                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-primary)]/40 hover:bg-[var(--m3-surface-container)]'
+                            ? `border-emerald-500 bg-emerald-50/45` 
+                            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`font-bold text-xs uppercase tracking-tight ${isSelected ? 'text-[var(--m3-primary)]' : 'text-[var(--m3-on-surface)]'}`}>
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className={`font-bold text-xs uppercase ${isSelected ? 'text-emerald-850' : 'text-slate-700'}`}>
                             {module.label}
                           </span>
-                          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
-                            isSelected ? 'bg-[var(--m3-primary)] border-[var(--m3-primary)] shadow-sm scale-110' : 'border-[var(--m3-outline)]/40'
+                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-emerald-600 border-emerald-500 shadow-sm' : 'border-slate-300 bg-white'
                           }`}>
-                            {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[var(--m3-on-primary)]" />}
+                            {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />}
                           </div>
                         </div>
-                        <p className="text-[10px] text-[var(--m3-on-surface-variant)] opacity-60 leading-snug">{module.desc}</p>
+                        <p className="text-[10px] text-slate-450 leading-relaxed font-medium">{module.desc}</p>
                       </button>
                     );
                   })}
@@ -586,41 +1064,41 @@ export default function UserManagement() {
                 <AnimatePresence>
                   {status && (
                     <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
                         status.type === 'success' 
-                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
-                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-800 border-rose-200'
                       }`}
                     >
-                      {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p className="uppercase tracking-wide">{status.message}</p>
+                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                      <p className="uppercase tracking-wider">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
+              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
                 <button 
                   onClick={() => setModifyingModulesUser(null)}
                   disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-[var(--m3-surface-container-highest)] transition-all"
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
                 >
-                  Return
+                  Discard
                 </button>
                 <button 
                   onClick={handleUpdateModules}
                   disabled={actionLoading}
-                  className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
+                  className={`flex-[2] py-2 ${theme.primary} font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                   ) : (
                     <>
-                      <LayoutDashboard className="w-5 h-5" />
-                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Apply Matrix Update</span>
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      Commit Clearance
                     </>
                   )}
                 </button>
@@ -630,94 +1108,95 @@ export default function UserManagement() {
         )}
       </AnimatePresence>
 
-      {/* Create User Modal */}
+      {/* MODAL 2: SYSTEM USER PROVISION FORM POPUP */}
       <AnimatePresence>
         {isAddingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 30 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 30 }}
-              className="m3-card-elevated p-10 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white border border-slate-200 p-6 max-w-xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[var(--m3-secondary-container)] rounded-2xl text-[var(--m3-on-secondary-container)]">
-                    <Users className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
+                    <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Init Subject Provisioning</h3>
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Authorized registry creation</p>
+                    <h3 className="text-base font-bold text-slate-900">Provision Entry Profile</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Initialize designated security keys</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setIsAddingUser(false)}
-                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
                 >
-                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
+                  <X className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="overflow-y-auto pr-2 space-y-8 flex-1 scrollbar-hide">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Authentication ID (Email)</label>
+              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Secure Email ID</label>
                     <input 
                       type="email"
-                      className="m3-input w-full"
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="subject@boleregistry.gov"
+                      placeholder="agent@immigration.gov"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Full Identity Name</label>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Officer Full Name</label>
                     <input 
                       type="text"
-                      className="m3-input w-full"
                       value={newUserFullName}
                       onChange={(e) => setNewUserFullName(e.target.value)}
-                      placeholder="Official Subject Name"
+                      placeholder="e.g. Almaz Bekele"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Root Access Key</label>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Root Clearance Entry Key</label>
                   <input 
                     type="password"
-                    className="m3-input w-full font-mono"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min 6 alphanumeric characters"
+                    placeholder="Alphanumeric, minimum 6 parameters"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500 font-mono"
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">Clearance Tier</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Clearance Designation level</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: 'admin', label: 'Command/Admin', desc: 'Unrestricted matrix control' },
-                      { id: 'staff', label: 'Field Staff', desc: 'Standard registry access' },
-                      { id: 'airport_staff', label: 'Hub Personnel', desc: 'Localized bole operations' },
-                      { id: 'viewer', label: 'Observer', desc: 'Passive record monitoring' }
+                      { id: 'admin', label: 'Super Admin Designation', desc: 'Sovereign administrative directory access' },
+                      { id: 'staff', label: 'Immigration Staff Agent', desc: 'Standard files processing credentials' },
+                      { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport hub checkpoint processing level' },
+                      { id: 'viewer', label: 'Passive Auditor', desc: 'Secure observation only file views' }
                     ].map((role) => (
                       <button
                         key={role.id}
+                        type="button"
                         onClick={() => setSelectedRole(role.id)}
-                        className={`text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-1 ${
+                        className={`text-left p-3.5 rounded-xl border transition-all flex flex-col gap-0.5 cursor-pointer outline-none ${
                           selectedRole === role.id 
-                            ? 'border-[var(--m3-secondary)] bg-[var(--m3-secondary-container)]/20' 
-                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-secondary)]'
+                            ? 'border-emerald-500 bg-emerald-50/45' 
+                            : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className={`font-bold text-sm ${selectedRole === role.id ? 'text-[var(--m3-secondary)]' : 'text-[var(--m3-on-surface)]'}`}>
+                        <div className="flex items-center justify-between w-full">
+                          <span className={`font-bold text-xs uppercase ${selectedRole === role.id ? 'text-emerald-850' : 'text-slate-700'}`}>
                             {role.label}
                           </span>
-                          {selectedRole === role.id && <CheckCircle className="w-4 h-4 text-[var(--m3-secondary)]" />}
+                          {selectedRole === role.id && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
                         </div>
-                        <div className="text-[9px] text-[var(--m3-on-surface-variant)] opacity-50 uppercase tracking-tighter">{role.desc}</div>
+                        <p className="text-[9px] text-slate-450 leading-normal font-medium">{role.desc}</p>
                       </button>
                     ))}
                   </div>
@@ -726,155 +1205,41 @@ export default function UserManagement() {
                 <AnimatePresence>
                   {status && (
                     <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
                         status.type === 'success' 
-                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
-                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
+                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-850 border-rose-200'
                       }`}
                     >
-                      {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p className="uppercase tracking-wide">{status.message}</p>
+                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                      <p className="uppercase tracking-wider">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
+              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
                 <button 
                   onClick={() => setIsAddingUser(false)}
                   disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-[var(--m3-surface-container-highest)] transition-all"
-                >
-                   Abort
-                </button>
-                <button 
-                  onClick={handleCreateUser}
-                  disabled={actionLoading || !newUserEmail || !newPassword}
-                  className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20 disabled:opacity-30"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Plus className="w-5 h-5" />
-                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Provision Entry</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Role Management Modal */}
-      <AnimatePresence>
-        {modifyingRoleUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, x: 20 }}
-              animate={{ scale: 1, opacity: 1, x: 0 }}
-              exit={{ scale: 0.95, opacity: 0, x: 20 }}
-              className="m3-card-elevated p-8 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[var(--m3-tertiary-container)] rounded-2xl text-[var(--m3-on-tertiary-container)]">
-                    <Shield className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Clearance Escalation</h3>
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Subject role modification</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setModifyingRoleUser(null)}
-                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
-                >
-                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
-                </button>
-              </div>
-
-              <div className="p-4 bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] rounded-2xl mb-8 border border-[var(--m3-tertiary)]/20">
-                <p className="text-xs font-bold">
-                  Escalating status for: <span className="font-black underline">{modifyingRoleUser.email}</span>
-                </p>
-              </div>
-
-              <div className="overflow-y-auto pr-2 flex-1 scrollbar-hide">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { id: 'admin', label: 'Command/Admin', desc: 'Full matrix oversight' },
-                      { id: 'staff', label: 'Immigration Staff', desc: 'Standard records processing' },
-                      { id: 'airport_staff', label: 'Hub Personnel', desc: 'Bole localized access' },
-                      { id: 'viewer', label: 'Standard Observer', desc: 'Global read-only clearance' },
-                      { id: 'airport_viewer', label: 'Hub Observer', desc: 'Bole restricted monitoring' }
-                    ].map((role) => (
-                      <button
-                        key={role.id}
-                        onClick={() => setSelectedRole(role.id)}
-                        className={`text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-1 ${
-                          selectedRole === role.id 
-                            ? 'border-[var(--m3-tertiary)] bg-[var(--m3-tertiary-container)]/20' 
-                            : 'border-[var(--m3-outline-variant)]/30 hover:border-[var(--m3-tertiary)]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className={`font-bold text-sm ${selectedRole === role.id ? 'text-[var(--m3-tertiary)]' : 'text-[var(--m3-on-surface)]'}`}>
-                            {role.label}
-                          </span>
-                          <div className={`w-4 h-4 rounded-full border-2 transition-all ${
-                            selectedRole === role.id ? 'bg-[var(--m3-tertiary)] border-[var(--m3-tertiary)]' : 'border-[var(--m3-outline)]/40'
-                          }`} />
-                        </div>
-                        <p className="text-[10px] text-[var(--m3-on-surface-variant)] opacity-50 leading-relaxed font-medium">{role.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-
-                  <AnimatePresence>
-                    {status && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
-                          status.type === 'success' 
-                            ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
-                            : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
-                        }`}
-                      >
-                        {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                        <p className="uppercase tracking-wide">{status.message}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-8 border-t border-[var(--m3-outline-variant)]/30 mt-8">
-                <button 
-                  onClick={() => setModifyingRoleUser(null)}
-                  disabled={actionLoading}
-                  className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]"
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={handleUpdateRole}
-                  disabled={actionLoading || !selectedRole}
-                  className="m3-button-filled flex-[2] bg-[var(--m3-tertiary)] text-[var(--m3-on-tertiary)] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-tertiary)]/20"
+                  onClick={handleCreateUser}
+                  disabled={actionLoading || !newUserEmail || !newPassword}
+                  className={`flex-[2] py-2 ${theme.primary} disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                   ) : (
                     <>
-                      <Shield className="w-5 h-5" />
-                      <span className="uppercase tracking-[0.2em] text-[10px] font-black">Commit Tier Shift</span>
+                      <Plus className="w-3.5 h-3.5 text-white" />
+                      Provision Account
                     </>
                   )}
                 </button>
@@ -884,101 +1249,292 @@ export default function UserManagement() {
         )}
       </AnimatePresence>
 
-      {/* Reset Password Modal */}
+      {/* MODAL 3: DESIGNATED ACCESS ROLE ELEVATOR POPUP */}
       <AnimatePresence>
-        {resettingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--m3-surface-scrim)]/40 backdrop-blur-[2px]">
+        {modifyingRoleUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 10 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 10 }}
-              className="m3-card-elevated p-8 max-w-md w-full shadow-2xl space-y-8"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white border border-slate-200 p-6 max-w-xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[var(--m3-primary-container)] rounded-2xl text-[var(--m3-on-primary-container)]">
-                    <Key className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
+                    <Shield className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-[var(--m3-on-surface)]">Auth Override</h3>
-                    <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] opacity-50">Critical password shift</p>
+                    <h3 className="text-base font-bold text-slate-900">Clearance Tier Designation</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configure officer authorization profile</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setModifyingRoleUser(null)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold mb-4 text-slate-650">
+                Updating role level for: <strong className="font-mono text-slate-850">{modifyingRoleUser.email}</strong>
+              </div>
+
+              <div className="space-y-4 flex-1 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'admin', label: 'Super Admin Level', desc: 'Complete access to records, security matrix, & audit trails' },
+                    { id: 'staff', label: 'Immigration Staff', desc: 'Standard files processing credentials and database access' },
+                    { id: 'airport_staff', label: 'Airport Hub staff', desc: 'Bole international gateway checkpoints access' },
+                    { id: 'viewer', label: 'Observatory Agent', desc: 'Passive record inspections directory reading only' }
+                  ].map((role) => (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => setSelectedRole(role.id)}
+                      className={`text-left p-3.5 rounded-xl border transition-all flex flex-col gap-0.5 cursor-pointer outline-none ${
+                        selectedRole === role.id 
+                          ? 'border-emerald-500 bg-emerald-50/45' 
+                          : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`font-bold text-xs uppercase ${selectedRole === role.id ? 'text-emerald-850' : 'text-slate-700'}`}>
+                          {role.label}
+                        </span>
+                        {selectedRole === role.id && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
+                      </div>
+                      <p className="text-[10px] text-slate-450 leading-normal font-medium">{role.desc}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <AnimatePresence>
+                  {status && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
+                        status.type === 'success' 
+                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-850 border-rose-200'
+                      }`}
+                    >
+                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                      <p className="uppercase tracking-wider">{status.message}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
+                <button 
+                  onClick={() => setModifyingRoleUser(null)}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
+                >
+                  Discard
+                </button>
+                <button 
+                  onClick={handleUpdateRole}
+                  disabled={actionLoading}
+                  className={`flex-[2] py-2 ${theme.primary} font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  ) : (
+                    <>
+                      <Shield className="w-3.5 h-3.5" />
+                      Commit Clearance Level
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 4: SUBJECT PASSWORD OVERWRITE ACTION POPUP */}
+      <AnimatePresence>
+        {resettingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white border border-slate-200 p-6 max-w-md w-full flex flex-col shadow-2xl rounded-2xl space-y-5 text-slate-800"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Credential Key Overwrite</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Override designated authorization password</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setResettingUser(null)}
-                  className="p-3 hover:bg-[var(--m3-surface-container-high)] rounded-full transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
                 >
-                  <X className="w-6 h-6 text-[var(--m3-on-surface-variant)]" />
+                  <X className="w-4.5 h-4.5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="p-4 bg-[var(--m3-primary-container)]/10 text-[var(--m3-on-surface)] rounded-2xl border border-[var(--m3-primary)]/10">
-                <p className="text-xs font-bold truncate">
-                  Resetting for: <span className="font-black underline">{resettingUser.email}</span>
-                </p>
+              <div className="p-3 bg-amber-50 border border-amber-200/50 rounded-xl text-xs font-semibold text-amber-800">
+                Rewriting encryption key coordinates for: <strong className="font-mono text-amber-950">{resettingUser.email}</strong>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.1em] px-1 opacity-60">
-                    New Security Key
-                  </label>
+              <div className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">New Security Key Parameter</label>
                   <input 
                     type="password"
                     autoFocus
-                    placeholder="Minimal 6 characters required"
-                    className="m3-input w-full font-mono text-center tracking-widest"
+                    placeholder="Min 6 alphanumeric parameters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500/30 transition-all focus:border-amber-500 text-center tracking-widest font-mono"
                   />
                 </div>
 
                 <AnimatePresence>
                   {status && (
                     <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-3 p-5 rounded-2xl text-xs font-bold border ${
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
                         status.type === 'success' 
-                          ? 'bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)] border-[var(--m3-tertiary)]/20' 
-                          : 'bg-[var(--m3-error-container)] text-[var(--m3-on-error-container)] border-[var(--m3-error)]/20'
+                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
+                          : 'bg-rose-50 text-rose-850 border-rose-200'
                       }`}
                     >
-                      {status.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                      <p className="uppercase tracking-wide">{status.message}</p>
+                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                      <p className="uppercase tracking-wider">{status.message}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
 
-                <div className="flex gap-4 pt-4">
-                  <button 
-                    onClick={() => setResettingUser(null)}
-                    disabled={actionLoading}
-                    className="flex-1 px-6 py-4 bg-[var(--m3-surface-container-high)] text-[var(--m3-on-surface-variant)] rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleResetPassword}
-                    disabled={actionLoading || !newPassword}
-                    className="m3-button-filled flex-[2] flex items-center justify-center gap-3 px-8 py-4 shadow-xl shadow-[var(--m3-primary)]/20"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        <Key className="w-5 h-5" />
-                        <span className="uppercase tracking-[0.2em] text-[10px] font-black">Commit Shift</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+              <div className="flex gap-2.5 pt-2">
+                <button 
+                  onClick={() => setResettingUser(null)}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
+                >
+                  Abort
+                </button>
+                <button 
+                  onClick={handleResetPassword}
+                  disabled={actionLoading || !newPassword}
+                  className="flex-[2] py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-md outline-none border-none flex items-center justify-center gap-1.5"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  ) : (
+                    <>
+                      <Key className="w-3.5 h-3.5 text-white" />
+                      Commit Credentials
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* MODAL 5: REAL ADMINISTRATIVE PERMANENT USER DELETE POPUP */}
+      <AnimatePresence>
+        {deletingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white border border-slate-200 p-6 max-w-md w-full flex flex-col shadow-2xl rounded-2xl space-y-5 text-slate-800"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5 text-rose-600">
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                    <AlertTriangle className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-rose-800">Decommission Auth Identity</h3>
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Irreversible security clearance revoke</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setDeletingUser(null)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs space-y-2">
+                <p className="text-rose-800 font-bold leading-relaxed">
+                  CRITICAL PROTOCOL WARNING:
+                </p>
+                <p className="text-rose-700 leading-relaxed font-semibold">
+                  You are about to permanently decommission and delete the security credentials for user: <strong className="font-mono text-slate-900 select-all underline">{deletingUser.email}</strong>.
+                </p>
+                <p className="text-rose-600/95 leading-normal text-[11px] font-medium">
+                  This action is fully irreversible and will instantly purge their profile records from Supabase authentication servers and terminate active web tokens.
+                </p>
+              </div>
+
+              <AnimatePresence>
+                {status && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
+                      status.type === 'success' 
+                        ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
+                        : 'bg-rose-50 text-rose-850 border-rose-200'
+                    }`}
+                  >
+                    {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                    <p className="uppercase tracking-wider">{status.message}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex gap-2.5 pt-2">
+                <button 
+                  onClick={() => setDeletingUser(null)}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteUser}
+                  disabled={actionLoading}
+                  className="flex-[2] py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-md outline-none border-none flex items-center justify-center gap-1.5"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5 text-white" />
+                      Terminate Gateway Access
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
