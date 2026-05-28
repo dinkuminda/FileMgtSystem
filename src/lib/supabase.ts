@@ -17,7 +17,7 @@ export const supabase = createClient(
   finalAnonKey || 'placeholder'
 );
 
-export type UserRole = 'admin' | 'staff' | 'viewer' | 'airport_staff' | 'airport_viewer';
+export type UserRole = 'super_admin' | 'admin' | 'staff' | 'viewer' | 'airport_staff' | 'airport_viewer' | 'view_only' | 'add_records';
 
 export interface UserProfile {
   id: string;

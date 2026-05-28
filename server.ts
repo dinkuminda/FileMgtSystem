@@ -79,7 +79,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profileError || profile?.role !== 'admin') {
+      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -120,7 +120,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -146,7 +146,7 @@ async function startServer() {
     const token = authHeader.split(" ")[1];
     const { userId, newRole } = req.body;
 
-    const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer'];
+    const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'super_admin', 'add_records', 'view_only'];
     if (!userId || !newRole || !validRoles.includes(newRole)) {
       return res.status(400).json({ error: "Missing required fields or invalid role" });
     }
@@ -167,12 +167,14 @@ async function startServer() {
 
       // Default modules for the new role
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      if (newRole === 'admin') {
+      if (newRole === 'admin' || newRole === 'super_admin') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
       } else if (newRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (newRole === 'airport_viewer') {
+      } else if (newRole === 'airport_viewer' || newRole === 'view_only') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
+      } else if (newRole === 'add_records') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       const { error } = await supabaseAdmin
@@ -211,7 +213,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -228,12 +230,14 @@ async function startServer() {
 
       // Default modules for the role
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'];
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'super_admin') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
       } else if (role === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (role === 'airport_viewer') {
+      } else if (role === 'airport_viewer' || role === 'view_only') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
+      } else if (role === 'add_records') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       // Profile is auto-created by trigger, but we want to ensure role and modules are correct
@@ -272,7 +276,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -318,7 +322,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         return res.status(403).json({ error: "Forbidden" });
       }
 

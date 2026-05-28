@@ -62,7 +62,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     return "VISA";
   };
 
-  const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
+  const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
 
   const getBoxDesc = (boxName: string) => {
     if (BOX_MODULE_DESC[boxName]) return BOX_MODULE_DESC[boxName];
@@ -155,7 +155,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       const results = await Promise.all(
         Object.entries(TABLE_MAP).map(async ([type, table]) => {
           let hasAccess = true;
-          if (userProfile && userProfile.role !== 'admin') {
+          if (userProfile && userProfile.role !== 'admin' && userProfile.role !== 'super_admin') {
             if (userProfile.modules) {
               if (type === 'Yellow Card') {
                 hasAccess = userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
@@ -224,7 +224,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
       const isAllowedBox = (boxName: string, moduleType?: string) => {
         if (!userProfile) return true;
-        if (userProfile.role === 'admin') return true;
+        if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
         const mType = moduleType || (
           boxName === 'Visa-000001' ? 'VISA' :
           boxName === 'Residence-000003' ? 'Residence ID' :

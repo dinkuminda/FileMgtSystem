@@ -168,7 +168,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (!userProfile) return false;
     
     // Admins should always see everything
-    if (userProfile.role === 'admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
 
     // Secure via dynamic modular permissions check
     const dynamicModules = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'CABINETS', 'AIRPORT'];
@@ -209,7 +209,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
   ].filter(at => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       // If they have users/audit module, show them in airport too
       if (at.module === 'USERS') return userProfile.modules.includes('USERS');
@@ -272,7 +272,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
   const hasAccess = (tabType: typeof allTabs[number]['type']) => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
     return tabs.some(t => t.type === tabType);
   };
 

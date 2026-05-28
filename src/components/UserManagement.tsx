@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, logger } from '../lib/supabase';
+import { supabase, logger, UserRole } from '../lib/supabase';
+import { 
+  getPermissionRules, 
+  savePermissionRules, 
+  DEFAULT_PERMISSION_RULES, 
+  type ModulePermissionRule 
+} from '../lib/permissions';
 import { 
   Shield, 
   Key, 
@@ -112,6 +118,32 @@ export default function UserManagement() {
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
   const theme = THEMES[themeAccent];
 
+  // Active sub-tab under credential registry
+  const [activeRegistryTab, setActiveRegistryTab] = useState<'OFFICERS' | 'MATRIX'>('OFFICERS');
+  const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
+  const [savingRules, setSavingRules] = useState(false);
+  const [matrixStatus, setMatrixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    getPermissionRules().then(rules => {
+      setPermissionRules(rules);
+    });
+  }, []);
+
+  const handleSaveMatrixRules = async () => {
+    setSavingRules(true);
+    setMatrixStatus(null);
+    try {
+      await savePermissionRules(permissionRules);
+      setMatrixStatus({ type: 'success', message: 'Clearance authorization matrix persisted and deployed successfully!' });
+      setTimeout(() => setMatrixStatus(null), 4000);
+    } catch (e: any) {
+      setMatrixStatus({ type: 'error', message: `Matrix deployment error: ${e.message}` });
+    } finally {
+      setSavingRules(false);
+    }
+  };
+
   // Selected user for the right-side profile pane
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
@@ -132,11 +164,12 @@ export default function UserManagement() {
   // Status feedback elements
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [inlineLoadingUserId, setInlineLoadingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Filters Panel
   const [showFilters, setShowFilters] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'STAFF' | 'VIEWER' | 'AIRPORT_STAFF'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   
   // Pagination State
@@ -278,6 +311,54 @@ export default function UserManagement() {
       setStatus({ type: 'error', message: err.message });
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  // Handle inline user role alterations directly from index table
+  async function handleInlineUpdateRole(user: AdminUser, newRole: UserRole) {
+    if (user.role === newRole) return;
+
+    setInlineLoadingUserId(user.id);
+    setStatus(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No admin context active.');
+
+      const response = await fetch('/api/admin/update-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          newRole: newRole
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update administrative clearance tier.');
+      }
+
+      await logger.log('ADMIN_ACTION', 'User', `Escalated security clearance level inline for ${user.email} to ${newRole}`, user.id);
+
+      setStatus({ type: 'success', message: `Clearance successfully changed for ${user.email} to ${newRole.toUpperCase()}` });
+
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+      if (selectedUser?.id === user.id) {
+        setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
+      }
+
+      setTimeout(() => {
+        setStatus(null);
+      }, 3000);
+    } catch (err: any) {
+      setStatus({ type: 'error', message: err.message });
+    } finally {
+      setInlineLoadingUserId(null);
     }
   }
 
@@ -435,7 +516,12 @@ export default function UserManagement() {
     const s = searchQuery.toLowerCase();
     const matchesSearch = u.email.toLowerCase().includes(s) || (u.full_name || '').toLowerCase().includes(s);
     
-    const matchesRole = roleFilter === 'ALL' || u.role.split('_').join('').toUpperCase() === roleFilter.split('_').join('');
+    const matchesRole = roleFilter === 'ALL' || 
+                        (roleFilter === 'SUPER_ADMIN' && (u.role === 'admin' || u.role === 'super_admin')) ||
+                        (roleFilter === 'ADMIN' && (u.role === 'staff' || u.role === 'admin')) ||
+                        (roleFilter === 'VIEW_ONLY' && (u.role === 'view_only' || u.role === 'viewer')) ||
+                        (roleFilter === 'ADD_RECORDS' && u.role === 'add_records') ||
+                        u.role.split('_').join('').toUpperCase() === roleFilter.split('_').join('').toUpperCase();
     
     const isActive = u.last_sign_in_at !== null;
     const matchesStatus = statusFilter === 'ALL' || 
@@ -597,7 +683,33 @@ export default function UserManagement() {
           </div>
         </div>
 
-        {/* Action filter controls */}
+        {/* Dynamic Credentials Registry Sub-Tabs Switcher */}
+        <div className="flex border-b border-slate-200/80 mb-1">
+          <button
+            onClick={() => setActiveRegistryTab('OFFICERS')}
+            className={`px-5 py-2.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all outline-none cursor-pointer ${
+              activeRegistryTab === 'OFFICERS'
+                ? 'border-emerald-600 text-emerald-700 font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Credential Registry Directory
+          </button>
+          <button
+            onClick={() => setActiveRegistryTab('MATRIX')}
+            className={`px-5 py-2.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all outline-none cursor-pointer ${
+              activeRegistryTab === 'MATRIX'
+                ? 'border-emerald-600 text-emerald-700 font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Clearance Matrix Settings
+          </button>
+        </div>
+
+        {activeRegistryTab === 'OFFICERS' ? (
+          <>
+            {/* Action filter controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-1">
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
@@ -646,22 +758,26 @@ export default function UserManagement() {
               <div>
                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Group clearance role</label>
                 <div className="flex flex-wrap gap-1">
-                  {(['ALL', 'ADMIN', 'STAFF', 'VIEWER', 'AIRPORT_STA'] as const).map(role => {
-                    const mappedRoleName = role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role;
-                    return (
-                      <button
-                        key={role}
-                        onClick={() => setRoleFilter(role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role)}
-                        className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
-                          roleFilter === (role === 'AIRPORT_STA' ? 'AIRPORT_STAFF' : role)
-                            ? `${theme.primary} border-transparent` 
-                            : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                        }`}
-                      >
-                        {role === 'AIRPORT_STA' ? 'Airport Hub' : role}
-                      </button>
-                    );
-                  })}
+                  {[
+                    { id: 'ALL', label: 'All Roles' },
+                    { id: 'SUPER_ADMIN', label: 'Super Admin' },
+                    { id: 'ADMIN', label: 'Admin' },
+                    { id: 'ADD_RECORDS', label: 'Add Records' },
+                    { id: 'VIEW_ONLY', label: 'View Only' },
+                    { id: 'AIRPORT_STAFF', label: 'Airport Hub' }
+                  ].map(role => (
+                    <button
+                      key={role.id}
+                      onClick={() => setRoleFilter(role.id)}
+                      className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
+                        roleFilter === role.id
+                          ? `${theme.primary} border-transparent` 
+                          : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                      }`}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -721,6 +837,7 @@ export default function UserManagement() {
                     </th>
                     <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Security Clearance User</th>
                     <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Hierarchy Level</th>
+                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400 w-44">Change Role</th>
                     <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Account status</th>
                     <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Latest Session pulse</th>
                     <th className="p-3 text-center text-[9px] font-extrabold uppercase tracking-wider text-slate-400 w-36">Command Keys</th>
@@ -763,12 +880,36 @@ export default function UserManagement() {
                           </td>
                           <td className="p-3 text-slate-700">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded text-slate-650">
-                              {user.role === 'admin' ? 'Super Admin' : 
-                               user.role === 'staff' ? 'Admin / Staff' : 
-                               user.role === 'airport_staff' ? 'Airport Staff' : 
-                               user.role === 'airport_viewer' ? 'Airport Viewer' :
-                               user.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
+                              {user.role === 'admin' || user.role === 'super_admin' ? 'Super Admin' : 
+                               user.role === 'staff' ? 'Admin' : 
+                               user.role === 'add_records' ? 'Add Records' : 
+                               user.role === 'view_only' || user.role === 'viewer' || user.role === 'airport_viewer' ? 'View Only' :
+                               user.role === 'airport_staff' ? 'Airport Hub' : 'Member Officer'}
                             </span>
+                          </td>
+                          <td className="p-3 align-middle" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative inline-block w-full max-w-[155px]">
+                              <select
+                                value={user.role || ''}
+                                disabled={inlineLoadingUserId === user.id}
+                                onChange={(e) => handleInlineUpdateRole(user, e.target.value as UserRole)}
+                                className="w-full text-[10px] font-bold py-1 pl-2 pr-6 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-md text-slate-750 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 hover:bg-slate-100/60 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed font-sans uppercase tracking-wider outline-none appearance-none"
+                              >
+                                <option value="super_admin">Super Admin</option>
+                                <option value="admin">Admin</option>
+                                <option value="add_records">Add Records</option>
+                                <option value="view_only">View Only</option>
+                                <option value="airport_staff">Airport Hub</option>
+                                <option value="airport_viewer">Airport Viewer</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400">
+                                {inlineLoadingUserId === user.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3 rotate-90" />
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="p-3">
                             {hasSession ? (
@@ -822,7 +963,7 @@ export default function UserManagement() {
                   </AnimatePresence>
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-16 text-center">
+                      <td colSpan={7} className="py-16 text-center">
                         <div className="max-w-xs mx-auto space-y-2">
                           <Search className="w-8 h-8 text-slate-300 mx-auto" />
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No matching system registries verified</p>
@@ -878,6 +1019,181 @@ export default function UserManagement() {
             </div>
           </div>
         )}
+          </>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-600" />
+                  Clearance Levels Authorization Matrix
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Establish and configure authorized roles across dynamic system modules. Updates govern read/write operations.
+                </p>
+              </div>
+              <button
+                onClick={handleSaveMatrixRules}
+                disabled={savingRules}
+                type="button"
+                className={`px-4 py-2 ${theme.primary} text-[11px] font-bold rounded-lg flex items-center gap-2 shadow-sm transition-all outline-none border-none cursor-pointer disabled:opacity-55`}
+              >
+                {savingRules ? (
+                  <>
+                    <Loader2 className="w-3 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3 h-3" />
+                    Save Matrix Keys
+                  </>
+                )}
+              </button>
+            </div>
+
+            {matrixStatus && (
+              <div className={`p-3 text-[11px] font-bold rounded-lg flex items-center gap-2 border transition-all ${
+                matrixStatus.type === 'success' 
+                  ? 'bg-emerald-50 border-emerald-150 text-emerald-800' 
+                  : 'bg-rose-50 border-rose-150 text-rose-800'
+              }`}>
+                {matrixStatus.type === 'success' ? (
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                )}
+                {matrixStatus.message}
+              </div>
+            )}
+
+            <div className="overflow-x-auto border border-slate-150 rounded-xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-150 text-[9px] font-extrabold uppercase tracking-widest text-slate-500 font-mono">
+                    <th className="p-3 w-40">System Module</th>
+                    <th className="p-3">View Clearance (GET)</th>
+                    <th className="p-3">Create Clearance (POST)</th>
+                    <th className="p-3">Update/Delete Clearance (PATCH/DELETE)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {permissionRules.map((rule, idx) => {
+                    const roles = [
+                      { id: 'super_admin', label: 'Super Admin', defaultAlways: true },
+                      { id: 'admin', label: 'Admin' },
+                      { id: 'add_records', label: 'Add Records' },
+                      { id: 'view_only', label: 'View Only' },
+                      { id: 'airport_staff', label: 'Airport Hub' }
+                    ];
+
+                    const toggleRole = (type: 'view' | 'create' | 'update', roleId: string) => {
+                      const updatedRules = permissionRules.map((r, rIdx) => {
+                        if (rIdx === idx) {
+                          const fields = {
+                            view: 'view_roles',
+                            create: 'create_roles',
+                            update: 'update_roles'
+                          } as const;
+                          const field = fields[type];
+                          const alreadyHas = r[field].includes(roleId);
+                          return {
+                            ...r,
+                            [field]: alreadyHas 
+                              ? r[field].filter(val => val !== roleId)
+                              : [...r[field], roleId]
+                          };
+                        }
+                        return r;
+                      });
+                      setPermissionRules(updatedRules);
+                    };
+
+                    return (
+                      <tr key={rule.module} className="hover:bg-slate-50/20 transition-colors text-xs font-semibold">
+                        <td className="p-3 align-top">
+                          <span className="font-bold text-slate-950 border-l-2 border-emerald-500 pl-2">
+                            {rule.module}
+                          </span>
+                          <div className="text-[9px] text-slate-400 mt-0.5 font-medium font-mono">Bole general clearance</div>
+                        </td>
+
+                        {/* VIEW CELL */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            {roles.map(r => {
+                              const isChecked = r.defaultAlways || rule.view_roles.includes(r.id);
+                              return (
+                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={r.defaultAlways}
+                                    onChange={() => toggleRole('view', r.id)}
+                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
+                                  />
+                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold" : "text-[10px]"}>
+                                    {r.label}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </td>
+
+                        {/* CREATE CELL */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            {roles.map(r => {
+                              const isChecked = r.defaultAlways || rule.create_roles.includes(r.id);
+                              return (
+                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={r.defaultAlways}
+                                    onChange={() => toggleRole('create', r.id)}
+                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
+                                  />
+                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold" : "text-[10px]"}>
+                                    {r.label}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </td>
+
+                        {/* UPDATE CELL */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1 font-mono">
+                            {roles.map(r => {
+                              const isChecked = r.defaultAlways || rule.update_roles.includes(r.id);
+                              return (
+                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950 font-sans">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    disabled={r.defaultAlways}
+                                    onChange={() => toggleRole('update', r.id)}
+                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
+                                  />
+                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold animate-pulse" : "text-[10px]"}>
+                                    {r.label}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* RIGHT AREA: MINI USER PROFILE COMPACT DETAILS PANE */}
@@ -916,11 +1232,11 @@ export default function UserManagement() {
                     </button>
                   </div>
                   <p className="text-xs font-bold text-slate-800 mt-1 uppercase tracking-wide">
-                    {selectedUser.role === 'admin' ? 'Super Admin' : 
-                     selectedUser.role === 'staff' ? 'Immigration Staff' : 
-                     selectedUser.role === 'airport_staff' ? 'Airport Hub Staff' : 
-                     selectedUser.role === 'airport_viewer' ? 'Airport Viewer' : 
-                     selectedUser.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
+                    {selectedUser.role === 'admin' || selectedUser.role === 'super_admin' ? 'Super Admin' : 
+                     selectedUser.role === 'staff' ? 'Admin' : 
+                     selectedUser.role === 'add_records' ? 'Add Records' : 
+                     selectedUser.role === 'view_only' || selectedUser.role === 'viewer' || selectedUser.role === 'airport_viewer' ? 'View Only' :
+                     selectedUser.role === 'airport_staff' ? 'Airport Hub Staff' : 'Member Officer'}
                   </p>
                 </div>
 
@@ -1178,11 +1494,12 @@ export default function UserManagement() {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Clearance Designation level</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: 'admin', label: 'Super Admin Designation', desc: 'Sovereign administrative directory access' },
-                      { id: 'staff', label: 'Immigration Staff Agent', desc: 'Standard files processing credentials' },
-                      { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport hub checkpoint processing level' },
-                      { id: 'airport_viewer', label: 'Airport Gateway Viewer', desc: 'View airport gateway documents only (read-only)' },
-                      { id: 'viewer', label: 'Passive Auditor', desc: 'Secure observation only file views' }
+                      { id: 'super_admin', label: 'Super Admin', desc: 'Sovereign administrative directory bypass access' },
+                      { id: 'admin', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
+                      { id: 'add_records', label: 'Add Records Specialist', desc: 'Register new items, insert records, and attach files' },
+                      { id: 'view_only', label: 'View Only Auditor', desc: 'Lookup-only view permission, passive directory observations' },
+                      { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport checkpoint hub processing level' },
+                      { id: 'airport_viewer', label: 'Airport Gateway Viewer', desc: 'Gateway document observation (read-only)' },
                     ].map((role) => (
                       <button
                         key={role.id}
@@ -1288,11 +1605,12 @@ export default function UserManagement() {
               <div className="space-y-4 flex-1 overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
-                    { id: 'admin', label: 'Super Admin Level', desc: 'Complete access to records, security matrix, & audit trails' },
-                    { id: 'staff', label: 'Immigration Staff', desc: 'Standard files processing credentials and database access' },
-                    { id: 'airport_staff', label: 'Airport Hub staff', desc: 'Bole international gateway checkpoints access' },
-                    { id: 'airport_viewer', label: 'Airport Hub Viewer', desc: 'Bole international checkpoints view-only reading credentials' },
-                    { id: 'viewer', label: 'Observatory Agent', desc: 'Passive record inspections directory reading only' }
+                    { id: 'super_admin', label: 'Super Admin', desc: 'Complete access to records, security matrix, & audit trails' },
+                    { id: 'admin', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
+                    { id: 'add_records', label: 'Add Records', desc: 'Register entries, database insertions, and document uploads' },
+                    { id: 'view_only', label: 'View Only', desc: 'Restricted lookup-only file viewing authorization' },
+                    { id: 'airport_staff', label: 'Airport Hub Staff', desc: 'Bole international gateway checkpoints access' },
+                    { id: 'airport_viewer', label: 'Airport Hub Viewer', desc: 'Bole international checkpoints view-only reading credentials' }
                   ].map((role) => (
                     <button
                       key={role.id}

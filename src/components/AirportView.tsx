@@ -41,7 +41,7 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
     { id: 'audit', label: 'Audit', icon: Activity, module: 'AUDIT' },
   ].filter(tab => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       if (tab.id === 'users') return userProfile.modules.includes('USERS');
       if (tab.id === 'audit') return userProfile.modules.includes('AUDIT');
