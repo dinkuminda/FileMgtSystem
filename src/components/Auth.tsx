@@ -103,21 +103,16 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
       )}
 
       {/* Logo Section */}
-      <div className="flex flex-col items-center mb-8 text-center w-full pt-6">
-        <div className="flex items-center gap-3 justify-center mb-5 select-none">
-          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 shadow-sm">
-            <EthiopiaFingerprint className="w-8 h-8" />
-          </div>
-          <div className="text-3xl font-black text-slate-900 tracking-tighter select-none">
+      <div className="flex flex-col items-center mb-8 text-center w-full pt-6 select-none">
+        <div className="flex items-center gap-3 sm:gap-4 justify-center">
+          <EthiopiaFingerprint className="w-11 h-11 flex-shrink-0" />
+          <div className="text-3xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
             ICS
           </div>
-        </div>
-        
-        <div className="space-y-1">
-          <p className="text-slate-900 font-extrabold text-sm tracking-tight leading-tight select-none">የኢሚግሬሽንና የዜግነት አገልግሎት</p>
-          <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.12em] opacity-90 select-none">
-            Immigration and Citizenship Services
-          </p>
+          <div className="flex flex-col justify-center text-left pl-1">
+            <h1 className="text-[#1b54ac] font-bold text-xs sm:text-base tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
+            <p className="text-[6.5px] sm:text-[8px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
+          </div>
         </div>
       </div>
 
@@ -331,13 +326,12 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
           <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 sm:gap-4 select-none">
               <EthiopiaFingerprint className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm flex-shrink-0" />
-              <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter leading-none select-none">
+              <div className="text-xl sm:text-2xl font-black text-[#1b54ac] tracking-tight leading-none select-none">
                 ICS
               </div>
-              <div className="w-px h-6 sm:h-8 bg-slate-200 mx-1 sm:mx-2" />
-              <div className="flex flex-col justify-center text-left">
-                <h1 className="text-slate-800 font-extrabold text-[10px] sm:text-xs tracking-tight leading-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</h1>
-                <p className="text-[7px] sm:text-[9px] text-[#1b54ac] font-black uppercase tracking-[0.08em] mt-0.5">Immigration and Citizenship Services</p>
+              <div className="flex flex-col justify-center text-left pl-1 sm:pl-2">
+                <h1 className="text-[#1b54ac] font-bold text-[10px] sm:text-xs tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
+                <p className="text-[6.5px] sm:text-[8px] text-[#1b54ac] uppercase tracking-[0.03em] mt-0.5 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
               </div>
             </Link>
             

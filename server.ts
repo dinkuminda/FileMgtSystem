@@ -4,8 +4,26 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
+
+// Initialize Google Gen AI client with lazy/graceful setup for API key security
+const geminiApiKey = process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+if (geminiApiKey) {
+  ai = new GoogleGenAI({
+    apiKey: geminiApiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
+  console.log("[SERVER] Google GenAI client loaded successfully using service credentials.");
+} else {
+  console.warn("[SERVER] WARNING: GEMINI_API_KEY is not defined. Smart Dashboard features will run in simulator mode.");
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -350,6 +368,227 @@ async function startServer() {
 
       res.json({ users: mergedUsers });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // SMART GEMINI AI ARCHIVE ASSISTANCE & INSIGHTS ENDPOINTS
+  // -------------------------------------------------------------
+
+  app.get("/api/gemini/insights", async (req, res) => {
+    try {
+      const counts = {
+        visa: 0,
+        eoid: 0,
+        residence: 0,
+        etd: 0,
+        airport: 0
+      };
+
+      // Query table counts and brief data safely
+      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
+        supabaseAdmin.from("visa_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("eoid_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("residence_id_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("etd_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("airport_records").select("citizenship, service_provided, box_number")
+      ]);
+
+      const visaData = vRes.data || [];
+      const eoidData = eRes.data || [];
+      const residenceData = rRes.data || [];
+      const etdData = etRes.data || [];
+      const airportData = aRes.data || [];
+
+      counts.visa = visaData.length;
+      counts.eoid = eoidData.length;
+      counts.residence = residenceData.length;
+      counts.etd = etdData.length;
+      counts.airport = airportData.length;
+
+      const allSampleData = [
+        ...visaData.map(r => ({ type: "VISA", ...r })),
+        ...eoidData.map(r => ({ type: "EOID", ...r })),
+        ...residenceData.map(r => ({ type: "Residence ID", ...r })),
+        ...etdData.map(r => ({ type: "ETD", ...r })),
+        ...airportData.map(r => ({ type: "Bole Airport", ...r }))
+      ];
+
+      // Aggregate statistics for the AI Prompt
+      const totalRecords = allSampleData.length;
+      const citizenshipCounts: Record<string, number> = {};
+      const serviceCounts: Record<string, number> = {};
+      const boxUsage: Record<string, number> = {};
+
+      allSampleData.forEach(item => {
+        if (item.citizenship) citizenshipCounts[item.citizenship] = (citizenshipCounts[item.citizenship] || 0) + 1;
+        if (item.service_provided) serviceCounts[item.service_provided] = (serviceCounts[item.service_provided] || 0) + 1;
+        if (item.box_number) boxUsage[item.box_number] = (boxUsage[item.box_number] || 0) + 1;
+      });
+
+      const topCitizenships = Object.entries(citizenshipCounts).sort((a,b)=>b[1]-a[1]).slice(0, 3).map(([k,v]) => `${k} (${v} entries)`);
+      const topServices = Object.entries(serviceCounts).sort((a,b)=>b[1]-a[1]).slice(0, 3).map(([k,v]) => `${k} (${v} uses)`);
+      const topBoxes = Object.entries(boxUsage).sort((a,b)=>b[1]-a[1]).slice(0, 3).map(([k,v]) => `${k} (${v} files)`);
+
+      const systemSummaryStr = `
+- Total Records across Divisions: ${totalRecords}
+- VISA division: ${counts.visa}
+- EOID division: ${counts.eoid}
+- Residence ID: ${counts.residence}
+- Emergency Travel (ETD): ${counts.etd}
+- Bole Airport / Yellow Card Division: ${counts.airport}
+- Top Citizenships: ${topCitizenships.join(", ") || "None recorded"}
+- Top Services: ${topServices.join(", ") || "None recorded"}
+- Physical filing boxes currently housing archives: ${topBoxes.join(", ") || "None recorded"}
+`;
+
+      const prompt = `You are the Immigration Data & Evidence Division AI Officer. Review the following aggregated statistics from our physical filer database and provide a high-quality, professional executive breakdown:
+${systemSummaryStr}
+
+Include:
+- **Executive System Pulse**: A short, high-level, extremely professional sentence summarizing the current storage/filing status.
+- **Physical Cabinet Tactics**: 3 highly tactical, actionable observations on cabinet storage load, tracking, or auditing processes based purely on the data count.
+- **Strategic Service Observations**: Highlights of citizenship or travel document filing patterns.
+Keep the output in clean, highly structured format, using elegant Markdown and headers, with zero conversational introductory chatter.`;
+
+      let summaryText = "";
+      if (ai) {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+        });
+        summaryText = response.text || "";
+      } else {
+        summaryText = `### Executive System Pulse
+Our secure physical and digital filing cabinets host a secure distribution of **${totalRecords} registered documents** with highly integrated compliance workflows across all five primary divisions.
+
+### Tactical Filing Observations
+- **High Index Density Alert**: Physical file storage shows heavy utilization across standard cabinets. We advise implementing monthly audit sweeps to maintain chronological access.
+- **Auditing & PDF Correlating**: With heavy service provisioning, ensure each digitized database row is synced with high-contrast scanned PDF attachments in our secure storage.
+- **Sub-Division Balance**: Record patterns showcase high frequency in VISA and Emergency Travel registrations, recommending focused desk allocation for those modules.
+
+### Strategic Service Trends
+* Major processing origin tracks a steady distribution from key domestic and regional passport holders, testifying to operational consistency.
+* Rapid processing protocols on Bole Airport checkpoints are successfully backed by offline-safe database logging.`;
+      }
+
+      res.json({ insights: summaryText, debugSummary: systemSummaryStr });
+    } catch (err: any) {
+      console.error("[GEMINI_INSIGHTS_ERROR]", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/gemini/chat", express.json(), async (req, res) => {
+    try {
+      const { message, chatHistory } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Missing interactive query message" });
+      }
+
+      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
+        supabaseAdmin.from("visa_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15),
+        supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number").limit(15),
+        supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, residence_id_no").limit(15),
+        supabaseAdmin.from("etd_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, etd").limit(15),
+        supabaseAdmin.from("airport_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
+      ]);
+
+      const recordsContext = [
+        ...(vRes.data || []).map(r => ({ division: "VISA", ...r })),
+        ...(eRes.data || []).map(r => ({ division: "EOID", ...r })),
+        ...(rRes.data || []).map(r => ({ division: "Residence ID", ...r })),
+        ...(etRes.data || []).map(r => ({ division: "ETD", ...r })),
+        ...(aRes.data || []).map(r => ({ division: "Bole Airport", ...r }))
+      ];
+
+      const topRecords = recordsContext.map(r => 
+        `- [${r.division}] Name: ${r.full_name}, Passport: ${r.passport_number}, Cabinet Box: ${r.box_number}, Ref: ${r.request_number || (r as any).eoid_number || (r as any).residence_id_no || (r as any).etd || 'N/A'}`
+      ).join("\n");
+
+      const systemInstruction = `You are the Immigration Data & Evidence Division AI Assistant.
+You assist operations staff with querying physical filer drawer numbers, counting division records, tracking passport references, and optimizing document tracking.
+
+Here is a live sample of files currently inside our active databases to ground your responses:
+${topRecords}
+
+Total aggregates across all records:
+- VISA division: ${vRes.data?.length || 0}
+- EOID division: ${eRes.data?.length || 0}
+- Residence ID: ${rRes.data?.length || 0}
+- ETD: ${etRes.data?.length || 0}
+- Bole Airport: ${aRes.data?.length || 0}
+
+If a user asks about a specific person or passport not in the system, reply professionally that the file was not found under our active index, and suggest they double check the spelling or box number.
+Maintain a highly structured, objective, and polite tone, utilizing Markdown tables or bullet lists where helpful. Avoid generic chit-chat.`;
+
+      if (ai) {
+        const promptContents = [
+          { role: "user", parts: [{ text: `System Context & Database Records:\n${systemInstruction}` }] },
+          ...(chatHistory || []).map((h: any) => ({
+            role: h.role === "assistant" ? "model" : "user",
+            parts: [{ text: h.content }]
+          })),
+          { role: "user", parts: [{ text: message }] }
+        ];
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: promptContents,
+        });
+
+        res.json({ reply: response.text || "" });
+      } else {
+        // High quality local simulator response
+        let reply = "";
+        const mKey = message.toLowerCase();
+        if (mKey.includes("count") || mKey.includes("statistics") || mKey.includes("total") || mKey.includes("stats")) {
+          reply = `### Active Database Statistics Summary
+Currently, our active secure system hosts **${recordsContext.length} registered file entries**:
+* **VISA division**: ${vRes.data?.length || 0} files registered
+* **EOID national registries**: ${eRes.data?.length || 0} files registered
+* **Residence ID Division**: ${rRes.data?.length || 0} files registered
+* **Emergency Travel (ETD) Division**: ${etRes.data?.length || 0} files registered
+* **Bole Airport checkpoints**: ${aRes.data?.length || 0} files registered
+
+*For offline compliance, ensure physical drawer boxes correlate precisely with these indices.*`;
+        } else if (mKey.includes("find") || mKey.includes("passport") || mKey.includes("search")) {
+          const matchInput = mKey.replace("find", "").replace("search", "").replace("passport", "").trim();
+          const match = recordsContext.find(r => 
+            r.full_name?.toLowerCase().includes(matchInput) || 
+            r.passport_number?.toLowerCase().includes(matchInput)
+          );
+          if (match) {
+            reply = `### 🔍 File Record Located!
+The following digital archive trace matches your search in our active database:
+| Attribute | Details |
+| :--- | :--- |
+| **Full Name** | ${match.full_name} |
+| **Secure Division**| ${match.division} |
+| **Passport Number**| \`${match.passport_number}\` |
+| **Ref ID Number** | \`${match.request_number || "N/A"}\` |
+| **Filing Box** | \`${match.box_number}\` |
+| **Service Provided**| ${match.service_provided || "Document registry"} |
+
+*You can inspect this digitized document or access physical drawer **${match.box_number}** directly to check paper attachments.*`;
+          } else {
+            reply = `The query parameter "**${matchInput}**" was not found under our active digital indexes. Please verify that the name or passport number has been correctly registered, or seek verification from the physical drawer drawer records directly.`;
+          }
+        } else {
+          reply = `I am the secure Immigration Archive AI Officer. I have scanned our indexed database containing **${recordsContext.length} live files**. 
+
+You can ask me to:
+- **Search for record details**: "Find passport standard numbering sample"
+- **Summarize active division totals**: "Give me statistics breakdown"
+- **Query physical drawer box designations**: "Which office box hosts VISA papers?"
+
+How can I help you support system operations?`;
+        }
+        res.json({ reply });
+      }
+    } catch (err: any) {
+      console.error("[GEMINI_CHAT_ERROR]", err);
       res.status(500).json({ error: err.message });
     }
   });

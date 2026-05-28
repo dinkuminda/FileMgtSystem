@@ -84,14 +84,13 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 border-b border-slate-200/80 backdrop-blur-md bg-white/95 z-50 transition-all shadow-sm h-20 flex items-center">
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 select-none">
-            <EthiopiaFingerprint className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-sm flex-shrink-0" />
-            <div className="text-2xl sm:text-4xl font-black text-[#1b54ac] tracking-tighter leading-none select-none">
+            <EthiopiaFingerprint className="w-10 h-10 sm:w-14 sm:h-14 drop-shadow-sm flex-shrink-0" />
+            <div className="text-2xl sm:text-3xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
               ICS
             </div>
-            <div className="w-px h-8 sm:h-10 bg-slate-200 mx-1 sm:mx-2" />
-            <div className="flex flex-col justify-center">
-              <h1 className="text-slate-900 font-extrabold text-xs sm:text-base tracking-tight leading-tight">የኢሚግሬሽንና የዜግነት አገልግሎት</h1>
-              <p className="text-[8px] sm:text-[11px] text-[#1b54ac] uppercase tracking-[0.08em] mt-0.5 sm:mt-1 font-black">Immigration and Citizenship Services</p>
+            <div className="flex flex-col justify-center text-left pl-1 sm:pl-2">
+              <h1 className="text-[#1b54ac] font-bold text-xs sm:text-base tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
+              <p className="text-[6.5px] sm:text-[9.5px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
             </div>
           </div>
 
@@ -325,8 +324,16 @@ export default function Home() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-400/15 rounded-full blur-[140px] pointer-events-none" />
         
         <div className="max-w-4xl mx-auto text-center relative z-10 space-y-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/10 text-blue-200 rounded-full border border-white/15 text-xs font-bold tracking-wide uppercase">
-            <Server className="w-3.5 h-3.5" /> SECURE RECORDS SYSTEM
+          {/* Centered Premium Official Branded Logo Block */}
+          <div className="inline-flex items-center gap-3 sm:gap-4 bg-white px-5 sm:px-7 py-3 sm:py-4 rounded-3xl shadow-2xl shadow-black/25 border border-white mx-auto select-none">
+            <EthiopiaFingerprint className="w-9 h-9 sm:w-12 sm:h-12 flex-shrink-0" />
+            <div className="text-xl sm:text-2.5xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
+              ICS
+            </div>
+            <div className="flex flex-col justify-center text-left pl-1">
+              <h1 className="text-[#1b54ac] font-black text-[10px] sm:text-sm tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
+              <p className="text-[6.5px] sm:text-[8.5px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
+            </div>
           </div>
 
           <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
@@ -447,7 +454,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <EthiopiaFingerprint className="w-6 h-6 opacity-90 p-0.5 bg-white/10 rounded-md" />
             <span className="text-slate-100 font-bold">
-              © {new Date().getFullYear()} ICS (Immigration and Citizenship Services). For Internal Staff Use Only.
+              © {new Date().getFullYear()} ICS (Immigration and Citizenship Service). For Internal Staff Use Only.
             </span>
           </div>
 
