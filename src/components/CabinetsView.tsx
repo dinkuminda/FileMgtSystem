@@ -34,6 +34,13 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
   // Simulated environment status that refreshes with beautiful micro-animations
   const [refreshingClimate, setRefreshingClimate] = useState(false);
 
+  // States for adding custom physical boxes
+  const [isAddCabinetOpen, setIsAddCabinetOpen] = useState(false);
+  const [newCabName, setNewCabName] = useState('');
+  const [newCabModule, setNewCabModule] = useState<RecordType>('VISA');
+  const [newCabDesc, setNewCabDesc] = useState('');
+  const [newCabColor, setNewCabColor] = useState('from-indigo-600 to-indigo-800');
+
   // States for CRUD of module records inside of physical shelves
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formType, setFormType] = useState<RecordType>('VISA');
@@ -87,31 +94,53 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
       const results = await Promise.all(fetches);
       const allData = results.flatMap(r => r.data);
 
-      const boxMap: Record<string, any[]> = {
-        'Visa-000001': [],
-        'EOID-000002': [],
-        'Residence-000003': [],
-        'ETD-000004': [],
-        'Yellow-000005': []
+      // Load custom physical cabinets from localStorage
+      let customCabinetsList: any[] = [];
+      try {
+        const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+        if (customCabinetsStr) {
+          customCabinetsList = JSON.parse(customCabinetsStr);
+        }
+      } catch (e) {
+        console.error("Failed to parse custom cabinets from local storage:", e);
+      }
+
+      // Define default details for the cabinets (explicitly exclude EOID-000002 by default)
+      const cabinetMeta: Record<string, { desc: string; type: RecordType; color: string; temp: number; hum: number }> = {
+        'Visa-000001': { desc: 'Visa Portal Logs Archive Drawer', type: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, hum: 42 },
+        'Residence-000003': { desc: 'Residence Permit Physical Registry Drawer', type: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, hum: 45 },
+        'ETD-000004': { desc: 'Emergency Travel Document Secure Vault', type: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, hum: 35 },
+        'Yellow-000005': { desc: 'Yellow Card Division / Origin ID Physical Registry Box', type: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, hum: 41 },
       };
+
+      // Add custom ones dynamic to configuration
+      customCabinetsList.forEach(c => {
+        cabinetMeta[c.boxName] = {
+          desc: c.desc || 'Dynamic Storage Unit Cabinet',
+          type: c.module,
+          color: c.color || 'from-indigo-600 to-indigo-800',
+          temp: c.temp || 20.2,
+          hum: c.humidity || 39
+        };
+      });
+
+      const boxMap: Record<string, any[]> = {};
+      Object.keys(cabinetMeta).forEach((bName) => {
+        boxMap[bName] = [];
+      });
 
       allData.forEach(r => {
         const rType = getRecordType(r);
-        const box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
-        if (!boxMap[box]) {
-          boxMap[box] = [];
+        let box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
+        if (boxMap[box] === undefined) {
+          // If cabinet drawer doesn't exist, we map to first configured drawer of same type or default
+          const matchingCabinet = Object.keys(cabinetMeta).find(k => cabinetMeta[k].type === rType);
+          box = matchingCabinet || Object.keys(cabinetMeta)[0] || 'Visa-000001';
         }
-        boxMap[box].push(r);
+        if (boxMap[box]) {
+          boxMap[box].push(r);
+        }
       });
-
-      // Define default details for the cabinets
-      const cabinetMeta: Record<string, { desc: string; type: RecordType; color: string; temp: number; hum: number }> = {
-        'Visa-000001': { desc: 'Visa Portal Logs Archive Drawer', type: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, hum: 42 },
-        'EOID-000002': { desc: 'EOID National Biometric File Drawers', type: 'EOID', color: 'from-emerald-600 to-emerald-800', temp: 20.1, hum: 38 },
-        'Residence-000003': { desc: 'Residence Permit Physical Registry Drawer', type: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, hum: 45 },
-        'ETD-000004': { desc: 'Emergency Travel Document Secure Vault', type: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, hum: 35 },
-        'Yellow-000005': { desc: 'Yellow Card / Origin ID Physical Registry Box', type: 'Yellow Card', color: 'from-yellow-600 to-amber-700', temp: 22.1, hum: 41 },
-      };
 
       const builtCabinets: CabinetInfo[] = Object.keys(boxMap).map((boxName) => {
         const meta = cabinetMeta[boxName] || { desc: 'General Archive Locker', type: 'VISA' as RecordType, color: 'from-slate-600 to-slate-800', temp: 21.0, hum: 40 };
@@ -124,7 +153,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
           records: boxMap[boxName],
           isLocked: false, // Default unlocked, user can toggle locks
           temp: meta.temp,
-          humidity: meta.hum
+          humidity: (meta as any).humidity !== undefined ? (meta as any).humidity : (meta as any).hum
         };
       });
 
@@ -225,6 +254,64 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     }
   };
 
+  const handleAddCabinet = () => {
+    if (!newCabName.trim()) {
+      addToast('Cabinet box name is required', 'error');
+      return;
+    }
+    const cleanName = newCabName.trim();
+    if (cabinets.some(c => c.boxName.toLowerCase() === cleanName.toLowerCase())) {
+      addToast(`Cabinet box Serial ID "${cleanName}" already exists!`, 'error');
+      return;
+    }
+
+    const newCabinet = {
+      boxName: cleanName,
+      module: newCabModule,
+      desc: newCabDesc.trim() || `${newCabModule} File Storage Vault Drawer`,
+      color: newCabColor,
+      temp: +(19 + Math.random() * 4).toFixed(1),
+      humidity: Math.floor(35 + Math.random() * 15)
+    };
+
+    try {
+      const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+      const list = customCabinetsStr ? JSON.parse(customCabinetsStr) : [];
+      list.push(newCabinet);
+      localStorage.setItem('custom_physical_cabinets', JSON.stringify(list));
+      addToast(`Cabinet box "${cleanName}" successfully registered!`, 'success');
+      setIsAddCabinetOpen(false);
+      fetchRecordsAndBuildCabinets();
+    } catch (e: any) {
+      addToast('Failed to save cabinet to local profile: ' + e.message, 'error');
+    }
+  };
+
+  const handleDeleteCabinet = (boxName: string) => {
+    const cab = cabinets.find(c => c.boxName === boxName);
+    if (cab && cab.count > 0) {
+      if (!window.confirm(`Are you sure you want to delete and decommission "${boxName}"? It has ${cab.count} digitized files in it, which will be fallback-allocated to default storage boxes.`)) {
+        return;
+      }
+    }
+
+    try {
+      const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+      if (customCabinetsStr) {
+        const list = JSON.parse(customCabinetsStr);
+        const filtered = list.filter((c: any) => c.boxName !== boxName);
+        localStorage.setItem('custom_physical_cabinets', JSON.stringify(filtered));
+        addToast(`Cabinet folder room "${boxName}" successfully decommissioned.`, 'success');
+        if (selectedCabinet === boxName) {
+          setSelectedCabinet(null);
+        }
+        fetchRecordsAndBuildCabinets();
+      }
+    } catch (e: any) {
+      addToast('Deletion failed: ' + e.message, 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-slate-500">
@@ -252,7 +339,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
         {/* Abstract structural grid overlay */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
         
-        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6 z-10">
+        <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 z-10">
           <div className="space-y-2 text-left">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 tracking-widest bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> High-Security Hardware Mapped
@@ -263,22 +350,39 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
             </p>
           </div>
           
-          <button
-            onClick={handleClimateRefresh}
-            disabled={refreshingClimate}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 border border-slate-700/60 cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshingClimate ? 'animate-spin' : ''}`} /> Scan Environment Sensors
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {canEditOrDelete && (
+              <button
+                onClick={() => {
+                  setNewCabName('');
+                  setNewCabDesc('');
+                  setNewCabModule('VISA');
+                  setNewCabColor('from-indigo-600 to-indigo-800');
+                  setIsAddCabinetOpen(true);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 cursor-pointer border-none shadow-sm shadow-blue-500/10"
+              >
+                <Plus className="w-4 h-4" /> Add Physical Box
+              </button>
+            )}
+            <button
+              onClick={handleClimateRefresh}
+              disabled={refreshingClimate}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 border border-slate-700/60 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshingClimate ? 'animate-spin' : ''}`} /> Scan Environment Sensors
+            </button>
+          </div>
         </div>
       </div>
 
       {/* RACKS GRID LAYOUT */}
       <div className="space-y-4">
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest text-left">Active Physical Shelves / Security Vaults</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {cabinets.map((cab) => {
             const isSelected = selectedCabinet === cab.boxName;
+            const isCustom = !['Visa-000001', 'Residence-000003', 'ETD-000004', 'Yellow-000005'].includes(cab.boxName);
             return (
               <div 
                 key={cab.boxName} 
@@ -288,17 +392,32 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
               >
                 {/* Physical Cabinet Head Panel */}
                 <div className={`p-4 bg-gradient-to-br ${cab.color} text-white flex flex-col justify-between h-32 relative`}>
-                  {/* Mechanical metal lock icon */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLock(cab.boxName);
-                    }}
-                    className="absolute top-3 right-3 p-1.5 bg-black/20 hover:bg-black/35 rounded-lg border-none cursor-pointer transition-colors text-white"
-                    title={cab.isLocked ? "Unlock Vault" : "Lock Vault"}
-                  >
-                    {cab.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5 opacity-80" />}
-                  </button>
+                  {/* Action buttons inside Cabinet Panel */}
+                  <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
+                    {isCustom && canEditOrDelete ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCabinet(cab.boxName);
+                        }}
+                        className="p-1.5 bg-red-950/25 hover:bg-red-900/40 rounded-lg border-none cursor-pointer transition-colors text-red-100 flex items-center justify-center"
+                        title="Decommission Cabinet"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : <div />}
+
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLock(cab.boxName);
+                      }}
+                      className="p-1.5 bg-black/20 hover:bg-black/35 rounded-lg border-none cursor-pointer transition-colors text-white flex items-center justify-center"
+                      title={cab.isLocked ? "Unlock Vault" : "Lock Vault"}
+                    >
+                      {cab.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5 opacity-80" />}
+                    </button>
+                  </div>
 
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/70">Vault Location</span>
@@ -659,6 +778,120 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   Confirm Permanent Delete
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADD PHYSICAL CABINET MODAL */}
+      <AnimatePresence>
+        {isAddCabinetOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 text-left flex flex-col font-sans"
+            >
+              <header className="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                    <Archive className="w-4 h-4 text-blue-600" /> Store Cabinet Serial ID
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Register custom physical file drawer</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddCabinetOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer border-none bg-transparent"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </header>
+
+              <div className="p-5 space-y-4">
+                {/* Drawer Name / Location ID */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-505 text-slate-550 uppercase tracking-widest">Cabinet Box ID / Name</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Visa-000006, EOID-Secure-V"
+                    value={newCabName}
+                    onChange={(e) => setNewCabName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-mono"
+                  />
+                </div>
+
+                {/* Cabinet Type / Associated Module */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-505 text-slate-550 uppercase tracking-widest">Division Association</label>
+                  <select
+                    value={newCabModule}
+                    onChange={(e) => setNewCabModule(e.target.value as RecordType)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer font-sans"
+                  >
+                    <option value="VISA">VISA PORTAL LOGS</option>
+                    <option value="EOID">EOID NATIONAL REGISTRY</option>
+                    <option value="Residence ID">RESIDENCE PERMITS</option>
+                    <option value="ETD">EMERGENCY TRAVEL DOCS</option>
+                    <option value="Yellow Card">YELLOW CARD DIVISION LOGS</option>
+                  </select>
+                </div>
+
+                {/* Cabinet Description */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-505 text-slate-550 uppercase tracking-widest">Brief Drawer Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Custom backup vault for backlog files"
+                    value={newCabDesc}
+                    onChange={(e) => setNewCabDesc(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"
+                  />
+                </div>
+
+                {/* Cabinet Color Aesthetics selection */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-550 uppercase tracking-widest">Color Label Theme</label>
+                  <div className="grid grid-cols-4 gap-2 pt-0.5">
+                    {[
+                      { name: 'Classic Blue', value: 'from-blue-600 to-blue-800' },
+                      { name: 'Emerald', value: 'from-emerald-600 to-emerald-800' },
+                      { name: 'Rose', value: 'from-rose-600 to-rose-800' },
+                      { name: 'Gold/Amber', value: 'from-yellow-600 to-amber-700' },
+                      { name: 'Orange/Amber', value: 'from-amber-600 to-amber-750' },
+                      { name: 'Indigo', value: 'from-indigo-600 to-indigo-800' },
+                      { name: 'Purple', value: 'from-purple-600 to-purple-800' },
+                      { name: 'Dark Slate', value: 'from-slate-700 to-slate-900' },
+                    ].map((col) => (
+                      <button
+                        key={col.value}
+                        type="button"
+                        onClick={() => setNewCabColor(col.value)}
+                        className={`py-1 px-1 font-bold rounded-lg border text-white bg-gradient-to-br ${col.value} transition-all active:scale-95 cursor-pointer h-7 ${
+                          newCabColor === col.value ? 'ring-2 ring-black ring-offset-1 scale-102 border-transparent' : 'border-slate-200 text-transparent opacity-80 hover:opacity-100'
+                        }`}
+                        title={col.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <footer className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-right">
+                <button
+                  onClick={() => setIsAddCabinetOpen(false)}
+                  className="px-4 py-2 bg-slate-200/80 hover:bg-slate-200 text-slate-705 rounded-xl text-[11px] font-black uppercase tracking-wider border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddCabinet}
+                  className="px-4 py-2 bg-blue-650 hover:bg-blue-600 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-wider border-none cursor-pointer shadow-sm shadow-blue-500/10"
+                >
+                  Save Drawer
+                </button>
+              </footer>
             </motion.div>
           </div>
         )}

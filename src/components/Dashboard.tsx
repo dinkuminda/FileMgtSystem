@@ -7,7 +7,7 @@ import {
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Activity, BarChart3, Plane, Paperclip,
   ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight,
-  Bell
+  Bell, Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ import ReportingSystem from './ReportingSystem';
 import AirportView from './AirportView';
 import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
+import CabinetsView from './CabinetsView';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import Papa from 'papaparse';
 
@@ -31,13 +32,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS'; icon: any; label: string }[] = [
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'AIRPORT'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
+    { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
     { type: 'VISA', icon: FileText, label: 'VISA Division' },
     { type: 'EOID', icon: Fingerprint, label: 'EOID Division' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD Division' },
-    { type: 'Yellow Card', icon: Shield, label: 'Yellow Card' },
+    { type: 'Yellow Card', icon: Shield, label: 'Yellow Card Division' },
+    { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Directory' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
@@ -70,7 +73,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
     // Role-based fallbacks for users without explicit modules
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
-      return tab.type === 'Yellow Card' || tab.type === 'OVERVIEW';
+      return tab.type === 'Yellow Card' || tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
     }
 
     // Staff can see records and reports, but not system level management
@@ -130,13 +133,13 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   }, [userProfile, activeTab, tabs, navigate]);
 
   useEffect(() => {
-    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
+    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS' && activeTab !== 'CABINETS') {
       fetchRecords();
     }
   }, [activeTab]);
 
   const fetchRecords = async () => {
-    if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS') return;
+    if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS') return;
     setLoading(true);
     const tableName = TABLE_MAP[activeTab as RecordType];
     const { data, error } = await supabase
@@ -244,7 +247,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   const canEdit = () => {
     if (!userProfile) return false;
     if (userProfile.role === 'admin' || userProfile.role === 'staff') return true;
-    if (userProfile.role === 'airport_staff' && activeTab === 'Yellow Card') return true;
+    if (userProfile.role === 'airport_staff' && (activeTab === 'Yellow Card' || activeTab === 'AIRPORT')) return true;
     return false;
   };
 
@@ -255,7 +258,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   );
 
   const SidebarContent = () => {
-    const isAirportContext = activeTab === 'Yellow Card';
+    const isAirportContext = false;
 
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
@@ -289,6 +292,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 exit={{ opacity: 0 }}
                 className="space-y-1.5"
               >
+                <Link
+                  to="/"
+                  className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black text-blue-600 hover:bg-blue-50/60 pb-3 border-b border-slate-100 mb-2 transition-all cursor-pointer ${
+                    isSidebarCollapsed ? 'justify-center' : 'justify-start'
+                  }`}
+                >
+                  <ArrowLeft className="w-4.5 h-4.5 text-blue-500 flex-shrink-0" />
+                  {!isSidebarCollapsed && <span>Back to Main Menu</span>}
+                </Link>
                 {airportTabs.map((at) => {
                   const isActive = airportSubPath === at.id;
                   const Icon = at.icon;
@@ -409,7 +421,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       </AnimatePresence>
 
       {/* FAB */}
-      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'].includes(activeTab) && (
+      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
           className="fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 bg-[#2b825a] hover:bg-[#206243] text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none"
@@ -510,8 +522,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               exit={{ opacity: 0, x: -20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              <div className="mb-8 md:mb-10">
-                {['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'].includes(activeTab) ? (
+               <div className="mb-8 md:mb-10">
+                {['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) ? (
                   <div className="space-y-6">
                     {/* FSD Division style heading row */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-[#2b825a] pl-5 py-1">
@@ -521,13 +533,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                            activeTab === 'EOID' ? 'EOID Structuring Division' : 
                            activeTab === 'Residence ID' ? 'Residence ID Division' : 
                            activeTab === 'ETD' ? 'ETD Structuring Division' : 
-                           activeTab === 'Yellow Card' ? 'Yellow Card Division' : activeTab}
+                           activeTab === 'Yellow Card' ? 'Yellow Card Division' : 
+                           activeTab === 'AIRPORT' ? 'Bole Airport Structuring Division' : activeTab}
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'Source: - FSD Division Data structuring' : 
                            activeTab === 'EOID' ? 'Source: - National ID verification feeds' : 
                            activeTab === 'Residence ID' ? 'Source: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'Source: - Non-resident exception travels' : 
+                           activeTab === 'AIRPORT' ? 'Source: - BOLE AIRPORT BORDER SECURITY CONTROL' :
                            'Source: - Diaspora Registration Hub'}
                         </p>
                       </div>
@@ -574,23 +588,41 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-left">
-                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                      {activeTab === 'OVERVIEW' ? 'Overview' : activeTab}
-                    </h1>
-                    <p className="text-slate-500 text-sm md:text-base font-medium">
-                      {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
-                       `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
-                    </p>
-                  </div>
+                  activeTab !== 'CABINETS' ? (
+                    <div className="text-left">
+                      <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
+                        {activeTab === 'OVERVIEW' ? 'Overview' : 
+                         activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
+                      </h1>
+                      <p className="text-slate-500 text-sm md:text-base font-medium">
+                        {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
+                         activeTab === 'AIRPORT' ? 'Localized Bole operations, passenger tracking, and border registry controls.' : 
+                         `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
+                      </p>
+                    </div>
+                  ) : null
                 )}
               </div>
 
               <Routes>
                 <Route path="/" element={<DashboardReports userProfile={userProfile} />} />
+                <Route path="/cabinets" element={<CabinetsView userProfile={userProfile} />} />
                 <Route path="/audit" element={<AuditLogView />} />
                 <Route path="/reports" element={<ReportingSystem />} />
                 <Route path="/users" element={<UserManagement />} />
+                <Route path="/airport/:subTab" element={<Navigate to="/airport" replace />} />
+                <Route path="/airport" element={
+                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                    <RecordTable 
+                      loading={loading}
+                      records={filteredRecords}
+                      activeTab={activeTab as RecordType}
+                      canEdit={canEdit()}
+                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
+                } />
                 <Route path="/yellow-card" element={
                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <RecordTable 
@@ -666,12 +698,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             onClose={() => setIsFormOpen(false)} 
             type={(editingRecord && (editingRecord as any)._table) 
               ? REVERSE_TABLE_MAP[(editingRecord as any)._table] 
-              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab as RecordType)}
+              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS' ? 'VISA' : activeTab as RecordType)}
             record={editingRecord}
             onSuccess={(record) => {
               setIsFormOpen(false);
               setRefreshCounter(prev => prev + 1);
-              if (activeTab === 'Yellow Card' && record.passport_number) {
+              if ((activeTab === 'Yellow Card' || activeTab === 'AIRPORT') && record.passport_number) {
                 setSearchQuery(record.request_number || record.passport_number);
               }
               addToast(`Record for ${record.full_name} was successfully saved!`, 'success');

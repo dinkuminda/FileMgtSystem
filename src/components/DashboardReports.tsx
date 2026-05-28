@@ -64,6 +64,19 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
   const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
 
+  const getBoxDesc = (boxName: string) => {
+    if (BOX_MODULE_DESC[boxName]) return BOX_MODULE_DESC[boxName];
+    try {
+      const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+      if (customCabinetsStr) {
+        const list = JSON.parse(customCabinetsStr);
+        const match = list.find((c: any) => c.boxName === boxName);
+        if (match) return `${match.module} Drawer (${match.desc})`;
+      }
+    } catch (e) {}
+    return 'Custom Registered Cabinet';
+  };
+
   useEffect(() => {
     fetchStats();
   }, []);
@@ -178,21 +191,38 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         .slice(-10);
 
       // Box Grouping for File Management View
+      let customCabinetsList: any[] = [];
+      try {
+        const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+        if (customCabinetsStr) {
+          customCabinetsList = JSON.parse(customCabinetsStr);
+        }
+      } catch (e) {
+        console.error("Failed to parse custom cabinets in DashboardReports:", e);
+      }
+
       const boxMap: Record<string, any[]> = {
         'Visa-000001': [],
-        'EOID-000002': [],
         'Residence-000003': [],
         'ETD-000004': [],
         'Yellow-000005': []
       };
+
+      customCabinetsList.forEach(c => {
+        boxMap[c.boxName] = [];
+      });
       
       allData.forEach(r => {
         const rType = getRecordType(r);
-        const box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
-        if (!boxMap[box]) {
-          boxMap[box] = [];
+        let box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
+        if (boxMap[box] === undefined) {
+          // Find standard box or fallback
+          const standardBox = MODULE_BOX_MAP[rType] || 'Visa-000001';
+          box = boxMap[standardBox] !== undefined ? standardBox : Object.keys(boxMap)[0] || 'Visa-000001';
         }
-        boxMap[box].push(r);
+        if (boxMap[box]) {
+          boxMap[box].push(r);
+        }
       });
 
       const boxData = Object.entries(boxMap).map(([boxName, items]) => ({
@@ -249,70 +279,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Card 1: Total Digitized Files */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#ffbf96] to-[#fe7096] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
-          {/* Concentric circles background decor */}
-          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          
-          <div className="flex items-center justify-between z-10">
-            <p className="text-sm md:text-base font-bold text-white/90">Total Digitized Files</p>
-            <Users className="w-6 h-6 text-white/50 animate-pulse" />
-          </div>
-          <div className="z-10 mt-2">
-            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              {stats?.totalRecords ? Number(stats.totalRecords).toLocaleString() : '1,240'}
-            </p>
-          </div>
-          <div className="z-10 mt-auto">
-            <p className="text-xs font-semibold text-white/85">Increased by 60%</p>
-          </div>
-        </div>
-
-        {/* Card 2: Physical Box Shelves */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#90caf9] to-[#047edf] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
-          {/* Concentric circles background decor */}
-          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          
-          <div className="flex items-center justify-between z-10">
-            <p className="text-sm md:text-base font-bold text-white/90">Secure Storage Units</p>
-            <Archive className="w-6 h-6 text-white/50" />
-          </div>
-          <div className="z-10 mt-2">
-            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              {stats?.boxData?.length || 5}
-            </p>
-          </div>
-          <div className="z-10 mt-auto">
-            <p className="text-xs font-semibold text-white/85">Decreased by 10%</p>
-          </div>
-        </div>
-
-        {/* Card 3: Active Transit Origins */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#84d9d2] to-[#07cdae] text-white p-6 md:p-8 rounded-2xl shadow-lg border border-transparent h-44 md:h-48 flex flex-col justify-between group hover:shadow-xl transition-all duration-300">
-          {/* Concentric circles background decor */}
-          <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -right-16 -bottom-16 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          
-          <div className="flex items-center justify-between z-10">
-            <p className="text-sm md:text-base font-bold text-white/90">Global Origins Mapped</p>
-            <Globe className="w-6 h-6 text-white/50" />
-          </div>
-          <div className="z-10 mt-2">
-            <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              {stats?.citizenshipData?.length || 0}
-            </p>
-          </div>
-          <div className="z-10 mt-auto">
-            <p className="text-xs font-semibold text-white/85">Increased by 5%</p>
-          </div>
-        </div>
-
-      </div>
+      {/* Physical Archive Box Explorer starts here directly */}
 
       {/* Advanced Section: Physical Archive Box Explorer */}
       <section className="bg-white border border-slate-200 p-6 md:p-10 rounded-3xl shadow-sm space-y-8">
@@ -376,7 +343,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
                     <p className={`text-[10px] font-black uppercase tracking-widest ${
                       isSelected ? 'text-blue-200' : 'text-slate-400'
                     }`}>
-                      {BOX_MODULE_DESC[box.boxName] || 'PHYSICAL CABINET'}
+                      {getBoxDesc(box.boxName)}
                     </p>
                     <p className="text-lg font-black tracking-tight leading-none mt-1">
                       {box.boxName}
@@ -405,7 +372,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
                       <Archive className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-900 text-lg">Digitized Records inside {selectedBox} - {BOX_MODULE_DESC[selectedBox]}</h4>
+                      <h4 className="font-extrabold text-slate-900 text-lg">Digitized Records inside {selectedBox} - {getBoxDesc(selectedBox)}</h4>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Physical location code verified</p>
                     </div>
                   </div>
@@ -570,88 +537,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         </AnimatePresence>
       </section>
 
-      {/* Main Stats Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Resource Pulse (Reg Trend) */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 p-6 md:p-10 rounded-3xl shadow-sm">
-          <div className="mb-6 md:mb-10">
-            <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Immigration File Distribution</h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Active records across database tables</p>
-          </div>
-          <div className="h-[300px] md:h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.totals}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 9, fill: '#64748b', fontWeight: 800, textTransform: 'uppercase' }} 
-                />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ 
-                    borderRadius: '16px', 
-                    border: '1px solid #e2e8f0', 
-                    backgroundColor: '#ffffff',
-                    color: '#0f172a',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)'
-                  }}
-                  itemStyle={{ color: '#0f172a', fontSize: '11px', fontWeight: 'bold' }}
-                />
-                <Bar 
-                  dataKey="value" 
-                  fill="#1b54ac" 
-                  radius={[12, 12, 4, 4]} 
-                  barSize={36} 
-                  animationBegin={200}
-                  animationDuration={1000}
-                >
-                  {stats?.totals?.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Global Distribution */}
-        <div className="bg-white border border-slate-200 p-6 md:p-10 rounded-3xl shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="mb-6 md:mb-10">
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Geographic Density</h3>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Top registry origins</p>
-            </div>
-            <div className="space-y-4 md:space-y-6">
-              {stats?.citizenshipData.map((item: any, idx: number) => (
-                <div key={item.name} className="space-y-2">
-                  <div className="flex justify-between items-end">
-                    <p className="text-xs font-bold text-slate-600">{item.name}</p>
-                    <p className="text-xs font-black text-[#1b54ac]">{( (item.value / stats.totalRecords) * 100 ).toFixed(1)}%</p>
-                  </div>
-                  <div className="h-2 w-full bg-slate-50 border border-slate-100/80 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(item.value / stats.totalRecords) * 100}%` }}
-                      transition={{ duration: 1, delay: idx * 0.1 }}
-                      className="h-full bg-[#1b54ac] rounded-full"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-8 md:mt-10 pt-6 md:pt-8 border-t border-slate-100 flex items-center justify-between">
-            <div>
-              <p className="text-lg md:text-xl font-bold text-slate-900">{stats?.citizenshipData.length}</p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recorded Nations</p>
-            </div>
-            <Globe className="w-8 h-8 md:w-10 md:h-10 text-slate-200" />
-          </div>
-        </div>
-      </div>
+      {/* Modal and Actions triggers */}
 
       {/* RECORD FORM MODAL TRIGGER */}
       <AnimatePresence>

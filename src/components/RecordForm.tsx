@@ -9,7 +9,8 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'EOID': 'EOID-000002',
   'Residence ID': 'Residence-000003',
   'ETD': 'ETD-000004',
-  'Yellow Card': 'Yellow-000005'
+  'Yellow Card': 'Yellow-000005',
+  'AIRPORT': 'Bole-000005'
 };
 
 interface RecordFormProps {
@@ -32,6 +33,37 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
   
   // Custom dialog state for deleting attachments
   const [attachmentToDelete, setAttachmentToDelete] = useState<RecordAttachment | null>(null);
+  const [availableBoxes, setAvailableBoxes] = useState<string[]>([]);
+
+  useEffect(() => {
+    const standardBox = MODULE_BOX_MAP[type];
+    const boxes = [standardBox];
+
+    try {
+      const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
+      if (customCabinetsStr) {
+        const list = JSON.parse(customCabinetsStr);
+        const matchingCustoms = list
+          .filter((c: any) => c.module === type)
+          .map((c: any) => c.boxName);
+        boxes.push(...matchingCustoms);
+      }
+    } catch (e) {
+      console.error("Error reading custom physical cabinets in RecordForm:", e);
+    }
+
+    // Filter out standard EOID-000002 unless explicitly verified
+    let uniqueBoxes = Array.from(new Set(boxes));
+    if (type !== 'EOID') {
+      uniqueBoxes = uniqueBoxes.filter(b => b !== 'EOID-000002');
+    } else {
+      // If it's EOID, and we want to remove the default cabinet from the visual list of shelves by default,
+      // but if they don't have custom cabinets, they might still need to save to EOID-000002 or Custom
+      // Let's keep unique items
+    }
+
+    setAvailableBoxes(uniqueBoxes);
+  }, [type]);
 
   useEffect(() => {
     // Cleanup previews on unmount
@@ -59,7 +91,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
   useEffect(() => {
     if (record) {
       setFormData({
-        box_number: record.box_number || MODULE_BOX_MAP[type] || 'Visa-000001',
+        box_number: record.box_number || defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
         full_name: record.full_name || '',
         sex: record.sex || 'Male',
         citizenship: record.citizenship || '',
@@ -77,7 +109,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     } else {
       setFormData(prev => ({
         ...prev,
-        box_number: MODULE_BOX_MAP[type] || 'Visa-000001',
+        box_number: defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
         full_name: '',
         sex: 'Male',
         citizenship: '',
@@ -195,7 +227,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
       
       // Clear attachment_url if this was the last one and it's an Yellow Card record
-      if (type === 'Yellow Card' && record && attachments.length === 1) {
+      if ((type === 'Yellow Card' || type === 'AIRPORT') && record && attachments.length === 1) {
         await supabase.from('airport_records').update({ attachment_url: null }).eq('id', record.id);
       }
       
@@ -224,17 +256,17 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         passport_number: formData.passport_number,
         request_number: formData.request_number,
         date: formData.date,
-        service_provided: formData.service_provided,
+        service_provided: type === 'VISA' ? (formData.service_provided || 'VISA EXTENSION') : null,
         created_by: user.id,
       };
 
-      // Ensure each module is assigned to its specific box number
-      basePayload.box_number = MODULE_BOX_MAP[type];
+      // Ensure each module is assigned to a dynamic or default physical cabinet box
+      basePayload.box_number = formData.box_number || MODULE_BOX_MAP[type] || 'Visa-000001';
 
       if (type === 'EOID') basePayload.eoid_number = formData.eoid_number;
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
-      if (type === 'Yellow Card') {
+      if (type === 'Yellow Card' || type === 'AIRPORT') {
         basePayload.letter_number = formData.letter_number;
         basePayload.document_type = formData.document_type;
       }
@@ -310,32 +342,47 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
         <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-hide">
           {/* Flat Inline Row for Date & Service Provided */}
-          <div className="grid grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
-            <div className="relative">
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-              <input
-                required
-                type="date"
-                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                value={formData.date}
-                onChange={e => setFormData({ ...formData, date: e.target.value })}
-              />
+          {type === 'VISA' ? (
+            <div className="grid grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
+              <div className="relative">
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
+                <input
+                  required
+                  type="date"
+                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
+                  value={formData.date}
+                  onChange={e => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <select
+                  required
+                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
+                  value={formData.service_provided || 'VISA EXTENSION'}
+                  onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
+                >
+                  <option value="VISA EXTENSION">VISA EXTENSION</option>
+                  <option value="NEW ENTRY REGISTRATION">NEW ENTRY REGISTRATION</option>
+                  <option value="ID CARD VERIFICATION">ID CARD VERIFICATION</option>
+                  <option value="EXIT PERMIT EXEMPT">EXIT PERMIT EXEMPT</option>
+                  <option value="YELLOW CARD HEALTH CHECK">YELLOW CARD HEALTH CHECK</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <select
-                required
-                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                value={formData.service_provided || 'VISA EXTENSION'}
-                onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
-              >
-                <option value="VISA EXTENSION">VISA EXTENSION</option>
-                <option value="NEW ENTRY REGISTRATION">NEW ENTRY REGISTRATION</option>
-                <option value="ID CARD VERIFICATION">ID CARD VERIFICATION</option>
-                <option value="EXIT PERMIT EXEMPT">EXIT PERMIT EXEMPT</option>
-                <option value="YELLOW CARD HEALTH CHECK">YELLOW CARD HEALTH CHECK</option>
-              </select>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
+              <div className="relative">
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
+                <input
+                  required
+                  type="date"
+                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
+                  value={formData.date}
+                  onChange={e => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Core Biodata Form Parameters */}
           <div className="space-y-5 text-left">
@@ -440,16 +487,18 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   />
                 </div>
               )}
-              {type === 'Yellow Card' && (
+              {(type === 'Yellow Card' || type === 'AIRPORT') && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Yellow Card Registration ID</label>
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      {type === 'AIRPORT' ? 'Terminal Registration ID / Yellow Card ID' : 'Yellow Card Registration ID'}
+                    </label>
                     <input
                       required
                       className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
                       value={formData.letter_number}
                       onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
-                      placeholder="ETH-YC-XXXXX"
+                      placeholder={type === 'AIRPORT' ? 'ETH-YC-XXXXX / ADD-BOLE-XXXXX' : 'ETH-YC-XXXXX'}
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -463,18 +512,26 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                       <option value="Origin ID Card">Origin ID Card</option>
                       <option value="Diaspora Clearance Certificate">Diaspora Clearance Certificate</option>
                       <option value="Temporary Diaspora Permit">Temporary Diaspora Permit</option>
+                      <option value="Bole Terminal Scan">Bole Terminal Scan</option>
                     </select>
                   </div>
                 </>
               )}
               
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Division File Box ID</label>
-                <input
-                  readOnly
-                  className="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-xl text-xs font-bold text-slate-400 font-mono outline-none cursor-not-allowed"
-                  value={MODULE_BOX_MAP[type]}
-                />
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Division File Box ID (Cabinet)</label>
+                <select
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer"
+                  value={formData.box_number}
+                  onChange={e => setFormData({ ...formData, box_number: e.target.value })}
+                >
+                  {availableBoxes.map(box => (
+                    <option key={box} value={box}>{box}</option>
+                  ))}
+                  {formData.box_number && !availableBoxes.includes(formData.box_number) && (
+                    <option value={formData.box_number}>{formData.box_number}</option>
+                  )}
+                </select>
               </div>
             </div>
           </div>

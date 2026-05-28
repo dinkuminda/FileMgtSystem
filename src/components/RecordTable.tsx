@@ -27,32 +27,11 @@ export default function RecordTable({
   const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [showReferenceGuide, setShowReferenceGuide] = useState(false);
+  const colSpanCount = activeTab === 'VISA' ? 10 : 9;
 
   return (
     <div className="w-full">
-      {/* Visa Reference Specimen banner */}
-      {activeTab === 'VISA' && (
-        <div className="mb-6 p-6 rounded-[2rem] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-100/50 dark:border-blue-900/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600/10 text-blue-600 rounded-2xl flex items-center justify-center">
-              <ImageIcon className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">Standard VISA Specimen Guide</h4>
-              <p className="text-xs text-slate-500 max-w-xl font-medium mt-0.5">
-                Verify physical securitized items against the official electronic Visa (eVisa) system standard layouts, watermark background seals, and customer credential schemas.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowReferenceGuide(true)}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm hover:shadow active:scale-95 cursor-pointer whitespace-nowrap border-none outline-none"
-          >
-            View Specimen Document
-          </button>
-        </div>
-      )}
+
 
       {/* Desktop Table View */}
       <div className="hidden lg:block overflow-x-auto overflow-hidden">
@@ -71,7 +50,9 @@ export default function RecordTable({
               <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">PASSPORT NUMBER</th>
               <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">REQUEST NUMBER</th>
               <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">DATE</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SERVICE PROVIDED</th>
+              {activeTab === 'VISA' && (
+                <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SERVICE PROVIDED</th>
+              )}
               <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
               <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em] text-right">ACTIONS</th>
             </tr>
@@ -79,14 +60,14 @@ export default function RecordTable({
           <tbody className="divide-y divide-slate-100/65">
             {loading ? (
               <tr>
-                <td colSpan={10} className="px-6 py-20 text-center">
+                <td colSpan={colSpanCount} className="px-6 py-20 text-center">
                   <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-[#2b825a] opacity-40" />
                   <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Synchronizing Registry...</p>
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={colSpanCount}>
                   <EmptyState />
                 </td>
               </tr>
@@ -120,9 +101,11 @@ export default function RecordTable({
                       <td className="px-5 py-5 text-xs font-mono text-slate-555 text-slate-500">
                         {new Date(record.date).toISOString().split('T')[0]}
                       </td>
-                      <td className="px-5 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
-                        {record.service_provided?.toUpperCase() || 'VISA EXTENSION'}
-                      </td>
+                      {activeTab === 'VISA' && (
+                        <td className="px-5 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                          {record.service_provided?.toUpperCase() || 'VISA EXTENSION'}
+                        </td>
+                      )}
                       <td className="px-5 py-5">
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
@@ -143,7 +126,7 @@ export default function RecordTable({
                     </tr>
                     {isExpanded && (
                       <tr className="bg-[#101c2c]">
-                        <td colSpan={10} className="p-0 border-none">
+                        <td colSpan={colSpanCount} className="p-0 border-none">
                           <div className="p-1">
                             <ExpandedDocExplorerRow 
                               record={record} 
@@ -206,12 +189,14 @@ export default function RecordTable({
                     <p className="text-[10px] font-black text-slate-400 uppercase">Request</p>
                     <p className="text-xs font-black text-blue-600 tracking-tight">{record.request_number}</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black text-slate-400 uppercase">Service</p>
-                    <span className="text-[9px] font-black uppercase text-[#1b8b58] bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-full">
-                      {record.service_provided}
-                    </span>
-                  </div>
+                  {activeTab === 'VISA' && (
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-slate-400 uppercase">Service</p>
+                      <span className="text-[9px] font-black uppercase text-[#1b8b58] bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-full">
+                        {record.service_provided}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-50">
@@ -497,7 +482,11 @@ function RecordDetailsModal({
               <Eye className="w-5 h-5 text-[#2b825a]" />
             </span>
             <div>
-              <h3 className="text-lg font-black text-slate-900">{isVisa ? 'Official Personal VISA Record Specimen' : `${activeTab} Record Information`}</h3>
+              <h3 className="text-lg font-black text-slate-900">
+                {isVisa 
+                  ? 'Official Personal VISA Record Specimen' 
+                  : `${activeTab === 'AIRPORT' ? 'Bole Airport' : activeTab} Record Information`}
+              </h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">National Registration & Border Control Registry</p>
             </div>
           </div>
@@ -551,10 +540,6 @@ function RecordDetailsModal({
                 <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Request Reference #</p>
                   <p className="text-sm font-black text-[#2b825a] font-mono mt-1">{record.request_number}</p>
-                </div>
-                <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Service Unit</p>
-                  <p className="text-sm font-bold text-slate-800 mt-1">{record.service_provided}</p>
                 </div>
                 <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Registry Date</p>
