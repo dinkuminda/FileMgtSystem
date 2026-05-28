@@ -169,8 +169,10 @@ async function startServer() {
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
       if (newRole === 'admin') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
-      } else if (newRole === 'airport_staff' || newRole === 'airport_viewer') {
+      } else if (newRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+      } else if (newRole === 'airport_viewer') {
+        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
       }
 
       const { error } = await supabaseAdmin
@@ -228,8 +230,10 @@ async function startServer() {
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'];
       if (role === 'admin') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
-      } else if (role === 'airport_staff' || role === 'airport_viewer') {
-        defaultModules = ['OVERVIEW', 'AIRPORT'];
+      } else if (role === 'airport_staff') {
+        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+      } else if (role === 'airport_viewer') {
+        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
       }
 
       // Profile is auto-created by trigger, but we want to ensure role and modules are correct

@@ -765,7 +765,9 @@ export default function UserManagement() {
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded text-slate-650">
                               {user.role === 'admin' ? 'Super Admin' : 
                                user.role === 'staff' ? 'Admin / Staff' : 
-                               user.role === 'airport_staff' ? 'Airport Staff' : user.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
+                               user.role === 'airport_staff' ? 'Airport Staff' : 
+                               user.role === 'airport_viewer' ? 'Airport Viewer' :
+                               user.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
                             </span>
                           </td>
                           <td className="p-3">
@@ -917,6 +919,7 @@ export default function UserManagement() {
                     {selectedUser.role === 'admin' ? 'Super Admin' : 
                      selectedUser.role === 'staff' ? 'Immigration Staff' : 
                      selectedUser.role === 'airport_staff' ? 'Airport Hub Staff' : 
+                     selectedUser.role === 'airport_viewer' ? 'Airport Viewer' : 
                      selectedUser.role === 'viewer' ? 'Guest Inspector' : 'User Member'}
                   </p>
                 </div>
@@ -1178,6 +1181,7 @@ export default function UserManagement() {
                       { id: 'admin', label: 'Super Admin Designation', desc: 'Sovereign administrative directory access' },
                       { id: 'staff', label: 'Immigration Staff Agent', desc: 'Standard files processing credentials' },
                       { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport hub checkpoint processing level' },
+                      { id: 'airport_viewer', label: 'Airport Gateway Viewer', desc: 'View airport gateway documents only (read-only)' },
                       { id: 'viewer', label: 'Passive Auditor', desc: 'Secure observation only file views' }
                     ].map((role) => (
                       <button
@@ -1287,6 +1291,7 @@ export default function UserManagement() {
                     { id: 'admin', label: 'Super Admin Level', desc: 'Complete access to records, security matrix, & audit trails' },
                     { id: 'staff', label: 'Immigration Staff', desc: 'Standard files processing credentials and database access' },
                     { id: 'airport_staff', label: 'Airport Hub staff', desc: 'Bole international gateway checkpoints access' },
+                    { id: 'airport_viewer', label: 'Airport Hub Viewer', desc: 'Bole international checkpoints view-only reading credentials' },
                     { id: 'viewer', label: 'Observatory Agent', desc: 'Passive record inspections directory reading only' }
                   ].map((role) => (
                     <button

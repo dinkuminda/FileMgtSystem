@@ -159,11 +159,13 @@ BEGIN
       WHEN new.email = 'demebirhanu@gmail.com' THEN 'staff'
       WHEN new.email = 'dinku_staff@gmail.com' THEN 'airport_staff'
       WHEN new.email = 'ephremweleba94@gmail.com' THEN 'airport_staff'
+      WHEN new.email = 'mohammedturi@gmail.com' THEN 'airport_viewer'
       ELSE 'staff'
     END,
     CASE
       WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
       WHEN new.email IN ('dinku_staff@gmail.com', 'ephremweleba94@gmail.com') THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+      WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
       ELSE ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
     END
   );
@@ -356,6 +358,52 @@ SELECT id, email, 'airport_staff', 'Ephrem (Airport)', ARRAY['OVERVIEW', 'AIRPOR
 FROM auth.users
 WHERE email = 'ephremweleba94@gmail.com'
 ON CONFLICT (id) DO UPDATE SET role = 'airport_staff', modules = ARRAY['OVERVIEW', 'AIRPORT'];
+
+-- Boost for Mohammed Turi (Airport Viewer Only)
+INSERT INTO public.profiles (id, email, role, full_name, modules)
+SELECT id, email, 'airport_viewer', 'Mohammed Turi', ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
+FROM auth.users
+WHERE email = 'mohammedturi@gmail.com'
+ON CONFLICT (id) DO UPDATE SET role = 'airport_viewer', modules = ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
+
+-- 11. Custom permission matrix configuration table
+CREATE TABLE IF NOT EXISTS public.permission_rules (
+  module TEXT PRIMARY KEY,
+  view_roles TEXT[] NOT NULL DEFAULT '{}',
+  create_roles TEXT[] NOT NULL DEFAULT '{}',
+  update_roles TEXT[] NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.permission_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can select rules" ON public.permission_rules;
+DROP POLICY IF EXISTS "Admins can manage rules" ON public.permission_rules;
+
+CREATE POLICY "Anyone can select rules" ON public.permission_rules FOR SELECT USING (true);
+CREATE POLICY "Admins can manage rules" ON public.permission_rules FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- Prepopulate permission rules with defaults
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('VISA', ARRAY['admin', 'staff'], ARRAY['admin'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('EOID', ARRAY['admin', 'staff'], ARRAY['admin'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('Residence ID', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('ETD', ARRAY['admin'], ARRAY[]::text[], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('Yellow Card', ARRAY['admin', 'staff', 'airport_staff'], ARRAY[]::text[], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('CABINETS', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('AIRPORT', ARRAY['admin', 'staff', 'airport_staff', 'airport_viewer'], ARRAY['admin', 'staff', 'airport_staff'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
 
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';

@@ -20,15 +20,122 @@ import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
 import CabinetsView from './CabinetsView';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
+import { 
+  getPermissionRules, 
+  hasViewAccess, 
+  hasCreateAccess, 
+  hasUpdateAccess, 
+  DEFAULT_PERMISSION_RULES, 
+  type ModulePermissionRule 
+} from '../lib/permissions';
 import Papa from 'papaparse';
 
 interface DashboardProps {
   userProfile: UserProfile | null;
 }
 
+export type ThemeAccent = 'emerald' | 'blue' | 'amber' | 'slate';
+
+interface ThemeStyles {
+  primary: string;
+  primaryHover: string;
+  primaryText: string;
+  border: string;
+  bgLight: string;
+  badge: string;
+  accentHex: string;
+  textHex: string;
+  glow: string;
+  pulse: string;
+}
+
+const THEMES: Record<ThemeAccent, ThemeStyles> = {
+  emerald: {
+    primary: 'bg-[#2b825a]',
+    primaryHover: 'hover:bg-[#206243]',
+    primaryText: 'text-[#2b825a]',
+    border: 'border-[#2b825a]',
+    bgLight: 'bg-[#ecf7f1]',
+    badge: 'bg-emerald-50 border border-emerald-100 text-[#1b8b58]',
+    accentHex: '#2b825a',
+    textHex: 'text-[#2b825a]',
+    glow: 'shadow-[#2b825a]/10',
+    pulse: 'bg-[#2b825a]'
+  },
+  blue: {
+    primary: 'bg-[#1b54ac]',
+    primaryHover: 'hover:bg-[#154694]',
+    primaryText: 'text-[#1b54ac]',
+    border: 'border-[#1b54ac]',
+    bgLight: 'bg-[#ebf2fc]',
+    badge: 'bg-blue-50 border border-blue-100 text-[#1b54ac]',
+    accentHex: '#1b54ac',
+    textHex: 'text-[#1b54ac]',
+    glow: 'shadow-[#1b54ac]/10',
+    pulse: 'bg-[#1b54ac]'
+  },
+  amber: {
+    primary: 'bg-[#d97706]',
+    primaryHover: 'hover:bg-[#b45309]',
+    primaryText: 'text-[#d97706]',
+    border: 'border-[#d97706]',
+    bgLight: 'bg-[#fef3c7]',
+    badge: 'bg-amber-50 border border-amber-100 text-[#b45309]',
+    accentHex: '#d97706',
+    textHex: 'text-[#d97706]',
+    glow: 'shadow-[#d97706]/10',
+    pulse: 'bg-[#d97706]'
+  },
+  slate: {
+    primary: 'bg-[#475569]',
+    primaryHover: 'hover:bg-[#334155]',
+    primaryText: 'text-[#475569]',
+    border: 'border-[#475569]',
+    bgLight: 'bg-[#f1f5f9]',
+    badge: 'bg-slate-50 border border-slate-200 text-[#475569]',
+    accentHex: '#475569',
+    textHex: 'text-[#475569]',
+    glow: 'shadow-[#475569]/10',
+    pulse: 'bg-[#475569]'
+  }
+};
+
 export default function Dashboard({ userProfile }: DashboardProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
+  const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
+
+  useEffect(() => {
+    getPermissionRules().then(rules => {
+      setPermissionRules(rules);
+    });
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (userProfile) {
+      const persistedTheme = (userProfile.theme as ThemeAccent) || 
+                             (localStorage.getItem(`ics_theme_${userProfile.id}`) as ThemeAccent);
+      if (persistedTheme && THEMES[persistedTheme]) {
+        setThemeAccent(persistedTheme);
+      }
+    }
+  }, [userProfile]);
+
+  const updateTheme = async (newTheme: ThemeAccent) => {
+    setThemeAccent(newTheme);
+    if (userProfile?.id) {
+      localStorage.setItem(`ics_theme_${userProfile.id}`, newTheme);
+      try {
+        await supabase.from('profiles').update({ theme: newTheme }).eq('id', userProfile.id);
+      } catch (e) {
+        console.warn("Could not persist theme column on database backend", e);
+      }
+    }
+  };
+
+  const currentTheme = THEMES[themeAccent] || THEMES.emerald;
+
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -63,21 +170,32 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     // Admins should always see everything
     if (userProfile.role === 'admin') return true;
 
-    // If user has specific modules assigned, use those
-    if (userProfile.modules && userProfile.modules.length > 0) {
+    // Secure via dynamic modular permissions check
+    const dynamicModules = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'CABINETS', 'AIRPORT'];
+    if (dynamicModules.includes(tab.type)) {
+      if (!hasViewAccess(userProfile.role, tab.type, permissionRules)) {
+        return false;
+      }
+    }
+
+    // Command Deck (Overview) is the baseline landing page for everyone
+    if (tab.type === 'OVERVIEW') return true;
+
+    // If user has specific modules array assigned, use those strictly
+    if (userProfile.modules) {
       if (tab.type === 'Yellow Card') {
         return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
       }
       return userProfile.modules.includes(tab.type);
     }
 
-    // Role-based fallbacks for users without explicit modules
+    // Role-based fallbacks for users without explicit modules array definition
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
-      return tab.type === 'Yellow Card' || tab.type === 'AIRPORT' || tab.type === 'OVERVIEW';
+      return tab.type === 'Yellow Card' || tab.type === 'AIRPORT';
     }
 
     // Staff can see records and reports, but not system level management
-    if (tab.type === 'AUDIT' || tab.type === 'USERS') return false;
+    if (tab.type === 'AUDIT' || tab.type === 'USERS' || tab.type === 'CABINETS' || tab.type === 'REPORTS') return false;
     return true;
   });
 
@@ -150,6 +268,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (!error && data) setRecords(data as ImmigrationRecord[]);
     else if (error) console.error(`Error fetching ${activeTab} records:`, error);
     setLoading(false);
+  };
+
+  const hasAccess = (tabType: typeof allTabs[number]['type']) => {
+    if (!userProfile) return false;
+    if (userProfile.role === 'admin') return true;
+    return tabs.some(t => t.type === tabType);
   };
 
   const handleDelete = (id: string) => {
@@ -244,11 +368,14 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     });
   };
 
+  const canAdd = () => {
+    if (!userProfile) return false;
+    return hasCreateAccess(userProfile.role, activeTab, permissionRules);
+  };
+
   const canEdit = () => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'staff') return true;
-    if (userProfile.role === 'airport_staff' && (activeTab === 'Yellow Card' || activeTab === 'AIRPORT')) return true;
-    return false;
+    return hasUpdateAccess(userProfile.role, activeTab, permissionRules);
   };
 
   const filteredRecords = records.filter(r => 
@@ -313,11 +440,11 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
                       } ${
                         isActive 
-                          ? 'bg-[#ecf7f1] text-[#2b825a] font-extrabold shadow-xs border-l-4 border-[#2b825a]' 
+                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs border-l-4 ${currentTheme.border}` 
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`} />
+                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
                       {!isSidebarCollapsed && <span className="flex-1">{at.label}</span>}
                     </Link>
                   );
@@ -343,11 +470,11 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                         isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
                       } ${
                         isActive 
-                          ? 'bg-[#ecf7f1] text-[#2b825a] font-extrabold shadow-sm border-l-4 border-[#2b825a]' 
+                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`} />
+                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
                       {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
                     </Link>
                   );
@@ -421,10 +548,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       </AnimatePresence>
 
       {/* FAB */}
-      {canEdit() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) && (
+      {canAdd() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-          className="fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 bg-[#2b825a] hover:bg-[#206243] text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none"
+          className={`fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 ${currentTheme.primary} ${currentTheme.primaryHover} text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none`}
         >
           <Plus className="w-7 h-7 text-white" />
         </button>
@@ -452,12 +579,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
             <Link
               key={tab.type}
               to={path}
-              className={`flex flex-col items-center justify-center flex-1 gap-1 py-1 transition-all ${isActive ? 'text-[#2b825a]' : 'text-slate-500'}`}
+              className={`flex flex-col items-center justify-center flex-1 gap-1 py-1 transition-all ${isActive ? currentTheme.primaryText : 'text-slate-500'}`}
             >
-              <div className={`w-16 h-8 flex items-center justify-center rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-[#2b825a]' : 'text-slate-400'}`}>
+              <div className={`w-16 h-8 flex items-center justify-center rounded-xl transition-all ${isActive ? `${currentTheme.bgLight} ${currentTheme.primaryText}` : 'text-slate-400'}`}>
                 <tab.icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'text-[#2b825a]' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-bold tracking-tight ${isActive ? currentTheme.primaryText : 'text-slate-400'}`}>
                 {tab.label.split(' ')[0]}
               </span>
             </Link>
@@ -497,9 +624,29 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              {/* Active IP Status capsule mimicking the screen photo */}
-              <div className="flex items-center gap-2 bg-[#ecf7f1] rounded-[10px] px-4 py-1.5 text-[10px] font-mono font-bold text-[#1b8b58] border border-[#d2eedf]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2b825a] animate-pulse" />
+              {/* Dynamic Theme Chooser for the User */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 rounded-[10px] p-1 px-1.5 mr-1">
+                {(['emerald', 'blue', 'amber', 'slate'] as const).map((tName) => (
+                  <button
+                    key={tName}
+                    onClick={() => updateTheme(tName)}
+                    title={`Switch system theme to ${tName}`}
+                    className={`w-3.5 h-3.5 rounded-full border cursor-pointer transition-all ${
+                      tName === 'emerald' ? 'bg-[#2b825a]' :
+                      tName === 'blue' ? 'bg-[#1b54ac]' :
+                      tName === 'amber' ? 'bg-[#d97706]' : 'bg-[#475569]'
+                    } ${
+                      themeAccent === tName 
+                        ? 'scale-110 ring-2 ring-white border-slate-700 shadow-sm opacity-100' 
+                        : 'opacity-40 hover:opacity-100 border-transparent hover:scale-105'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Active IP Status capsule styled with active theme */}
+              <div className={`flex items-center gap-2 ${currentTheme.bgLight} rounded-[10px] px-4 py-1.5 text-[10px] font-mono font-bold ${currentTheme.primaryText} border ${currentTheme.border} opacity-90`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.pulse} animate-pulse`} />
                 <span>10.40.20.125 / SECURE</span>
               </div>
 
@@ -526,7 +673,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 {['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) ? (
                   <div className="space-y-6">
                     {/* FSD Division style heading row */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-[#2b825a] pl-5 py-1">
+                    <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
                         <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight">
                           {activeTab === 'VISA' ? 'VISA Structuring Division' : 
@@ -548,10 +695,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
                       {/* Header Buttons matching the screen exact colors */}
                       <div className="flex flex-wrap items-center gap-2.5">
-                        {canEdit() && (
+                        {canAdd() && (
                           <button 
                             onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-[#2b825a] hover:bg-[#206243] text-white rounded-lg text-xs font-extrabold transition-all shadow-sm shadow-[#2b825a]/10 cursor-pointer outline-none border-none"
+                            className={`flex items-center gap-2 px-5 py-2.5 ${currentTheme.primary} ${currentTheme.primaryHover} text-white rounded-lg text-xs font-extrabold transition-all shadow-sm ${currentTheme.glow} cursor-pointer outline-none border-none`}
                           >
                             <Plus className="w-4 h-4" />
                             <span>Add Entry</span>
@@ -565,13 +712,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                           <FileOutput className="w-4 h-4 text-slate-400" />
                           <span>Export CSV</span>
                         </button>
-                        <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center gap-2 px-4.5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
-                        >
-                          <FileInput className="w-4 h-4 text-slate-400" />
-                          <span>Import CSV</span>
-                        </button>
+                        {canAdd() && (
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-2 px-4.5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
+                          >
+                            <FileInput className="w-4 h-4 text-slate-400" />
+                            <span>Import CSV</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -581,7 +730,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                       <input 
                         type="text"
                         placeholder="Filter this division by Box, Name, Passport or Request Number..."
-                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 focus:bg-white focus:ring-4 focus:ring-emerald-500/5 focus:border-[#2b825a]/40 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all text-slate-800"
+                        className="w-full pl-12 pr-6 py-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 focus:bg-white focus:ring-4 focus:ring-slate-500/5 focus:border-slate-400 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
@@ -606,82 +755,94 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
               <Routes>
                 <Route path="/" element={<DashboardReports userProfile={userProfile} />} />
-                <Route path="/cabinets" element={<CabinetsView userProfile={userProfile} />} />
-                <Route path="/audit" element={<AuditLogView />} />
-                <Route path="/reports" element={<ReportingSystem />} />
-                <Route path="/users" element={<UserManagement />} />
+                <Route path="/cabinets" element={hasAccess('CABINETS') ? <CabinetsView userProfile={userProfile} /> : <Navigate to="/" replace />} />
+                <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
+                <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
+                <Route path="/users" element={hasAccess('USERS') ? <UserManagement /> : <Navigate to="/" replace />} />
                 <Route path="/airport/:subTab" element={<Navigate to="/airport" replace />} />
                 <Route path="/airport" element={
-                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('AIRPORT') ? (
+                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="/yellow-card" element={
-                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('Yellow Card') ? (
+                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="/visa" element={
-                  <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('VISA') ? (
+                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eoid" element={
-                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('EOID') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="/residence-id" element={
-                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('Residence ID') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="/etd" element={
-                   <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <RecordTable 
-                      loading={loading}
-                      records={filteredRecords}
-                      activeTab={activeTab as RecordType}
-                      canEdit={canEdit()}
-                      onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDelete={handleDelete}
-                    />
-                  </div>
+                  hasAccess('ETD') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
                 } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

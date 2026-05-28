@@ -8,6 +8,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
 import { BOX_MODULE_DESC } from './DashboardReports';
+import { 
+  getPermissionRules, 
+  hasCreateAccess, 
+  DEFAULT_PERMISSION_RULES, 
+  type ModulePermissionRule 
+} from '../lib/permissions';
 
 interface CabinetsViewProps {
   userProfile?: UserProfile | null;
@@ -27,6 +33,14 @@ interface CabinetInfo {
 
 export default function CabinetsView({ userProfile }: CabinetsViewProps) {
   const [loading, setLoading] = useState(true);
+  const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
+
+  useEffect(() => {
+    getPermissionRules().then(rules => {
+      setPermissionRules(rules);
+    });
+  }, []);
+
   const [cabinets, setCabinets] = useState<CabinetInfo[]>([]);
   const [selectedCabinet, setSelectedCabinet] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,7 +92,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     return "VISA Records";
   };
 
-  const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
+  const canEditOrDelete = !userProfile || hasCreateAccess(userProfile.role, 'CABINETS', permissionRules);
 
   const fetchRecordsAndBuildCabinets = async () => {
     setLoading(true);

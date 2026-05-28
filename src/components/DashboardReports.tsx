@@ -154,6 +154,27 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     try {
       const results = await Promise.all(
         Object.entries(TABLE_MAP).map(async ([type, table]) => {
+          let hasAccess = true;
+          if (userProfile && userProfile.role !== 'admin') {
+            if (userProfile.modules) {
+              if (type === 'Yellow Card') {
+                hasAccess = userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+              } else {
+                hasAccess = userProfile.modules.includes(type);
+              }
+            } else {
+              if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+                hasAccess = type === 'Yellow Card' || type === 'AIRPORT';
+              } else {
+                hasAccess = type !== 'Yellow Card' && type !== 'AIRPORT';
+              }
+            }
+          }
+
+          if (!hasAccess) {
+            return { type, count: 0, data: [] };
+          }
+
           const { data, count, error } = await supabase
             .from(table)
             .select('*', { count: 'exact' });
@@ -201,15 +222,38 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         console.error("Failed to parse custom cabinets in DashboardReports:", e);
       }
 
-      const boxMap: Record<string, any[]> = {
-        'Visa-000001': [],
-        'Residence-000003': [],
-        'ETD-000004': [],
-        'Yellow-000005': []
+      const isAllowedBox = (boxName: string, moduleType?: string) => {
+        if (!userProfile) return true;
+        if (userProfile.role === 'admin') return true;
+        const mType = moduleType || (
+          boxName === 'Visa-000001' ? 'VISA' :
+          boxName === 'Residence-000003' ? 'Residence ID' :
+          boxName === 'ETD-000004' ? 'ETD' :
+          boxName === 'Yellow-000005' ? 'Yellow Card' : 'VISA'
+        );
+        if (userProfile.modules) {
+          if (mType === 'Yellow Card') {
+            return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+          }
+          return userProfile.modules.includes(mType);
+        } else {
+          if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+            return mType === 'Yellow Card' || mType === 'AIRPORT';
+          }
+          return mType !== 'Yellow Card' && mType !== 'AIRPORT';
+        }
       };
 
+      const boxMap: Record<string, any[]> = {};
+      if (isAllowedBox('Visa-000001', 'VISA')) boxMap['Visa-000001'] = [];
+      if (isAllowedBox('Residence-000003', 'Residence ID')) boxMap['Residence-000003'] = [];
+      if (isAllowedBox('ETD-000004', 'ETD')) boxMap['ETD-000004'] = [];
+      if (isAllowedBox('Yellow-000005', 'Yellow Card')) boxMap['Yellow-000005'] = [];
+
       customCabinetsList.forEach(c => {
-        boxMap[c.boxName] = [];
+        if (isAllowedBox(c.boxName, c.module)) {
+          boxMap[c.boxName] = [];
+        }
       });
       
       allData.forEach(r => {

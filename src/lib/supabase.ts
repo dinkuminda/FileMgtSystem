@@ -25,6 +25,7 @@ export interface UserProfile {
   role: UserRole;
   full_name?: string;
   modules?: string[];
+  theme?: string;
 }
 
 export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'AIRPORT';
