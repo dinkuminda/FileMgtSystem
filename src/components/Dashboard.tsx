@@ -173,6 +173,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     // Command Deck (Overview) is the baseline landing page for everyone
     if (tab.type === 'OVERVIEW') return true;
 
+    // Direct check for weleba ephrem as an active authorized staff member
+    const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
+    if (isWeleba) {
+      if (tab.type === 'AIRPORT') return true;
+    }
+
     // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
       if (tab.type === 'Yellow Card') {
@@ -378,7 +384,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   );
 
   const SidebarContent = () => {
-    const isAirportContext = false;
+    const isAirportContext = location.pathname.startsWith('/airport');
 
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
@@ -752,19 +758,30 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement /> : <Navigate to="/" replace />} />
-                <Route path="/airport/:subTab" element={<Navigate to="/airport" replace />} />
+                <Route path="/airport/:subTab" element={
+                  hasAccess('AIRPORT') ? (
+                    <AirportView 
+                      userProfile={userProfile}
+                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDeleteRecord={handleDelete}
+                      searchQuery={searchQuery}
+                      canEdit={canEdit()}
+                      refreshCounter={refreshCounter}
+                    />
+                  ) : <Navigate to="/" replace />
+                } />
                 <Route path="/airport" element={
                   hasAccess('AIRPORT') ? (
-                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
-                    </div>
+                    <AirportView 
+                      userProfile={userProfile}
+                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDeleteRecord={handleDelete}
+                      searchQuery={searchQuery}
+                      canEdit={canEdit()}
+                      refreshCounter={refreshCounter}
+                    />
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/yellow-card" element={

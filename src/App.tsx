@@ -50,7 +50,16 @@ export default function App() {
       .single();
 
     if (!error && data) {
-      setUserProfile(data as UserProfile);
+      const profile = data as UserProfile;
+      // Fail-safe check: guarantee weleba ephrem has airport modules correctly parsed and active
+      if (profile.email?.toLowerCase().includes('weleba') || profile.full_name?.toLowerCase().includes('weleba')) {
+        if (!profile.modules || !Array.isArray(profile.modules)) {
+          profile.modules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+        } else if (!profile.modules.includes('AIRPORT')) {
+          profile.modules.push('AIRPORT');
+        }
+      }
+      setUserProfile(profile);
     } else {
       // Fallback/Retry logic if trigger is slow or not configured
       console.warn("Profile fetch failed, using fallback logic for user:", uid);
@@ -58,12 +67,16 @@ export default function App() {
       if (user) {
         const adminEmail = (import.meta as any).env.VITE_ADMIN_EMAIL || 'dinkuh12@gmail.com';
         const isAdminByEmail = user.email === adminEmail; 
-        console.log("Fallback determined role:", isAdminByEmail ? 'admin' : 'staff', "for email:", user.email);
+        const isWeleba = user.email?.toLowerCase().includes('weleba') || user.user_metadata?.full_name?.toLowerCase().includes('weleba');
+        
+        console.log("Fallback determined role:", isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff', "for email:", user.email);
+        
         setUserProfile({
           id: user.id,
           email: user.email || '',
-          role: isAdminByEmail ? 'admin' : 'staff',
-          full_name: user.user_metadata?.full_name
+          role: isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff',
+          full_name: user.user_metadata?.full_name || (isWeleba ? 'weleba ephrem' : undefined),
+          modules: isWeleba ? ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'] : undefined
         });
       }
     }

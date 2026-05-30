@@ -41,7 +41,14 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
     { id: 'audit', label: 'Audit', icon: Activity, module: 'AUDIT' },
   ].filter(tab => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+
+    // Direct check for weleba ephrem as an active authorized staff member
+    const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
+    if (isWeleba) {
+      return ['dashboard', 'view', 'add', 'edit'].includes(tab.id);
+    }
+
     if (userProfile.modules && userProfile.modules.length > 0) {
       if (tab.id === 'users') return userProfile.modules.includes('USERS');
       if (tab.id === 'audit') return userProfile.modules.includes('AUDIT');
