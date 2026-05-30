@@ -158,15 +158,16 @@ BEGIN
       WHEN new.email = 'dinkuh12@gmail.com' THEN 'admin'
       WHEN new.email = 'demebirhanu@gmail.com' THEN 'staff'
       WHEN new.email = 'dinku_staff@gmail.com' THEN 'airport_staff'
-      WHEN new.email = 'ephremweleba94@gmail.com' THEN 'airport_staff'
+      WHEN new.email LIKE '%weleba%' THEN 'airport_staff'
       WHEN new.email = 'mohammedturi@gmail.com' THEN 'airport_viewer'
-      ELSE 'staff'
+      ELSE 'viewer'
     END,
     CASE
       WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
-      WHEN new.email IN ('dinku_staff@gmail.com', 'ephremweleba94@gmail.com') THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+      WHEN new.email = 'dinku_staff@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+      WHEN new.email LIKE '%weleba%' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
       WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
-      ELSE ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+      ELSE ARRAY['OVERVIEW']
     END
   );
   RETURN new;

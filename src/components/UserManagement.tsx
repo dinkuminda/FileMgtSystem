@@ -28,7 +28,15 @@ import {
   Check,
   ChevronLeft,
   Palette,
-  AlertTriangle
+  AlertTriangle,
+  LayoutDashboard,
+  Users,
+  FileText,
+  Globe,
+  Fingerprint,
+  Archive,
+  History,
+  Plane
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -176,6 +184,29 @@ export default function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [localSubPerms, setLocalSubPerms] = useState<Record<string, { list: boolean; show: boolean; edit: boolean }>>({});
+
+  useEffect(() => {
+    if (modifyingModulesUser) {
+      const initialPerms: Record<string, { list: boolean; show: boolean; edit: boolean }> = {};
+      const modulesList = [
+        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+      ];
+      const userSelected = modifyingModulesUser.modules || [];
+      modulesList.forEach(mId => {
+        const isSelected = userSelected.includes(mId);
+        initialPerms[mId] = {
+          list: isSelected,
+          show: isSelected,
+          edit: isSelected && modifyingModulesUser.role !== 'view_only' && modifyingModulesUser.role !== 'viewer'
+        };
+      });
+      setLocalSubPerms(initialPerms);
+    } else {
+      setLocalSubPerms({});
+    }
+  }, [modifyingModulesUser]);
 
   useEffect(() => {
     fetchUsers();
@@ -518,6 +549,7 @@ export default function UserManagement() {
     
     const matchesRole = roleFilter === 'ALL' || 
                         (roleFilter === 'SUPER_ADMIN' && (u.role === 'admin' || u.role === 'super_admin')) ||
+                        (roleFilter === 'ADMIN_GRANT' && u.role === 'admin_grant') ||
                         (roleFilter === 'ADMIN' && (u.role === 'staff' || u.role === 'admin')) ||
                         (roleFilter === 'VIEW_ONLY' && (u.role === 'view_only' || u.role === 'viewer')) ||
                         (roleFilter === 'ADD_RECORDS' && u.role === 'add_records') ||
@@ -761,6 +793,7 @@ export default function UserManagement() {
                   {[
                     { id: 'ALL', label: 'All Roles' },
                     { id: 'SUPER_ADMIN', label: 'Super Admin' },
+                    { id: 'ADMIN_GRANT', label: 'Admin Grant' },
                     { id: 'ADMIN', label: 'Admin' },
                     { id: 'ADD_RECORDS', label: 'Add Records' },
                     { id: 'VIEW_ONLY', label: 'View Only' },
@@ -881,6 +914,7 @@ export default function UserManagement() {
                           <td className="p-3 text-slate-700">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded text-slate-650">
                               {user.role === 'admin' || user.role === 'super_admin' ? 'Super Admin' : 
+                               user.role === 'admin_grant' ? 'Admin Grant' :
                                user.role === 'staff' ? 'Admin' : 
                                user.role === 'add_records' ? 'Add Records' : 
                                user.role === 'view_only' || user.role === 'viewer' || user.role === 'airport_viewer' ? 'View Only' :
@@ -897,6 +931,7 @@ export default function UserManagement() {
                               >
                                 <option value="super_admin">Super Admin</option>
                                 <option value="admin">Admin</option>
+                                <option value="admin_grant">Admin Grant</option>
                                 <option value="add_records">Add Records</option>
                                 <option value="view_only">View Only</option>
                                 <option value="airport_staff">Airport Hub</option>
@@ -1233,6 +1268,7 @@ export default function UserManagement() {
                   </div>
                   <p className="text-xs font-bold text-slate-800 mt-1 uppercase tracking-wide">
                     {selectedUser.role === 'admin' || selectedUser.role === 'super_admin' ? 'Super Admin' : 
+                     selectedUser.role === 'admin_grant' ? 'Admin Grant' :
                      selectedUser.role === 'staff' ? 'Admin' : 
                      selectedUser.role === 'add_records' ? 'Add Records' : 
                      selectedUser.role === 'view_only' || selectedUser.role === 'viewer' || selectedUser.role === 'airport_viewer' ? 'View Only' :
@@ -1266,7 +1302,7 @@ export default function UserManagement() {
                       { id: 'Yellow Card', label: 'Yellow Card division' },
                       { id: 'AUDIT', label: 'Immutable Logs' }
                     ].map((m) => {
-                      const isCleared = selectedUser.role === 'admin' || (selectedUser.modules || []).includes(m.id);
+                      const isCleared = selectedUser.role === 'admin' || selectedUser.role === 'super_admin' || selectedUser.role === 'admin_grant' || (selectedUser.modules || []).includes(m.id);
                       return (
                         <div key={m.id} className="flex items-center justify-between text-[11px] font-bold py-0.5 border-b border-slate-50">
                           <span className={isCleared ? 'text-slate-700' : 'text-slate-350'}>{m.label}</span>
@@ -1306,7 +1342,7 @@ export default function UserManagement() {
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
+              className="bg-white border border-slate-200 p-6 max-w-4xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
             >
               <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -1332,50 +1368,210 @@ export default function UserManagement() {
               </div>
 
               <div className="overflow-y-auto pr-1 space-y-3.5 flex-1 scrollbar-thin">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-3">
                   {[
-                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, & dashboards' },
-                    { id: 'USERS', label: 'Credential matrix', desc: 'Secure database profiles and security keys control' },
-                    { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and document reporting' },
-                    { id: 'VISA', label: 'VISA Division Desk', desc: 'Official permanent / temporary visa document registries' },
-                    { id: 'EOID', label: 'EOID Portals Desk', desc: 'Special security clearance borders controls' },
-                    { id: 'Residence ID', label: 'Residence verification', desc: 'National ID, status, and residence registries' },
-                    { id: 'ETD', label: 'Emergency travels', desc: 'Local Emergency Document check system' },
-                    { id: 'CABINETS', label: 'Physical Cabinets', desc: 'Geographical physical paper filing system metadata' },
-                    { id: 'AIRPORT', label: 'Bole Airport controls', desc: 'Check gate operations, arrivals and flight records' },
-                    { id: 'Yellow Card', label: 'Yellow Card division', desc: 'Yellow Fever immunization registry profiles' },
-                    { id: 'AUDIT', label: 'Immutable security log', desc: 'Black-box tracking audit log monitor' }
+                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, & dashboards', icon: LayoutDashboard },
+                    { id: 'USERS', label: 'Credential matrix', desc: 'Secure database profiles and security keys control', icon: Users },
+                    { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and document reporting', icon: FileText },
+                    { id: 'VISA', label: 'VISA Division Desk', desc: 'Official permanent / temporary visa document registries', icon: Globe },
+                    { id: 'EOID', label: 'EOID Portals Desk', desc: 'Special security clearance borders controls', icon: Fingerprint },
+                    { id: 'Residence ID', label: 'Residence verification', desc: 'National ID, status, and residence registries', icon: Shield },
+                    { id: 'ETD', label: 'Emergency travels', desc: 'Local Emergency Document check system', icon: AlertTriangle },
+                    { id: 'CABINETS', label: 'Physical Cabinets', desc: 'Geographical physical paper filing system metadata', icon: Archive },
+                    { id: 'AIRPORT', label: 'Bole Airport controls', desc: 'Check gate operations, arrivals and flight records', icon: Plane },
+                    { id: 'Yellow Card', label: 'Yellow Card division', desc: 'Yellow Fever immunization registry profiles', icon: Activity },
+                    { id: 'AUDIT', label: 'Immutable security log', desc: 'Black-box tracking audit log monitor', icon: History }
                   ].map((module) => {
                     const isSelected = selectedModules.includes(module.id);
+                    const perms = localSubPerms[module.id] || { list: false, show: false, edit: false };
+
                     return (
-                      <button
-                        key={module.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedModules(prev => prev.filter(m => m !== module.id));
-                          } else {
-                            setSelectedModules(prev => [...prev, module.id]);
-                          }
-                        }}
-                        className={`text-left p-3 rounded-xl border transition-all flex flex-col justify-between cursor-pointer outline-none ${
+                      <div 
+                        key={module.id} 
+                        className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border transition-all gap-4 ${
                           isSelected 
-                            ? `border-emerald-500 bg-emerald-50/45` 
-                            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 hover:border-slate-300'
+                            ? 'border-emerald-500 bg-emerald-50/20 shadow-xs' 
+                            : 'border-slate-150 bg-slate-50/30 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between w-full mb-1">
-                          <span className={`font-bold text-xs uppercase ${isSelected ? 'text-emerald-850' : 'text-slate-700'}`}>
-                            {module.label}
-                          </span>
-                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
-                            isSelected ? 'bg-emerald-600 border-emerald-500 shadow-sm' : 'border-slate-300 bg-white'
-                          }`}>
-                            {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />}
+                        {/* Left Column: Toggle + Icon + Labels */}
+                        <div className="flex items-center gap-3 shrink-0 min-w-[240px]">
+                          {/* IOS Styled Toggle Switch */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextState = !perms.list;
+                              const updated = {
+                                ...localSubPerms,
+                                [module.id]: {
+                                  list: nextState,
+                                  show: nextState,
+                                  edit: nextState && modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
+                                }
+                              };
+                              setLocalSubPerms(updated);
+                              const active = Object.keys(updated).filter(key => updated[key].list);
+                              setSelectedModules(active);
+                            }}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              isSelected ? 'bg-emerald-500' : 'bg-slate-200'
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                isSelected ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+
+                          {/* Icon Accent and Text Details */}
+                          <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-emerald-100 text-emerald-850' : 'bg-slate-100 text-slate-400'}`}>
+                              <module.icon className="w-4 h-4 shrink-0" />
+                            </div>
+                            <div className="text-left leading-none">
+                              <span className={`block text-xs font-extrabold uppercase tracking-tight ${isSelected ? 'text-emerald-950' : 'text-slate-650'}`}>
+                                {module.label}
+                              </span>
+                              <span className="text-[10px] text-slate-450 mt-1.5 block leading-tight">{module.desc}</span>
+                            </div>
                           </div>
                         </div>
-                        <p className="text-[10px] text-slate-450 leading-relaxed font-medium">{module.desc}</p>
-                      </button>
+
+                        {/* Middle Column: List, Show, Edit Permissions Checklist */}
+                        <div className="flex items-center gap-5 sm:gap-6 md:justify-center flex-1">
+                          {/* List clearance checkbox */}
+                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
+                            <input
+                              type="checkbox"
+                              checked={perms.list}
+                              disabled={!isSelected}
+                              onChange={() => {
+                                const updated = {
+                                  ...localSubPerms,
+                                  [module.id]: {
+                                    ...perms,
+                                    list: !perms.list,
+                                    show: !perms.list ? perms.show : false,
+                                    edit: !perms.list ? perms.edit : false
+                                  }
+                                };
+                                setLocalSubPerms(updated);
+                                const active = Object.keys(updated).filter(key => updated[key].list);
+                                setSelectedModules(active);
+                              }}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
+                            />
+                            <span className="flex items-center gap-1 font-sans">
+                              <CheckCircle className={`w-3.5 h-3.5 ${perms.list ? 'text-emerald-600' : 'text-slate-400'}`} />
+                              List
+                            </span>
+                          </label>
+
+                          {/* Show clearance checkbox */}
+                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
+                            <input
+                              type="checkbox"
+                              checked={perms.show}
+                              disabled={!isSelected}
+                              onChange={() => {
+                                const updated = {
+                                  ...localSubPerms,
+                                  [module.id]: {
+                                    ...perms,
+                                    show: !perms.show,
+                                    list: true
+                                  }
+                                };
+                                setLocalSubPerms(updated);
+                                const active = Object.keys(updated).filter(key => updated[key].list);
+                                setSelectedModules(active);
+                              }}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
+                            />
+                            <span className="flex items-center gap-1 font-sans">
+                              <CheckCircle className={`w-3.5 h-3.5 ${perms.show ? 'text-emerald-600' : 'text-slate-400'}`} />
+                              Show
+                            </span>
+                          </label>
+
+                          {/* Edit clearance checkbox */}
+                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
+                            <input
+                              type="checkbox"
+                              checked={perms.edit}
+                              disabled={!isSelected}
+                              onChange={() => {
+                                const updated = {
+                                  ...localSubPerms,
+                                  [module.id]: {
+                                    ...perms,
+                                    edit: !perms.edit,
+                                    list: true
+                                  }
+                                };
+                                setLocalSubPerms(updated);
+                                const active = Object.keys(updated).filter(key => updated[key].list);
+                                setSelectedModules(active);
+                              }}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
+                            />
+                            <span className="flex items-center gap-1 font-sans">
+                              <CheckCircle className={`w-3.5 h-3.5 ${perms.edit ? 'text-emerald-600' : 'text-slate-400'}`} />
+                              Edit
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Right Column: Custom orange Edit & green Create buttons */}
+                        <div className="flex items-center gap-2 justify-end shrink-0">
+                          {/* Orange Edit Button */}
+                          <button
+                            type="button"
+                            title="Toggle custom Edit capability"
+                            onClick={() => {
+                              const updated = {
+                                ...localSubPerms,
+                                [module.id]: {
+                                  ...perms,
+                                  list: true,
+                                  edit: !perms.edit
+                                }
+                              };
+                              setLocalSubPerms(updated);
+                              const active = Object.keys(updated).filter(key => updated[key].list);
+                              setSelectedModules(active);
+                            }}
+                            className="px-3 py-1.5 bg-[#f57c00] hover:bg-[#e65100] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-md shadow-xs active:scale-95 transition-all outline-none border-none cursor-pointer flex items-center gap-1"
+                          >
+                            <Pencil className="w-3 h-3 stroke-[2.5]" />
+                            Edit
+                          </button>
+
+                          {/* Green Create Button */}
+                          <button
+                            type="button"
+                            title="Enable full active clearance permissions"
+                            onClick={() => {
+                              const updated = {
+                                ...localSubPerms,
+                                [module.id]: {
+                                  list: true,
+                                  show: true,
+                                  edit: true
+                                }
+                              };
+                              setLocalSubPerms(updated);
+                              const active = Object.keys(updated).filter(key => updated[key].list);
+                              setSelectedModules(active);
+                            }}
+                            className="px-3 py-1.5 bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-md shadow-xs active:scale-95 transition-all outline-none border-none cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Create
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -1496,6 +1692,7 @@ export default function UserManagement() {
                     {[
                       { id: 'super_admin', label: 'Super Admin', desc: 'Sovereign administrative directory bypass access' },
                       { id: 'admin', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
+                      { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to assign user roles and manage general accounts' },
                       { id: 'add_records', label: 'Add Records Specialist', desc: 'Register new items, insert records, and attach files' },
                       { id: 'view_only', label: 'View Only Auditor', desc: 'Lookup-only view permission, passive directory observations' },
                       { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport checkpoint hub processing level' },
@@ -1607,6 +1804,7 @@ export default function UserManagement() {
                   {[
                     { id: 'super_admin', label: 'Super Admin', desc: 'Complete access to records, security matrix, & audit trails' },
                     { id: 'admin', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
+                    { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to manage users, assign server-authoritative roles, & configure directories' },
                     { id: 'add_records', label: 'Add Records', desc: 'Register entries, database insertions, and document uploads' },
                     { id: 'view_only', label: 'View Only', desc: 'Restricted lookup-only file viewing authorization' },
                     { id: 'airport_staff', label: 'Airport Hub Staff', desc: 'Bole international gateway checkpoints access' },

@@ -97,7 +97,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
+      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -138,7 +138,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -164,7 +164,7 @@ async function startServer() {
     const token = authHeader.split(" ")[1];
     const { userId, newRole } = req.body;
 
-    const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'super_admin', 'add_records', 'view_only'];
+    const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'super_admin', 'add_records', 'view_only', 'admin_grant'];
     if (!userId || !newRole || !validRoles.includes(newRole)) {
       return res.status(400).json({ error: "Missing required fields or invalid role" });
     }
@@ -179,13 +179,13 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
       // Default modules for the new role
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      if (newRole === 'admin' || newRole === 'super_admin') {
+      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
       } else if (newRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
@@ -231,7 +231,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -248,7 +248,7 @@ async function startServer() {
 
       // Default modules for the role
       let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'];
-      if (role === 'admin' || role === 'super_admin') {
+      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
       } else if (role === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
@@ -294,7 +294,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -340,7 +340,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden" });
       }
 

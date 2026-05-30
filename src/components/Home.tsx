@@ -83,14 +83,11 @@ export default function Home() {
       {/* Top Header navbar */}
       <header className="fixed top-0 left-0 right-0 border-b border-slate-200/80 backdrop-blur-md bg-white/95 z-50 transition-all shadow-sm h-20 flex items-center">
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4 select-none">
-            <EthiopiaFingerprint className="w-10 h-10 sm:w-14 sm:h-14 drop-shadow-sm flex-shrink-0" />
-            <div className="text-2xl sm:text-3xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
-              ICS
-            </div>
-            <div className="flex flex-col justify-center text-left pl-1 sm:pl-2">
-              <h1 className="text-[#1b54ac] font-bold text-xs sm:text-base tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
-              <p className="text-[6.5px] sm:text-[9.5px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
+          <div className="flex items-center gap-2.5 select-none font-sans">
+            <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-[#1b54ac] shrink-0" />
+            <div className="flex flex-col justify-center text-left">
+              <h1 className="text-[#1b54ac] font-black text-sm sm:text-lg tracking-tight leading-none uppercase">Immigration Portal</h1>
+              <p className="text-[7.5px] sm:text-[9px] text-[#1b54ac] uppercase tracking-[0.1em] mt-0.5 font-bold leading-none">Secure File & Identity Management</p>
             </div>
           </div>
 
@@ -325,15 +322,9 @@ export default function Home() {
         
         <div className="max-w-4xl mx-auto text-center relative z-10 space-y-8">
           {/* Centered Premium Official Branded Logo Block */}
-          <div className="inline-flex items-center gap-3 sm:gap-4 bg-white px-5 sm:px-7 py-3 sm:py-4 rounded-3xl shadow-2xl shadow-black/25 border border-white mx-auto select-none">
-            <EthiopiaFingerprint className="w-9 h-9 sm:w-12 sm:h-12 flex-shrink-0" />
-            <div className="text-xl sm:text-2.5xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
-              ICS
-            </div>
-            <div className="flex flex-col justify-center text-left pl-1">
-              <h1 className="text-[#1b54ac] font-black text-[10px] sm:text-sm tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
-              <p className="text-[6.5px] sm:text-[8.5px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
-            </div>
+          <div className="inline-flex items-center gap-2.5 bg-white/10 px-5 py-2.5 rounded-2xl border border-white/20 shadow-xl mx-auto select-none backdrop-blur-xs">
+            <Shield className="w-4.5 h-4.5 text-blue-200 shrink-0" />
+            <span className="text-xs uppercase tracking-[0.15em] font-extrabold text-blue-100">FEDERAL AGENCY INTERNAL GATEWAY</span>
           </div>
 
           <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
@@ -451,10 +442,10 @@ export default function Home() {
       {/* Footer support details */}
       <footer className="mt-auto border-t border-blue-700 bg-[#1b54ac] py-12 px-6 text-white text-xs">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3">
-            <EthiopiaFingerprint className="w-6 h-6 opacity-90 p-0.5 bg-white/10 rounded-md" />
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-5 h-5 text-blue-100 shrink-0 opacity-90" />
             <span className="text-slate-100 font-bold">
-              © {new Date().getFullYear()} ICS (Immigration and Citizenship Service). For Internal Staff Use Only.
+              © {new Date().getFullYear()} Immigration Service. For Internal Staff Use Only.
             </span>
           </div>
 

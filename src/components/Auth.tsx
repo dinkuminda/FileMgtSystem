@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import { supabase } from '../lib/supabase';
-import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -104,14 +104,10 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
 
       {/* Logo Section */}
       <div className="flex flex-col items-center mb-8 text-center w-full pt-6 select-none">
-        <div className="flex items-center gap-3 sm:gap-4 justify-center">
-          <EthiopiaFingerprint className="w-11 h-11 flex-shrink-0" />
-          <div className="text-3xl font-black text-[#1b54ac] tracking-tight leading-none select-none font-sans">
-            ICS
-          </div>
-          <div className="flex flex-col justify-center text-left pl-1">
-            <h1 className="text-[#1b54ac] font-bold text-xs sm:text-base tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
-            <p className="text-[6.5px] sm:text-[8px] text-[#1b54ac] uppercase tracking-[0.03em] mt-1 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
+        <div className="flex items-center gap-2.5 justify-center">
+          <Shield className="w-9 h-9 text-blue-600 flex-shrink-0" />
+          <div className="text-2xl font-black text-slate-800 tracking-tight leading-none font-sans">
+            Immigration Hub
           </div>
         </div>
       </div>
@@ -324,15 +320,9 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
       {!isModal && !isInline && (
         <header className="fixed top-0 left-0 right-0 border-b border-slate-200 backdrop-blur-md bg-white/85 z-50 h-20 flex items-center">
           <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 sm:gap-4 select-none">
-              <EthiopiaFingerprint className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm flex-shrink-0" />
-              <div className="text-xl sm:text-2xl font-black text-[#1b54ac] tracking-tight leading-none select-none">
-                ICS
-              </div>
-              <div className="flex flex-col justify-center text-left pl-1 sm:pl-2">
-                <h1 className="text-[#1b54ac] font-bold text-[10px] sm:text-xs tracking-tight leading-none">የኢሚግሬሽንና ዜግነት አገልግሎት</h1>
-                <p className="text-[6.5px] sm:text-[8px] text-[#1b54ac] uppercase tracking-[0.03em] mt-0.5 font-bold leading-none">IMMIGRATION AND CITIZENSHIP SERVICE</p>
-              </div>
+            <Link to="/" className="flex items-center gap-2 select-none text-slate-800 font-sans">
+              <Shield className="w-6 h-6 text-blue-600 shrink-0" />
+              <span className="text-lg font-black tracking-tight leading-none bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Immigration Portal</span>
             </Link>
             
             <Link 

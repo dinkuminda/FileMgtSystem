@@ -283,17 +283,34 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           .from('audit_logs')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(8);
+          .limit(15);
         if (!logsError && logsData && logsData.length > 0) {
           fetchedLogs = logsData;
         } else {
           // Stable fallback activities with exact styling avatars mimicking the dashboard
           fetchedLogs = [
             { id: '1', user_email: 'ronald.bradley@immigration.gov.et', action: 'CREATE', entity_type: 'VISA', details: 'Added entry clearance registry validation', created_at: new Date(Date.now() - 600000 * 3).toISOString() },
-            { id: '2', user_email: 'russell.gibson@bole.gov.et', action: 'UPDATE', entity_type: 'EOID', details: 'Configured physical box correlation alignment', created_at: new Date(Date.now() - 3600000).toISOString() },
+            { id: '2', user_email: 'russell.gibson@bole.gov.et', action: 'UPDATE', entity_type: 'AIRPORT', details: 'Configured physical box correlation alignment', created_at: new Date(Date.now() - 3600000).toISOString() },
             { id: '3', user_email: 'beverly.armstrong@immigration.gov.et', action: 'EXPORT', entity_type: 'Residence ID', details: 'Archived digitized credentials index to local backup', created_at: new Date(Date.now() - 3600000 * 2.5).toISOString() },
             { id: '4', user_email: 'dinkuh12@gmail.com', action: 'LOGIN', entity_type: 'User', details: 'Administrative control session activated from gateway', created_at: new Date(Date.now() - 3600000 * 6.2).toISOString() }
           ];
+        }
+
+        // Apply strict modules filtration filter to logs based on permissions
+        if (userProfile && userProfile.role !== 'admin' && userProfile.role !== 'super_admin' && userProfile.role !== 'admin_grant') {
+          fetchedLogs = fetchedLogs.filter((log: any) => {
+            const moduleType = log.entity_type;
+            if (userProfile.modules) {
+              if (moduleType === 'Yellow Card' || moduleType === 'Yellow Card Logs') {
+                return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+              }
+              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT'];
+              if (moduleKeys.includes(moduleType)) {
+                return userProfile.modules.includes(moduleType);
+              }
+            }
+            return true;
+          }).slice(0, 8);
         }
       } catch (e) {
         console.error("Failed querying audit logs in DashboardReports:", e);

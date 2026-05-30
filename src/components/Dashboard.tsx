@@ -168,9 +168,20 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (!userProfile) return false;
     
     // Admins should always see everything
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
 
-    // Secure via dynamic modular permissions check
+    // Command Deck (Overview) is the baseline landing page for everyone
+    if (tab.type === 'OVERVIEW') return true;
+
+    // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
+    if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      if (tab.type === 'Yellow Card') {
+        return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+      }
+      return userProfile.modules.includes(tab.type);
+    }
+
+    // Fallback 1: Secure via dynamic modular permissions rules config
     const dynamicModules = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'CABINETS', 'AIRPORT'];
     if (dynamicModules.includes(tab.type)) {
       if (!hasViewAccess(userProfile.role, tab.type, permissionRules)) {
@@ -178,23 +189,12 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       }
     }
 
-    // Command Deck (Overview) is the baseline landing page for everyone
-    if (tab.type === 'OVERVIEW') return true;
-
-    // If user has specific modules array assigned, use those strictly
-    if (userProfile.modules) {
-      if (tab.type === 'Yellow Card') {
-        return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
-      }
-      return userProfile.modules.includes(tab.type);
-    }
-
-    // Role-based fallbacks for users without explicit modules array definition
+    // Fallback 2: Role-based fallbacks for historic/unconfigured users without modules array
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'Yellow Card' || tab.type === 'AIRPORT';
     }
 
-    // Staff can see records and reports, but not system level management
+    // Fallback 3: Staff can see records/reports, but not administrative divisions
     if (tab.type === 'AUDIT' || tab.type === 'USERS' || tab.type === 'CABINETS' || tab.type === 'REPORTS') return false;
     return true;
   });
@@ -209,7 +209,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
   ].filter(at => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       // If they have users/audit module, show them in airport too
       if (at.module === 'USERS') return userProfile.modules.includes('USERS');
@@ -272,7 +272,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
   const hasAccess = (tabType: typeof allTabs[number]['type']) => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     return tabs.some(t => t.type === tabType);
   };
 
@@ -391,8 +391,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
         {/* Branding Area */}
         <div className={`pt-8 pb-5 px-6 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
-          <div className="w-10 h-10 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
-            <EthiopiaFingerprint className="w-8 h-8 drop-shadow-xs" />
+          <div className="w-10 h-10 bg-blue-50 border border-blue-200/80 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
+            <Shield className="w-5.5 h-5.5 text-blue-600" />
           </div>
           {!isSidebarCollapsed && (
             <motion.div 
@@ -400,10 +400,10 @@ export default function Dashboard({ userProfile }: DashboardProps) {
               animate={{ opacity: 1, x: 0 }}
               className="overflow-hidden text-left animate-none"
             >
-              <h1 className="font-extrabold text-xl tracking-tight text-[#0f3c83] leading-none mb-1">
-                ICS
+              <h1 className="font-extrabold text-xs tracking-wider text-slate-800 leading-none mb-1 uppercase">
+                Immigration
               </h1>
-              <p className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-400">FILE MANAGEMENT SYSTEM</p>
+              <p className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-slate-400 font-mono">File Hub Portal</p>
             </motion.div>
           )}
         </div>
