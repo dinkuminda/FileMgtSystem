@@ -51,7 +51,8 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return ['dashboard', 'view', 'add', 'edit'].includes(tab.id);
     }
-    return true;
+    // Regular staff with no modules configuration can only view basic tabs
+    return ['dashboard', 'view'].includes(tab.id);
   });
 
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);

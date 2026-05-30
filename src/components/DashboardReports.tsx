@@ -167,7 +167,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
               if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
                 hasAccess = type === 'Yellow Card' || type === 'AIRPORT';
               } else {
-                hasAccess = type !== 'Yellow Card' && type !== 'AIRPORT';
+                // Regular staff with no configured modules array get no default division access
+                hasAccess = false;
               }
             }
           }
@@ -241,7 +242,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
             return mType === 'Yellow Card' || mType === 'AIRPORT';
           }
-          return mType !== 'Yellow Card' && mType !== 'AIRPORT';
+          // Regular staff with no configured modules get no default cabinet access
+          return false;
         }
       };
 

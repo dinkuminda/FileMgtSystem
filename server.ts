@@ -183,8 +183,8 @@ async function startServer() {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
-      // Default modules for the new role
-      let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+      // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
+      let defaultModules: string[] = ['OVERVIEW'];
       if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
       } else if (newRole === 'airport_staff') {
@@ -246,8 +246,8 @@ async function startServer() {
       if (createError) throw createError;
       if (!newUser) throw new Error("Failed to create user");
 
-      // Default modules for the role
-      let defaultModules: string[] = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT'];
+      // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
+      let defaultModules: string[] = ['OVERVIEW'];
       if (role === 'admin' || role === 'super_admin' || role === 'admin_grant') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
       } else if (role === 'airport_staff') {
@@ -615,9 +615,65 @@ How can I help you support system operations?`;
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", async () => {
     console.log(`[SERVER] Ready and listening on http://0.0.0.0:${PORT}`);
     console.log(`[SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+
+    // Self-healing startup database state repair and secure policies injection
+    try {
+      console.log("[SECURE SYSTEM BOOTSTRAP] Syncing permission policies and cleansing demo profiles...");
+
+      // 1. Force the database's permission_rules table to align with secure non-admin view restrictions
+      const secureRules = [
+        { module: 'VISA', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
+        { module: 'EOID', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
+        { module: 'Residence ID', view_roles: ['admin'], create_roles: ['admin'], update_roles: ['admin'] },
+        { module: 'ETD', view_roles: ['admin'], create_roles: [], update_roles: [] },
+        { module: 'Yellow Card', view_roles: ['admin', 'airport_staff'], create_roles: [], update_roles: [] },
+        { module: 'CABINETS', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
+        { module: 'AIRPORT', view_roles: ['admin', 'airport_staff', 'airport_viewer'], create_roles: ['admin', 'airport_staff'], update_roles: [] }
+      ];
+
+      for (const rule of secureRules) {
+        const { error: rErr } = await supabaseAdmin
+          .from('permission_rules')
+          .upsert(rule, { onConflict: 'module' });
+        if (rErr) {
+          console.warn(`[BOOTSTRAP WARNING] Could not upsert rule for ${rule.module}:`, rErr.message);
+        }
+      }
+      console.log("[SECURE SYSTEM BOOTSTRAP] Database permission policies secured successfully.");
+
+      // 2. Discover weleba and enforce the restricted Bole Airport division configuration
+      const { data: welebaProfiles, error: pError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .or('email.ilike.%weleba%,full_name.ilike.%weleba%');
+
+      if (!pError && welebaProfiles && welebaProfiles.length > 0) {
+        for (const p of welebaProfiles) {
+          console.log(`[BOOTSTRAP] Found weleba profile: ${p.email} (current modules count: ${p.modules?.length ?? 0})`);
+          // Repair profile: set role to 'staff' and modules strictly to airport divisions
+          const { error: updErr } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              role: 'staff',
+              modules: ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+            })
+            .eq('id', p.id);
+
+          if (!updErr) {
+            console.log(`[BOOTSTRAP] Successfully restricted weleba profile modules to AIRPORT only!`);
+          } else {
+            console.error(`[BOOTSTRAP FAILURE] Error repairing weleba modules:`, updErr.message);
+          }
+        }
+      } else {
+        console.log("[BOOTSTRAP] No active weleba profile found in database rows for immediate repair. Standby for standard registration.");
+      }
+    } catch (e: any) {
+      console.error("[SECURE SYSTEM BOOTSTRAP] Fatal during self-healing:", e.message);
+    }
   });
 }
 

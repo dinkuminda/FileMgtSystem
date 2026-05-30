@@ -181,22 +181,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
       return userProfile.modules.includes(tab.type);
     }
 
-    // Fallback 1: Secure via dynamic modular permissions rules config
-    const dynamicModules = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'CABINETS', 'AIRPORT'];
-    if (dynamicModules.includes(tab.type)) {
-      if (!hasViewAccess(userProfile.role, tab.type, permissionRules)) {
-        return false;
-      }
-    }
-
-    // Fallback 2: Role-based fallbacks for historic/unconfigured users without modules array
+    // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
+    // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
+    // However, if they are historic airport_staff/airport_viewer, let them view AIRPORT/Yellow Card.
     if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
       return tab.type === 'Yellow Card' || tab.type === 'AIRPORT';
     }
 
-    // Fallback 3: Staff can see records/reports, but not administrative divisions
-    if (tab.type === 'AUDIT' || tab.type === 'USERS' || tab.type === 'CABINETS' || tab.type === 'REPORTS') return false;
-    return true;
+    // Regular staff (or other roles) with no configured modules array get ONLY the Overview baseline.
+    return false;
   });
 
   // Calculate Airport Sub Tabs based on permissions
