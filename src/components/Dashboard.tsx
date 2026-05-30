@@ -384,7 +384,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
   );
 
   const SidebarContent = () => {
-    const isAirportContext = location.pathname.startsWith('/airport');
+    const isAirportContext = false;
 
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
@@ -680,15 +680,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                            activeTab === 'Residence ID' ? 'Residence ID Division' : 
                            activeTab === 'ETD' ? 'ETD Structuring Division' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Division' : 
-                           activeTab === 'AIRPORT' ? 'Bole Airport Structuring Division' : activeTab}
+                           activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
-                          {activeTab === 'VISA' ? 'Source: - FSD Division Data structuring' : 
-                           activeTab === 'EOID' ? 'Source: - National ID verification feeds' : 
-                           activeTab === 'Residence ID' ? 'Source: - Permanent ID verification records' : 
-                           activeTab === 'ETD' ? 'Source: - Non-resident exception travels' : 
-                           activeTab === 'AIRPORT' ? 'Source: - BOLE AIRPORT BORDER SECURITY CONTROL' :
-                           'Source: - Diaspora Registration Hub'}
+                          {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
+                           activeTab === 'EOID' ? 'SOURCE: - National ID verification feeds' : 
+                           activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
+                           activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
+                           activeTab === 'AIRPORT' ? 'SOURCE: - BOLE AIRPORT BORDER SECURITY CONTROL' :
+                           'SOURCE: - DIASPORA REGISTRATION HUB'}
                         </p>
                       </div>
 
@@ -760,28 +760,30 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement /> : <Navigate to="/" replace />} />
                 <Route path="/airport/:subTab" element={
                   hasAccess('AIRPORT') ? (
-                    <AirportView 
-                      userProfile={userProfile}
-                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDeleteRecord={handleDelete}
-                      searchQuery={searchQuery}
-                      canEdit={canEdit()}
-                      refreshCounter={refreshCounter}
-                    />
+                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/airport" element={
                   hasAccess('AIRPORT') ? (
-                    <AirportView 
-                      userProfile={userProfile}
-                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDeleteRecord={handleDelete}
-                      searchQuery={searchQuery}
-                      canEdit={canEdit()}
-                      refreshCounter={refreshCounter}
-                    />
+                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/yellow-card" element={
