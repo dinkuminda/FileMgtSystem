@@ -15,7 +15,8 @@ export default function EthiopianImmigrationLogo({ className = '', size = 'md' }
     xl: 'h-14 w-auto max-w-[300px]',
   };
 
-  const finalClass = className || sizeClasses[size];
+  const hasSpecificHeight = className.includes('h-') || className.includes('sm:h-');
+  const finalClass = hasSpecificHeight ? className : `${sizeClasses[size]} ${className}`;
 
   return (
     <div className="flex items-center justify-center select-none" id="ethiopian-immigration-logo-container">
