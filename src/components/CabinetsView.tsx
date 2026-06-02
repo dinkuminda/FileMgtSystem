@@ -21,7 +21,7 @@ interface CabinetsViewProps {
 
 interface CabinetInfo {
   boxName: string;
-  module: RecordType;
+  module: string;
   desc: string;
   color: string;
   count: number;
@@ -51,7 +51,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
   // States for adding custom physical boxes
   const [isAddCabinetOpen, setIsAddCabinetOpen] = useState(false);
   const [newCabName, setNewCabName] = useState('');
-  const [newCabModule, setNewCabModule] = useState<RecordType>('VISA');
+  const [newCabModule, setNewCabModule] = useState<string>('VISA');
   const [newCabDesc, setNewCabDesc] = useState('');
   const [newCabColor, setNewCabColor] = useState('from-indigo-600 to-indigo-800');
 
@@ -120,7 +120,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
       }
 
       // Define default details for the cabinets (explicitly exclude EOID-000002 by default)
-      const cabinetMeta: Record<string, { desc: string; type: RecordType; color: string; temp: number; hum: number }> = {
+      const cabinetMeta: Record<string, { desc: string; type: string; color: string; temp: number; hum: number }> = {
         'Visa-000001': { desc: 'Visa Portal Logs Archive Drawer', type: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, hum: 42 },
         'Residence-000003': { desc: 'Residence Permit Physical Registry Drawer', type: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, hum: 45 },
         'ETD-000004': { desc: 'Emergency Travel Document Secure Vault', type: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, hum: 35 },
@@ -157,7 +157,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
       });
 
       const builtCabinets: CabinetInfo[] = Object.keys(boxMap).map((boxName) => {
-        const meta = cabinetMeta[boxName] || { desc: 'General Archive Locker', type: 'VISA' as RecordType, color: 'from-slate-600 to-slate-800', temp: 21.0, hum: 40 };
+        const meta = cabinetMeta[boxName] || { desc: 'General Archive Locker', type: 'VISA', color: 'from-slate-600 to-slate-800', temp: 21.0, hum: 40 };
         return {
           boxName,
           module: meta.type,
@@ -839,17 +839,14 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                 {/* Cabinet Type / Associated Module */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-slate-505 text-slate-550 uppercase tracking-widest">Division Association</label>
-                  <select
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT"
                     value={newCabModule}
-                    onChange={(e) => setNewCabModule(e.target.value as RecordType)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer font-sans"
-                  >
-                    <option value="VISA">VISA PORTAL LOGS</option>
-                    <option value="EOID">EOID NATIONAL REGISTRY</option>
-                    <option value="Residence ID">RESIDENCE PERMITS</option>
-                    <option value="ETD">EMERGENCY TRAVEL DOCS</option>
-                    <option value="Yellow Card">YELLOW CARD DIVISION LOGS</option>
-                  </select>
+                    onChange={(e) => setNewCabModule(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"
+                  />
                 </div>
 
                 {/* Cabinet Description */}

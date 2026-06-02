@@ -34,12 +34,44 @@ export default function App() {
         if (event === 'SIGNED_IN') {
           logger.log('LOGIN', 'User', 'User signed in');
         }
+      } else {
+        setUserProfile(null);
       }
-      else setUserProfile(null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  // Handle distinct realtime channel subscription for profile updates
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const userId = session.user.id;
+    const channelName = `profile-changes-${userId}`;
+
+    const channel = supabase.channel(channelName);
+    
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${userId}`
+      },
+      () => {
+        fetchProfile(userId);
+      }
+    );
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
 
   async function fetchProfile(uid: string) {
     // Fetch the profile from the 'profiles' table which is synced via trigger

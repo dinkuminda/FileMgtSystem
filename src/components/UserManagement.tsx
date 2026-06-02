@@ -162,6 +162,10 @@ export default function UserManagement() {
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
   
+  // Custom module design parameters
+  const [moduleSearchTerm, setModuleSearchTerm] = useState('');
+  const [moduleSearchActiveTab, setModuleSearchActiveTab] = useState<'modules' | 'help' | 'comparison' | 'license'>('modules');
+  
   // Form fields
   const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -1337,330 +1341,523 @@ export default function UserManagement() {
       {/* MODAL 1: SYSTEM MODULE ACCESS MODIFIER POPUP */}
       <AnimatePresence>
         {modifyingModulesUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-4xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
+              className="bg-white border border-slate-200 max-w-[1240px] w-full flex flex-col md:flex-row h-[85vh] shadow-2xl rounded-2xl overflow-hidden text-slate-800"
             >
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 bg-slate-100 text-slate-700 rounded-lg`}>
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </div>
+              {/* LEFT SIDEBAR: Modules Menu & Subject Info */}
+              <div className="w-full md:w-64 bg-slate-50 border-r border-slate-205 p-6 flex flex-col justify-between shrink-0">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Custom Division Access Matrix</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configure precise portal reach profiles</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setModifyingModulesUser(null)}
-                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold mb-4 text-slate-650 flex items-center justify-between">
-                <span>Subject Account: <strong className="font-mono text-slate-850">{modifyingModulesUser.email}</strong></span>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Security Override</span>
-              </div>
-
-              <div className="flex gap-2.5 mb-4 justify-between items-center bg-slate-50/50 p-2.5 rounded-xl border border-dotted border-slate-200">
-                <span className="text-[10px] uppercase font-black tracking-wide text-slate-450">Bulk Preset:</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    title="Enable access to all portals"
-                    onClick={() => {
-                      const allModuleIds = [
-                        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
-                        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-                      ];
-                      setSelectedModules(allModuleIds);
-                      const updated = { ...localSubPerms };
-                      allModuleIds.forEach(mId => {
-                        updated[mId] = { list: true, show: true, edit: true };
-                      });
-                      setLocalSubPerms(updated);
-                    }}
-                    className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100/85 active:bg-emerald-200/50 border border-emerald-250 text-emerald-700 text-[10px] font-bold uppercase rounded-lg transition-all outline-none cursor-pointer"
-                  >
-                    Grant All Portals
-                  </button>
-                  <button
-                    type="button"
-                    title="Revoke access to all portals"
-                    onClick={() => {
-                      setSelectedModules([]);
-                      const updated = { ...localSubPerms };
-                      const allModuleIds = [
-                        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
-                        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-                      ];
-                      allModuleIds.forEach(mId => {
-                        updated[mId] = { list: false, show: false, edit: false };
-                      });
-                      setLocalSubPerms(updated);
-                    }}
-                    className="px-3 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-250 text-slate-600 text-[10px] font-bold uppercase rounded-lg transition-all outline-none cursor-pointer"
-                  >
-                    Revoke All
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-y-auto pr-1 space-y-3.5 flex-1 scrollbar-thin">
-                <div className="space-y-3">
-                  {[
-                    { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, & dashboards', icon: LayoutDashboard },
-                    { id: 'USERS', label: 'Credential matrix', desc: 'Secure database profiles and security keys control', icon: Users },
-                    { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and document reporting', icon: FileText },
-                    { id: 'VISA', label: 'VISA Division Desk', desc: 'Official permanent / temporary visa document registries', icon: Globe },
-                    { id: 'EOID', label: 'EOID Portals Desk', desc: 'Special security clearance borders controls', icon: Fingerprint },
-                    { id: 'Residence ID', label: 'Residence verification', desc: 'National ID, status, and residence registries', icon: Shield },
-                    { id: 'ETD', label: 'Emergency travels', desc: 'Local Emergency Document check system', icon: AlertTriangle },
-                    { id: 'CABINETS', label: 'Physical Cabinets', desc: 'Geographical physical paper filing system metadata', icon: Archive },
-                    { id: 'AIRPORT', label: 'Bole Airport controls', desc: 'Check gate operations, arrivals and flight records', icon: Plane },
-                    { id: 'Yellow Card', label: 'Yellow Card division', desc: 'Yellow Fever immunization registry profiles', icon: Activity },
-                    { id: 'AUDIT', label: 'Immutable security log', desc: 'Black-box tracking audit log monitor', icon: History }
-                  ].map((module) => {
-                    const isSelected = selectedModules.includes(module.id);
-                    const perms = localSubPerms[module.id] || { list: false, show: false, edit: false };
-
-                    return (
-                      <div 
-                        key={module.id} 
-                        className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border transition-all gap-4 ${
-                          isSelected 
-                            ? 'border-emerald-500 bg-emerald-50/20 shadow-xs' 
-                            : 'border-slate-150 bg-slate-50/30 hover:bg-slate-50'
+                    <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Modules Layout</h3>
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setModuleSearchActiveTab('modules')}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
+                          moduleSearchActiveTab === 'modules'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
                         }`}
                       >
-                        {/* Left Column: Toggle + Icon + Labels */}
-                        <div className="flex items-center gap-3 shrink-0 min-w-[240px]">
-                          {/* IOS Styled Toggle Switch */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nextState = !perms.list;
-                              const updated = {
-                                ...localSubPerms,
-                                [module.id]: {
-                                  list: nextState,
-                                  show: nextState,
-                                  edit: nextState && modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
-                                }
-                              };
-                              setLocalSubPerms(updated);
-                              const active = Object.keys(updated).filter(key => updated[key].list);
-                              setSelectedModules(active);
-                            }}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              isSelected ? 'bg-emerald-500' : 'bg-slate-200'
-                            }`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                isSelected ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Dashboard Modules
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setModuleSearchActiveTab('help')}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
+                          moduleSearchActiveTab === 'help'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <Shield className="w-4 h-4" />
+                        Help & Support
+                      </button>
 
-                          {/* Icon Accent and Text Details */}
-                          <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-emerald-100 text-emerald-850' : 'bg-slate-100 text-slate-400'}`}>
-                              <module.icon className="w-4 h-4 shrink-0" />
-                            </div>
-                            <div className="text-left leading-none">
-                              <span className={`block text-xs font-extrabold uppercase tracking-tight ${isSelected ? 'text-emerald-950' : 'text-slate-650'}`}>
-                                {module.label}
-                              </span>
-                              <span className="text-[10px] text-slate-450 mt-1.5 block leading-tight">{module.desc}</span>
-                            </div>
+                      <button
+                        type="button"
+                        onClick={() => setModuleSearchActiveTab('comparison')}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
+                          moduleSearchActiveTab === 'comparison'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <Users className="w-4 h-4" />
+                        Role Matrix Info
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setModuleSearchActiveTab('license')}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
+                          moduleSearchActiveTab === 'license'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <Lock className="w-4 h-4" />
+                        Security License
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-200">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-[#1b8b58] bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      Officer Directory
+                    </span>
+                    <div className="mt-3.5 space-y-1">
+                      <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Subject Profile</p>
+                      <p className="text-xs font-extrabold text-slate-800 break-all">{modifyingModulesUser.email}</p>
+                      <p className="text-[10px] text-slate-450 font-mono mt-1">UUID: {modifyingModulesUser.id.substring(0, 8)}...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-2xl border border-blue-100 flex flex-col gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-blue-500 tracking-wider">Security State</span>
+                  <p className="text-xs font-bold leading-normal">
+                    Assigned modules sync immediately to user navigation dashboard menu on refresh.
+                  </p>
+                </div>
+              </div>
+
+              {/* RIGHT MAIN PANEL */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+                {/* Header Row */}
+                <div className="sticky top-0 bg-white border-b border-slate-200 px-6 md:px-8 py-4.5 flex justify-between items-center z-10">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-snug">Modular Permission Dashboard</h3>
+                    <p className="text-xs text-slate-500">Customize active clearance modules for officer accounts</p>
+                  </div>
+                  <button 
+                    onClick={() => setModifyingModulesUser(null)}
+                    className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
+
+                {/* Sub-Tabs Workspace */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 scrollbar-thin">
+                  {moduleSearchActiveTab === 'modules' ? (
+                    <>
+                      {/* STATS TILES ROW */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {/* Stat Card 1: Total */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
+                          <div className="space-y-1">
+                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Total Modules</span>
+                            <h4 className="text-2xl font-black text-slate-800">11</h4>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                            <SlidersHorizontal className="w-5 h-5" />
                           </div>
                         </div>
 
-                        {/* Middle Column: List, Show, Edit Permissions Checklist */}
-                        <div className="flex items-center gap-5 sm:gap-6 md:justify-center flex-1">
-                          {/* List clearance checkbox */}
-                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
-                            <input
-                              type="checkbox"
-                              checked={perms.list}
-                              disabled={!isSelected}
-                              onChange={() => {
-                                const updated = {
-                                  ...localSubPerms,
-                                  [module.id]: {
-                                    ...perms,
-                                    list: !perms.list,
-                                    show: !perms.list ? perms.show : false,
-                                    edit: !perms.list ? perms.edit : false
-                                  }
-                                };
-                                setLocalSubPerms(updated);
-                                const active = Object.keys(updated).filter(key => updated[key].list);
-                                setSelectedModules(active);
-                              }}
-                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
-                            />
-                            <span className="flex items-center gap-1 font-sans">
-                              <CheckCircle className={`w-3.5 h-3.5 ${perms.list ? 'text-emerald-600' : 'text-slate-400'}`} />
-                              List
-                            </span>
-                          </label>
-
-                          {/* Show clearance checkbox */}
-                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
-                            <input
-                              type="checkbox"
-                              checked={perms.show}
-                              disabled={!isSelected}
-                              onChange={() => {
-                                const updated = {
-                                  ...localSubPerms,
-                                  [module.id]: {
-                                    ...perms,
-                                    show: !perms.show,
-                                    list: true
-                                  }
-                                };
-                                setLocalSubPerms(updated);
-                                const active = Object.keys(updated).filter(key => updated[key].list);
-                                setSelectedModules(active);
-                              }}
-                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
-                            />
-                            <span className="flex items-center gap-1 font-sans">
-                              <CheckCircle className={`w-3.5 h-3.5 ${perms.show ? 'text-emerald-600' : 'text-slate-400'}`} />
-                              Show
-                            </span>
-                          </label>
-
-                          {/* Edit clearance checkbox */}
-                          <label className={`flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold ${isSelected ? 'text-slate-700' : 'text-slate-450 opacity-60'}`}>
-                            <input
-                              type="checkbox"
-                              checked={perms.edit}
-                              disabled={!isSelected}
-                              onChange={() => {
-                                const updated = {
-                                  ...localSubPerms,
-                                  [module.id]: {
-                                    ...perms,
-                                    edit: !perms.edit,
-                                    list: true
-                                  }
-                                };
-                                setLocalSubPerms(updated);
-                                const active = Object.keys(updated).filter(key => updated[key].list);
-                                setSelectedModules(active);
-                              }}
-                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer accent-emerald-650"
-                            />
-                            <span className="flex items-center gap-1 font-sans">
-                              <CheckCircle className={`w-3.5 h-3.5 ${perms.edit ? 'text-emerald-600' : 'text-slate-400'}`} />
-                              Edit
-                            </span>
-                          </label>
+                        {/* Stat Card 2: Active */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
+                          <div className="space-y-1">
+                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Active Modules</span>
+                            <h4 className="text-2xl font-black text-emerald-600">{selectedModules.length}</h4>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <Check className="w-5 h-5 stroke-[2.5]" />
+                          </div>
                         </div>
 
-                        {/* Right Column: Custom orange Edit & green Create buttons */}
-                        <div className="flex items-center gap-2 justify-end shrink-0">
-                          {/* Orange Edit Button */}
-                          <button
-                            type="button"
-                            title="Toggle custom Edit capability"
-                            onClick={() => {
-                              const updated = {
-                                ...localSubPerms,
-                                [module.id]: {
-                                  ...perms,
-                                  list: true,
-                                  edit: !perms.edit
-                                }
-                              };
-                              setLocalSubPerms(updated);
-                              const active = Object.keys(updated).filter(key => updated[key].list);
-                              setSelectedModules(active);
-                            }}
-                            className="px-3 py-1.5 bg-[#f57c00] hover:bg-[#e65100] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-md shadow-xs active:scale-95 transition-all outline-none border-none cursor-pointer flex items-center gap-1"
-                          >
-                            <Pencil className="w-3 h-3 stroke-[2.5]" />
-                            Edit
-                          </button>
+                        {/* Stat Card 3: Inactive */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
+                          <div className="space-y-1">
+                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Inactive Modules</span>
+                            <h4 className="text-2xl font-black text-rose-500">{11 - selectedModules.length}</h4>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
+                            <X className="w-5 h-5 stroke-[2.5]" />
+                          </div>
+                        </div>
+                      </div>
 
-                          {/* Green Create Button */}
+                      {/* CONTROLS BAR: SEARCH & BULK SETS */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+                        {/* Search input */}
+                        <div className="relative w-full md:max-w-md">
+                          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Search modules..." 
+                            value={moduleSearchTerm}
+                            onChange={(e) => setModuleSearchTerm(e.target.value)}
+                            className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-slate-800 placeholder-slate-400 pl-10 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-sans"
+                          />
+                        </div>
+
+                        {/* Bulk Action Buttons */}
+                        <div className="flex w-full md:w-auto gap-3 shrink-0">
                           <button
                             type="button"
-                            title="Enable full active clearance permissions"
                             onClick={() => {
-                              const updated = {
-                                ...localSubPerms,
-                                [module.id]: {
+                              const allModuleIds = [
+                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                                'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+                              ];
+                              setSelectedModules(allModuleIds);
+                              const updated = { ...localSubPerms };
+                              allModuleIds.forEach(mId => {
+                                updated[mId] = {
                                   list: true,
                                   show: true,
-                                  edit: true
-                                }
-                              };
+                                  edit: modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
+                                };
+                              });
                               setLocalSubPerms(updated);
-                              const active = Object.keys(updated).filter(key => updated[key].list);
-                              setSelectedModules(active);
                             }}
-                            className="px-3 py-1.5 bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-md shadow-xs active:scale-95 transition-all outline-none border-none cursor-pointer flex items-center gap-1"
+                            className="flex-1 md:flex-initial px-4 py-2.5 bg-blue-600 hover:bg-blue-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
                           >
-                            <Plus className="w-3 h-3" />
-                            Create
+                            <Check className="w-4 h-4 stroke-[2.5]" />
+                            Activate All Modules
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedModules([]);
+                              const updated = { ...localSubPerms };
+                              const allModuleIds = [
+                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                                'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+                              ];
+                              allModuleIds.forEach(mId => {
+                                updated[mId] = { list: false, show: false, edit: false };
+                              });
+                              setLocalSubPerms(updated);
+                            }}
+                            className="flex-1 md:flex-initial px-4 py-2.5 bg-rose-600 hover:bg-rose-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                          >
+                            <X className="w-4 h-4 stroke-[2.5]" />
+                            Deactivate All Modules
                           </button>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* BENTO GRID OF MODULES */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[
+                          { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, and real-time dashboards', icon: LayoutDashboard },
+                          { id: 'USERS', label: 'Access Control Registry', desc: 'Secure database profiles and security credentials matrix', icon: Users },
+                          { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and analytical intelligence reporting', icon: FileText },
+                          { id: 'VISA', label: 'VISA Desk Portal', desc: 'Official permanent or temporary visa document registries', icon: Globe },
+                          { id: 'EOID', label: 'EOID Portals Deck', desc: 'Special security clearance fingerprint border gate controls', icon: Fingerprint },
+                          { id: 'Residence ID', label: 'Residence Verification ID', desc: 'National ID, status, residency credentials and registers', icon: Shield },
+                          { id: 'ETD', label: 'Emergency Travel Docs', desc: 'Emergency Travel Document verification and check system', icon: AlertTriangle },
+                          { id: 'CABINETS', label: 'Physical Cabinets Metadata', desc: 'Geographical physical paper folders layout and archive metadata', icon: Archive },
+                          { id: 'AIRPORT', label: 'Bole Airport Gateway', desc: 'Check gate boardings, travel entries and flight records', icon: Plane },
+                          { id: 'Yellow Card', label: 'Yellow Card Division', desc: 'Yellow Fever immunization registry profiles and health check indicators', icon: Activity },
+                          { id: 'AUDIT', label: 'Immutable Security Logs', desc: 'Black-box decentralized security event audit trail logger', icon: History }
+                        ].filter(m => 
+                          m.label.toLowerCase().includes(moduleSearchTerm.toLowerCase()) || 
+                          m.desc.toLowerCase().includes(moduleSearchTerm.toLowerCase())
+                        ).map((module) => {
+                          const isSelected = selectedModules.includes(module.id);
+                          const perms = localSubPerms[module.id] || { list: false, show: false, edit: false };
+
+                          return (
+                            <div 
+                              key={module.id} 
+                              className={`bg-white border rounded-2xl p-5 shadow-xs transition-all relative flex flex-col justify-between ${
+                                isSelected 
+                                  ? 'border-blue-500 ring-2 ring-blue-500/10' 
+                                  : 'border-slate-200 bg-white hover:bg-slate-50/50'
+                              }`}
+                            >
+                              <div>
+                                {/* Header: Icon + Toggle */}
+                                <div className="flex justify-between items-start mb-3.5">
+                                  <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                                    <module.icon className="w-5 h-5" />
+                                  </div>
+                                  
+                                  {/* Custom Switch Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextState = !perms.list;
+                                      const updated = {
+                                        ...localSubPerms,
+                                        [module.id]: {
+                                          list: nextState,
+                                          show: nextState,
+                                          edit: nextState && modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
+                                        }
+                                      };
+                                      setLocalSubPerms(updated);
+                                      const active = Object.keys(updated).filter(key => updated[key].list);
+                                      setSelectedModules(active);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      isSelected ? 'bg-blue-600' : 'bg-slate-200'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                        isSelected ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                {/* Text Label Details */}
+                                <h4 className={`text-xs font-black uppercase tracking-wider ${isSelected ? 'text-slate-805' : 'text-slate-500'}`}>
+                                  {module.label}
+                                </h4>
+                                <p className="text-[10px] text-slate-400 leading-normal mt-1.5 min-h-[32px]">
+                                  {module.desc}
+                                </p>
+                              </div>
+
+                              {/* Granular Sub-Clearance Drawer Checklists */}
+                              {isSelected ? (
+                                <div className="mt-4 pt-3.5 border-t border-slate-100/90 flex flex-col gap-2.5 animate-in fade-in duration-350">
+                                  <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest block">Clearance level check</span>
+                                  <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 gap-1.5">
+                                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={perms.list}
+                                        onChange={() => {
+                                          const updated = {
+                                            ...localSubPerms,
+                                            [module.id]: {
+                                              ...perms,
+                                              list: !perms.list,
+                                              show: !perms.list ? perms.show : false,
+                                              edit: !perms.list ? perms.edit : false
+                                            }
+                                          };
+                                          setLocalSubPerms(updated);
+                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
+                                        }}
+                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
+                                      />
+                                      <span>List</span>
+                                    </label>
+
+                                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={perms.show}
+                                        onChange={() => {
+                                          const updated = {
+                                            ...localSubPerms,
+                                            [module.id]: {
+                                              ...perms,
+                                              show: !perms.show,
+                                              list: true
+                                            }
+                                          };
+                                          setLocalSubPerms(updated);
+                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
+                                        }}
+                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
+                                      />
+                                      <span>Show</span>
+                                    </label>
+
+                                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={perms.edit}
+                                        onChange={() => {
+                                          const updated = {
+                                            ...localSubPerms,
+                                            [module.id]: {
+                                              ...perms,
+                                              edit: !perms.edit,
+                                              list: true
+                                            }
+                                          };
+                                          setLocalSubPerms(updated);
+                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
+                                        }}
+                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
+                                      />
+                                      <span>Edit</span>
+                                    </label>
+                                  </div>
+
+                                  <div className="flex justify-between items-center bg-slate-50/50 p-1 rounded-lg border border-slate-100 flex-wrap gap-1 mt-1">
+                                    <button
+                                      type="button"
+                                      title="Grant List, Show, Edit"
+                                      onClick={() => {
+                                        const updated = {
+                                          ...localSubPerms,
+                                          [module.id]: { list: true, show: true, edit: true }
+                                        };
+                                        setLocalSubPerms(updated);
+                                        setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
+                                      }}
+                                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[9px] uppercase border-none cursor-pointer font-extrabold select-none transition-colors"
+                                    >
+                                      Grant Full
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Revoke edit/write permission"
+                                      onClick={() => {
+                                        const updated = {
+                                          ...localSubPerms,
+                                          [module.id]: { list: true, show: true, edit: false }
+                                        };
+                                        setLocalSubPerms(updated);
+                                      }}
+                                      className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-750 rounded text-[9px] uppercase border-none cursor-pointer font-extrabold select-none transition-colors"
+                                    >
+                                      Read Only
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-4 pt-3 bg-slate-50/50 rounded-xl py-2 px-3 border border-dashed border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                  Cleansed Division State
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : moduleSearchActiveTab === 'help' ? (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
+                      <div className="flex items-center gap-2.5 text-blue-600">
+                        <Shield className="w-5 h-5" />
+                        <h4 className="text-sm font-black uppercase tracking-wider">Modular Security Governance</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        The Immigration Command modular access system implements fine-grained user privilege authorization mapping. Overriding accessible division modules immediately regulates security bounds and dashboard layouts for standard officers.
+                      </p>
+                      <div className="space-y-3 pt-3">
+                        <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-xl">
+                          <p className="text-xs font-black text-slate-800">1. Modular State Persistence</p>
+                          <p className="text-[11px] text-slate-500 mt-1">Modules are saved to the master authentication directory and refreshed across active gateways within standard 10-second cache invalidations.</p>
+                        </div>
+                        <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-xl">
+                          <p className="text-xs font-black text-slate-800">2. Security Override Audits</p>
+                          <p className="text-[11px] text-slate-500 mt-1">Every individual modules override operation generates an automated security audit entry tracked under decentral logs directories.</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : moduleSearchActiveTab === 'comparison' ? (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6.5 space-y-4.5 shadow-xs">
+                      <div className="flex items-center gap-2.5 text-slate-800">
+                        <Users className="w-5 h-5 text-blue-600" />
+                        <h4 className="text-sm font-black uppercase tracking-wider">Clearance Permissions Index</h4>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 pb-2 text-slate-400 uppercase font-black tracking-wider text-[10px]">
+                              <th className="py-2.5">Clearance Group</th>
+                              <th className="py-2.5">Read Portal Entries</th>
+                              <th className="py-2.5">Modify Database Documents</th>
+                              <th className="py-2.5">Module Overrides</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 text-slate-650 font-bold">
+                            <tr>
+                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Super Admin</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-emerald-600">AUTHORIZED</td>
+                            </tr>
+                            <tr>
+                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Admin</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-[#f57c00]">LIMITED RESTRICTIONS</td>
+                            </tr>
+                            <tr>
+                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Add Records</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-emerald-600">ALLOWED (New items)</td>
+                              <td className="py-3 text-rose-500">BLOCKED</td>
+                            </tr>
+                            <tr>
+                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">View Only</td>
+                              <td className="py-3 text-emerald-600">ALLOWED</td>
+                              <td className="py-3 text-rose-500">BLOCKED</td>
+                              <td className="py-3 text-rose-500">BLOCKED</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6.5 space-y-4 shadow-xs text-center py-10">
+                      <Lock className="w-10 h-10 text-slate-300 mx-auto animate-pulse" />
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Cryptographic Security License</h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                        This digital management panel complies with federal security acts. Access to individual division tables is monitored and digitally signed.
+                      </p>
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-left max-w-sm mx-auto font-mono text-[9px] text-slate-600 space-y-1">
+                        <p>SIGNATURE: ETH_IMM_SEC_MD_SYS</p>
+                        <p>ISSUED TO: dinkuh12@gmail.com</p>
+                        <p>HASH: 834525ca-4c0d-450a-9d5b-2c3f6fc1e9f1</p>
+                        <p>STATUS: ACTIVE VALID DEPLOYMENT</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Operational Status Notifications Inside Dialog */}
+                  <AnimatePresence>
+                    {status && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className={`flex items-center gap-2.5 p-4.5 rounded-2xl text-xs font-bold border ${
+                          status.type === 'success' 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-xs' 
+                            : 'bg-rose-50 text-rose-800 border-rose-200 shadow-xs'
+                        }`}
+                      >
+                        {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                        <p className="uppercase tracking-wider font-extrabold">{status.message}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                <AnimatePresence>
-                  {status && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
-                        status.type === 'success' 
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                          : 'bg-rose-50 text-rose-800 border-rose-200'
-                      }`}
-                    >
-                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                      <p className="uppercase tracking-wider">{status.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
-                <button 
-                  onClick={() => setModifyingModulesUser(null)}
-                  disabled={actionLoading}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
-                >
-                  Discard
-                </button>
-                <button 
-                  onClick={handleUpdateModules}
-                  disabled={actionLoading}
-                  className={`flex-[2] py-2 ${theme.primary} font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  ) : (
-                    <>
-                      <SlidersHorizontal className="w-3.5 h-3.5" />
-                      Commit Clearance
-                    </>
-                  )}
-                </button>
+                {/* Confirm/Cancel Actions Footer bar */}
+                <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 md:px-8 py-4.5 flex gap-4 z-10 shadow-lg">
+                  <button 
+                    onClick={() => setModifyingModulesUser(null)}
+                    disabled={actionLoading}
+                    className="flex-1 px-5 py-3 bg-slate-100 hover:bg-slate-200/90 border border-slate-200 hover:border-slate-300 text-slate-600 font-extrabold text-xs uppercase tracking-wider rounded-xl cursor-pointer outline-none transition-all active:scale-98"
+                  >
+                    Discard Changes
+                  </button>
+                  <button 
+                    onClick={handleUpdateModules}
+                    disabled={actionLoading}
+                    className="flex-[2] py-3 bg-blue-600 hover:bg-blue-650 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl cursor-pointer shadow-md shadow-blue-500/10 outline-none border-none flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-50"
+                  >
+                    {actionLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <>
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Commit Accessible Division Override
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
