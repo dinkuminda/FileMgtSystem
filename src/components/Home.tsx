@@ -318,12 +318,6 @@ export default function Home() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-400/15 rounded-full blur-[140px] pointer-events-none" />
         
         <div className="max-w-4xl mx-auto text-center relative z-10 space-y-8">
-          {/* Centered Premium Official Branded Logo Block */}
-          <div className="inline-flex items-center gap-2.5 bg-white/10 px-5 py-2.5 rounded-2xl border border-white/20 shadow-xl mx-auto select-none backdrop-blur-xs">
-            <Shield className="w-4.5 h-4.5 text-blue-200 shrink-0" />
-            <span className="text-xs uppercase tracking-[0.15em] font-extrabold text-blue-100">FEDERAL AGENCY INTERNAL GATEWAY</span>
-          </div>
-
           <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
             ICS Digital File <br />
             <span className="bg-gradient-to-r from-blue-200 via-blue-100 to-emerald-300 bg-clip-text text-transparent">
