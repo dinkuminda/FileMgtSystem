@@ -20,6 +20,7 @@ import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
 import CabinetsView from './CabinetsView';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
+import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 import { 
   getPermissionRules, 
   hasViewAccess, 
@@ -389,22 +390,8 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
         {/* Branding Area */}
-        <div className={`pt-8 pb-5 px-6 flex items-center flex-shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
-          <div className="w-10 h-10 bg-blue-50 border border-blue-200/80 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 transition-all">
-            <Shield className="w-5.5 h-5.5 text-blue-600" />
-          </div>
-          {!isSidebarCollapsed && (
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="overflow-hidden text-left animate-none"
-            >
-              <h1 className="font-extrabold text-xs tracking-wider text-slate-800 leading-none mb-1 uppercase">
-                Immigration
-              </h1>
-              <p className="text-[7.5px] font-bold uppercase tracking-[0.1em] text-slate-400 font-mono">File Hub Portal</p>
-            </motion.div>
-          )}
+        <div className="pt-8 pb-5 px-6 flex items-center justify-center flex-shrink-0">
+          <EthiopianImmigrationLogo size={isSidebarCollapsed ? "sm" : "lg"} />
         </div>
 
         {/* Navigation */}

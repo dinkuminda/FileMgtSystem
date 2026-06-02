@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Loader2, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 interface AuthProps {
   onClose?: () => void;
@@ -104,11 +105,8 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
 
       {/* Logo Section */}
       <div className="flex flex-col items-center mb-8 text-center w-full pt-6 select-none">
-        <div className="flex items-center gap-2.5 justify-center">
-          <Shield className="w-9 h-9 text-blue-600 flex-shrink-0" />
-          <div className="text-2xl font-black text-slate-800 tracking-tight leading-none font-sans">
-            Immigration Hub
-          </div>
+        <div className="flex items-center justify-center">
+          <EthiopianImmigrationLogo className="h-12 w-auto flex-shrink-0" />
         </div>
       </div>
 
@@ -320,9 +318,8 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
       {!isModal && !isInline && (
         <header className="fixed top-0 left-0 right-0 border-b border-slate-200 backdrop-blur-md bg-white/85 z-50 h-20 flex items-center">
           <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 select-none text-slate-800 font-sans">
-              <Shield className="w-6 h-6 text-blue-600 shrink-0" />
-              <span className="text-lg font-black tracking-tight leading-none bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Immigration Portal</span>
+            <Link to="/" className="flex items-center select-none text-slate-800 font-sans">
+              <EthiopianImmigrationLogo className="h-9 w-auto shrink-0" />
             </Link>
             
             <Link 

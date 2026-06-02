@@ -1367,6 +1367,50 @@ export default function UserManagement() {
                 <span className="text-[10px] uppercase font-bold text-slate-400">Security Override</span>
               </div>
 
+              <div className="flex gap-2.5 mb-4 justify-between items-center bg-slate-50/50 p-2.5 rounded-xl border border-dotted border-slate-200">
+                <span className="text-[10px] uppercase font-black tracking-wide text-slate-450">Bulk Preset:</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    title="Enable access to all portals"
+                    onClick={() => {
+                      const allModuleIds = [
+                        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+                      ];
+                      setSelectedModules(allModuleIds);
+                      const updated = { ...localSubPerms };
+                      allModuleIds.forEach(mId => {
+                        updated[mId] = { list: true, show: true, edit: true };
+                      });
+                      setLocalSubPerms(updated);
+                    }}
+                    className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100/85 active:bg-emerald-200/50 border border-emerald-250 text-emerald-700 text-[10px] font-bold uppercase rounded-lg transition-all outline-none cursor-pointer"
+                  >
+                    Grant All Portals
+                  </button>
+                  <button
+                    type="button"
+                    title="Revoke access to all portals"
+                    onClick={() => {
+                      setSelectedModules([]);
+                      const updated = { ...localSubPerms };
+                      const allModuleIds = [
+                        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+                      ];
+                      allModuleIds.forEach(mId => {
+                        updated[mId] = { list: false, show: false, edit: false };
+                      });
+                      setLocalSubPerms(updated);
+                    }}
+                    className="px-3 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-250 text-slate-600 text-[10px] font-bold uppercase rounded-lg transition-all outline-none cursor-pointer"
+                  >
+                    Revoke All
+                  </button>
+                </div>
+              </div>
+
               <div className="overflow-y-auto pr-1 space-y-3.5 flex-1 scrollbar-thin">
                 <div className="space-y-3">
                   {[
@@ -2053,6 +2097,151 @@ export default function UserManagement() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedUserIds.size > 0 && (
+          <motion.div 
+            initial={{ y: 70, opacity: 0, x: "-50%" }}
+            animate={{ y: 0, opacity: 1, x: "-50%" }}
+            exit={{ y: 70, opacity: 0, x: "-50%" }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-4 z-40 font-sans"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-extrabold text-white">
+                {selectedUserIds.size}
+              </div>
+              <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest leading-none">
+                Officers Selected
+              </span>
+            </div>
+
+            <div className="h-4 w-[1px] bg-slate-800 hidden md:block" />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setActionLoading(true);
+                  const allModules = [
+                    'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                    'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
+                  ];
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) throw new Error('Session unverified.');
+                    
+                    const promises = Array.from(selectedUserIds).map(userId => 
+                      fetch('/api/admin/update-modules', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ userId, modules: allModules })
+                      })
+                    );
+                    await Promise.all(promises);
+                    await logger.log('ADMIN_ACTION', 'User', `Batch granted all portals access permission to ${selectedUserIds.size} user registries.`);
+                    setStatus({ type: 'success', message: `Granted all clearances to selected ${selectedUserIds.size} users!` });
+                    setSelectedUserIds(new Set());
+                    await fetchUsers();
+                  } catch (e: any) {
+                    setStatus({ type: 'error', message: `Batch modules update failed: ${e.message}` });
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="px-3.5 py-1.5 bg-emerald-650 hover:bg-emerald-600 active:bg-emerald-700 text-white text-[11px] font-extrabold uppercase tracking-wider rounded-lg transition-all border-none outline-none cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-40"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Grant All Portals
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setActionLoading(true);
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) throw new Error('Session unverified.');
+                    
+                    const promises = Array.from(selectedUserIds).map(userId => 
+                      fetch('/api/admin/update-modules', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ userId, modules: [] })
+                      })
+                    );
+                    await Promise.all(promises);
+                    await logger.log('ADMIN_ACTION', 'User', `Batch revoked all portals access permission from ${selectedUserIds.size} user registries.`);
+                    setStatus({ type: 'success', message: `Successfully revoked modules from ${selectedUserIds.size} users!` });
+                    setSelectedUserIds(new Set());
+                    await fetchUsers();
+                  } catch (e: any) {
+                    setStatus({ type: 'error', message: `Batch revoke failed: ${e.message}` });
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-705 border border-slate-700 text-slate-300 text-[11px] font-extrabold uppercase tracking-wider rounded-lg transition-all outline-none cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
+              >
+                <X className="w-3.5 h-3.5" />
+                Revoke Clearances
+              </button>
+
+              <div className="relative inline-block text-left">
+                <select
+                  disabled={actionLoading}
+                  onChange={async (e) => {
+                    const role = e.target.value;
+                    if (!role) return;
+                    setActionLoading(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) throw new Error('Session unverified.');
+                      
+                      const promises = Array.from(selectedUserIds).map(userId => 
+                        fetch('/api/admin/update-role', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                          },
+                          body: JSON.stringify({ userId, newRole: role })
+                        })
+                      );
+                      await Promise.all(promises);
+                      await logger.log('ADMIN_ACTION', 'User', `Batch updated clearance role levels to ${role} for ${selectedUserIds.size} user registries`);
+                      setStatus({ type: 'success', message: `Clearance changed to ${role.toUpperCase()} for ${selectedUserIds.size} officers!` });
+                      setSelectedUserIds(new Set());
+                      await fetchUsers();
+                    } catch (err: any) {
+                      setStatus({ type: 'error', message: `Batch role update failed: ${err.message}` });
+                    } finally {
+                      setActionLoading(false);
+                      e.target.value = "";
+                    }
+                  }}
+                  className="bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-extrabold uppercase tracking-wider rounded-lg px-3 py-1.5 outline-none cursor-pointer disabled:opacity-40"
+                >
+                  <option value="">Batch Role Clearances...</option>
+                  <option value="super_admin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="admin_grant">Admin Grant</option>
+                  <option value="add_records">Add Records</option>
+                  <option value="view_only">View Only</option>
+                  <option value="airport_staff">Airport Hub</option>
+                </select>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

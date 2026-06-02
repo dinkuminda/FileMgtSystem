@@ -1,6 +1,7 @@
 import React from 'react';
 import { type ImmigrationRecord } from '../lib/supabase';
 import { Paperclip, Shield, CheckCircle, Award, BadgeCheck } from 'lucide-react';
+import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 interface VisaSpecimenCardProps {
   record: ImmigrationRecord;
@@ -90,9 +91,7 @@ export default function VisaSpecimenCard({ record }: VisaSpecimenCardProps) {
           {/* Header Bar */}
           <header className="border-b-2 border-slate-200 dark:border-slate-800 pb-3 flex items-start gap-2 relative">
             {/* Coat of Arms (Replica) */}
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
-              <span className="text-[10px] font-black font-serif">★</span>
-            </div>
+            <EthiopianImmigrationLogo className="h-8 w-auto flex-shrink-0" />
             
             {/* Amharic/English Title Rails */}
             <div className="flex-1 flex justify-between items-start">

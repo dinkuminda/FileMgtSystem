@@ -9,6 +9,7 @@ import {
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import { motion, AnimatePresence } from 'motion/react';
 import Auth from './Auth';
+import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -84,11 +85,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 border-b border-slate-200/80 backdrop-blur-md bg-white/95 z-50 transition-all shadow-sm h-20 flex items-center">
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5 select-none font-sans">
-            <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-[#1b54ac] shrink-0" />
-            <div className="flex flex-col justify-center text-left">
-              <h1 className="text-[#1b54ac] font-black text-sm sm:text-lg tracking-tight leading-none uppercase">Immigration Portal</h1>
-              <p className="text-[7.5px] sm:text-[9px] text-[#1b54ac] uppercase tracking-[0.1em] mt-0.5 font-bold leading-none">Secure File & Identity Management</p>
-            </div>
+            <EthiopianImmigrationLogo className="h-10 sm:h-12 w-auto shrink-0" />
           </div>
 
           <div className="flex items-center gap-6">

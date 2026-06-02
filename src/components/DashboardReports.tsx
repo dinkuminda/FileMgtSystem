@@ -434,17 +434,17 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       {/* Double-Column Grid: System Activity & Distribution Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-4 font-sans">
         
-        {/* Left Column: System Activity Overview (Line wave area chart + audit activities table) - spans 7 cols */}
+        {/* Left Column: System Activity Overview (Line wave area chart) - spans 7 cols */}
         <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between">
           
           {/* Section Header */}
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Filing Activity & Log Stream</h3>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Live System Sync</span>
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Filing Activity Timeline</h3>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">System Metrics</span>
           </div>
 
           {/* Area Chart wave representing dates timeline */}
-          <div className="p-5 pb-2">
+          <div className="p-5 pb-6">
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -495,55 +495,10 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
             </div>
             
             {/* Legend marker */}
-            <div className="flex items-center gap-1.5 px-6 pb-2 select-none">
+            <div className="flex items-center gap-1.5 px-6 pt-4 select-none">
               <span className="w-2.5 h-2.5 rounded-xs bg-[#2563eb]" />
               <span className="text-[10px] font-extrabold text-[#4a5568] uppercase tracking-wider">Filing Volumes</span>
             </div>
-          </div>
-
-          {/* Activity Logs Table */}
-          <div className="border-t border-slate-100 overflow-x-auto">
-            <table className="min-w-full text-left font-sans">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <th className="p-4 pl-6">USER OFFICER</th>
-                  <th className="p-4">OPERATION DETAILS</th>
-                  <th className="p-4">TIMELINE CODE</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {recentLogs.map((log: any, idx: number) => {
-                  const email = log.user_email || 'anonymous@gov.et';
-                  // Extract two letters for initials
-                  const initials = email.split('@')[0].substring(0, 2).toUpperCase();
-                  
-                  // Map avatar colors matching screenshot style
-                  const avatarColors = [
-                    'bg-slate-100 text-slate-600',
-                    'bg-emerald-50 text-emerald-700 border-emerald-150',
-                    'bg-amber-100 text-amber-700',
-                    'bg-purple-50 text-purple-700 border-purple-150',
-                    'bg-rose-100 text-rose-700'
-                  ];
-                  const avatarClass = avatarColors[idx % avatarColors.length];
-
-                  return (
-                    <tr key={log.id || idx} className="hover:bg-slate-55/40 transition-colors text-xs font-semibold">
-                      <td className="p-3 pl-6 flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full border border-slate-200/55 flex items-center justify-center text-[10px] font-extrabold uppercase select-none ${avatarClass}`}>
-                          {initials}
-                        </div>
-                        <span className="text-slate-800 font-extrabold">{email}</span>
-                      </td>
-                      <td className="p-3 text-slate-600 font-semibold">{log.details || `${log.action} ${log.entity_type} action executed`}</td>
-                      <td className="p-3 text-[10px] font-mono font-bold text-slate-400 uppercase">
-                        {new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {new Date(log.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
 
         </div>
