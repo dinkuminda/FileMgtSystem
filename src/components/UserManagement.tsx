@@ -36,9 +36,14 @@ import {
   Fingerprint,
   Archive,
   History,
-  Plane
+  Plane,
+  ArrowLeft,
+  Sliders,
+  ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { TeamDirectory } from './TeamDirectory';
+import { PermissionsMatrix } from './PermissionsMatrix';
 
 interface AdminUser {
   id: string;
@@ -117,7 +122,12 @@ const THEMES: Record<ThemeAccent, ThemeStyles> = {
   }
 };
 
-export default function UserManagement() {
+interface UserManagementProps {
+  currentUserProfile?: any;
+  onProfileUpdate?: () => void;
+}
+
+export default function UserManagement({ currentUserProfile, onProfileUpdate }: UserManagementProps = {}) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,6 +164,18 @@ export default function UserManagement() {
 
   // Selected user for the right-side profile pane
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+  // Granular Matrix Detailed View states from User Mockup
+  const [managedUser, setManagedUser] = useState<AdminUser | null>(null);
+  const [managedModules, setManagedModules] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (managedUser) {
+      setManagedModules(managedUser.modules || []);
+    } else {
+      setManagedModules([]);
+    }
+  }, [managedUser]);
 
   // Administrative mod operations states
   const [resettingUser, setResettingUser] = useState<AdminUser | null>(null);
@@ -337,6 +359,10 @@ export default function UserManagement() {
       if (selectedUser?.id === modifyingRoleUser.id) {
         setSelectedUser(prev => prev ? { ...prev, role: selectedRole } : null);
       }
+
+      if (currentUserProfile && modifyingRoleUser.id === currentUserProfile.id && onProfileUpdate) {
+        onProfileUpdate();
+      }
       
       setTimeout(() => {
         setModifyingRoleUser(null);
@@ -385,6 +411,10 @@ export default function UserManagement() {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
       if (selectedUser?.id === user.id) {
         setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
+      }
+
+      if (currentUserProfile && user.id === currentUserProfile.id && onProfileUpdate) {
+        onProfileUpdate();
       }
 
       setTimeout(() => {
@@ -487,6 +517,10 @@ export default function UserManagement() {
       if (selectedUser?.id === modifyingModulesUser.id) {
         setSelectedUser(prev => prev ? { ...prev, modules: selectedModules } : null);
       }
+
+      if (currentUserProfile && modifyingModulesUser.id === currentUserProfile.id && onProfileUpdate) {
+        onProfileUpdate();
+      }
       
       setTimeout(() => {
         setModifyingModulesUser(null);
@@ -494,6 +528,58 @@ export default function UserManagement() {
       }, 1800);
     } catch (err: any) {
       setStatus({ type: 'error', message: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // Handle Save Managed User Granular permission matrix
+  async function handleSaveManagedUserPermissions() {
+    if (!managedUser) return;
+
+    setActionLoading(true);
+    setStatus(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Authorization layer error or session expired.');
+
+      const response = await fetch('/api/admin/update-modules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          userId: managedUser.id,
+          modules: managedModules
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to persist customized permission matrix.');
+      }
+
+      await logger.log('ADMIN_ACTION', 'User', `Reconfigured granular module permission matrix rules for officer: ${managedUser.email}`, managedUser.id);
+      
+      setStatus({ type: 'success', message: `Custom permissions matrix saved for: ${managedUser.full_name || managedUser.email}` });
+      
+      // Update local state instantly
+      setUsers(prev => prev.map(u => u.id === managedUser.id ? { ...u, modules: managedModules } : u));
+      if (selectedUser?.id === managedUser.id) {
+        setSelectedUser(prev => prev ? { ...prev, modules: managedModules } : null);
+      }
+
+      if (currentUserProfile && managedUser.id === currentUserProfile.id && onProfileUpdate) {
+        onProfileUpdate();
+      }
+      
+      setTimeout(() => {
+        setManagedUser(null);
+        setStatus(null);
+      }, 1500);
+    } catch (e: any) {
+      setStatus({ type: 'error', message: e.message });
     } finally {
       setActionLoading(false);
     }
@@ -665,6 +751,46 @@ export default function UserManagement() {
     setSelectedUserIds(newSelected);
   };
 
+  const getPrimaryRoleLabel = (role: string, emailStr: string) => {
+    if (role === 'super_admin' || role === 'admin') return 'Admin';
+    if (role === 'admin_grant') return 'Officer Head';
+    if (role === 'staff' || emailStr.includes('dev') || emailStr.includes('kinfe')) return 'Developer';
+    if (role === 'add_records') return 'Operator';
+    if (role === 'airport_staff') return 'Operator';
+    if (role === 'view_only' || role === 'viewer') return 'Auditor';
+    return 'Section Head';
+  };
+
+  const toggleGranularPermission = (moduleId: string, action: 'read' | 'write' | 'approve' | 'audit') => {
+    if (managedUser?.role === 'admin' || managedUser?.role === 'super_admin') return;
+    
+    let updated = [...managedModules];
+    if (action === 'read') {
+      const hasRead = updated.includes(moduleId) || updated.includes(`${moduleId}:read`);
+      if (hasRead) {
+        updated = updated.filter(m => m !== moduleId && m !== `${moduleId}:read` && m !== `${moduleId}:write` && m !== `${moduleId}:approve` && m !== `${moduleId}:audit`);
+      } else {
+        updated.push(moduleId);
+        updated.push(`${moduleId}:read`);
+      }
+    } else {
+      const ruleStr = `${moduleId}:${action}`;
+      const hasRule = updated.includes(ruleStr);
+      if (hasRule) {
+        updated = updated.filter(m => m !== ruleStr);
+      } else {
+        if (!updated.includes(moduleId)) {
+          updated.push(moduleId);
+        }
+        if (!updated.includes(`${moduleId}:read`)) {
+          updated.push(`${moduleId}:read`);
+        }
+        updated.push(ruleStr);
+      }
+    }
+    setManagedModules(updated);
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-1 min-h-[calc(100vh-140px)] text-slate-700 font-sans transition-all duration-300">
       
@@ -707,44 +833,61 @@ export default function UserManagement() {
                 ))}
               </div>
             </div>
-
-            {/* Fast Clearance Filter Action buttons */}
-            <button 
-              onClick={() => { setIsAddingUser(true); setSelectedRole('staff'); setStatus(null); }}
-              className={`px-3.5 py-1.5 ${theme.primary} text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-950/5 cursor-pointer select-none border-none outline-none`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Provision Account
-            </button>
           </div>
         </div>
 
-        {/* Dynamic Credentials Registry Sub-Tabs Switcher */}
-        <div className="flex border-b border-slate-200/80 mb-1">
-          <button
-            onClick={() => setActiveRegistryTab('OFFICERS')}
-            className={`px-5 py-2.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all outline-none cursor-pointer ${
-              activeRegistryTab === 'OFFICERS'
-                ? 'border-emerald-600 text-emerald-700 font-extrabold'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Credential Registry Directory
-          </button>
-          <button
-            onClick={() => setActiveRegistryTab('MATRIX')}
-            className={`px-5 py-2.5 font-bold text-xs uppercase tracking-wider border-b-2 transition-all outline-none cursor-pointer ${
-              activeRegistryTab === 'MATRIX'
-                ? 'border-emerald-600 text-emerald-700 font-extrabold'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Clearance Matrix Settings
-          </button>
-        </div>
+        {status && (
+          <div className={`p-4 text-xs font-bold rounded-xl flex items-center gap-2.5 border transition-all ${
+            status.type === 'success' 
+              ? 'bg-emerald-50 border-emerald-150 text-emerald-800' 
+              : 'bg-rose-50 border-rose-150 text-rose-800'
+          }`}>
+            {status.type === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            {status.message}
+          </div>
+        )}
 
-        {activeRegistryTab === 'OFFICERS' ? (
-          <>
+        {managedUser ? (
+          <PermissionsMatrix
+            managedUser={managedUser}
+            managedModules={managedModules}
+            setManagedUser={setManagedUser}
+            toggleGranularPermission={toggleGranularPermission}
+            actionLoading={actionLoading}
+            handleSaveManagedUserPermissions={handleSaveManagedUserPermissions}
+            getPrimaryRoleLabel={getPrimaryRoleLabel}
+            theme={theme}
+          />
+        ) : (
+          <TeamDirectory
+            filteredUsers={filteredUsers}
+            users={users}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            pageSize={pageSize}
+            selectedUser={selectedUser}
+            setSelectedUser={setSelectedUser}
+            setManagedUser={setManagedUser}
+            setIsAddingUser={setIsAddingUser}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            getPrimaryRoleLabel={getPrimaryRoleLabel}
+            getGradientAvatar={getGradientAvatar}
+            getInitials={getInitials}
+            theme={theme}
+            setStatus={setStatus}
+          />
+        )}
+
+        {/* Legacy container block hidden inline to gracefully preserve files balance */}
+        <div className="hidden">
+          {activeRegistryTab === 'OFFICERS' ? (
+            <>
             {/* Action filter controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-1">
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -934,7 +1077,7 @@ export default function UserManagement() {
                                 className="w-full text-[10px] font-bold py-1 pl-2 pr-6 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-md text-slate-750 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 hover:bg-slate-100/60 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed font-sans uppercase tracking-wider outline-none appearance-none"
                               >
                                 <option value="super_admin">Super Admin</option>
-                                <option value="admin">Admin</option>
+                                <option value="staff">Admin</option>
                                 <option value="admin_grant">Admin Grant</option>
                                 <option value="add_records">Add Records</option>
                                 <option value="view_only">View Only</option>
@@ -1233,7 +1376,7 @@ export default function UserManagement() {
             </div>
           </div>
         )}
-      </div>
+      </div></div>
 
       {/* RIGHT AREA: MINI USER PROFILE COMPACT DETAILS PANE */}
       <div className="w-full lg:w-80 shrink-0">
@@ -1320,7 +1463,9 @@ export default function UserManagement() {
                 </div>
 
                 <button
-                  onClick={() => { setModifyingModulesUser(selectedUser); setSelectedModules(selectedUser.modules || []); }}
+                  onClick={() => {
+                    setManagedUser(selectedUser);
+                  }}
                   className={`w-full mt-2 py-2 border text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-250 text-xs font-bold uppercase tracking-wider rounded-lg transition-all outline-none cursor-pointer text-center select-none`}
                 >
                   Edit Division Access
@@ -1932,7 +2077,7 @@ export default function UserManagement() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
                       { id: 'super_admin', label: 'Super Admin', desc: 'Sovereign administrative directory bypass access' },
-                      { id: 'admin', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
+                      { id: 'staff', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
                       { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to assign user roles and manage general accounts' },
                       { id: 'add_records', label: 'Add Records Specialist', desc: 'Register new items, insert records, and attach files' },
                       { id: 'view_only', label: 'View Only Auditor', desc: 'Lookup-only view permission, passive directory observations' },
@@ -2044,7 +2189,7 @@ export default function UserManagement() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
                     { id: 'super_admin', label: 'Super Admin', desc: 'Complete access to records, security matrix, & audit trails' },
-                    { id: 'admin', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
+                    { id: 'staff', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
                     { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to manage users, assign server-authoritative roles, & configure directories' },
                     { id: 'add_records', label: 'Add Records', desc: 'Register entries, database insertions, and document uploads' },
                     { id: 'view_only', label: 'View Only', desc: 'Restricted lookup-only file viewing authorization' },
@@ -2430,7 +2575,7 @@ export default function UserManagement() {
                 >
                   <option value="">Batch Role Clearances...</option>
                   <option value="super_admin">Super Admin</option>
-                  <option value="admin">Admin</option>
+                  <option value="staff">Admin</option>
                   <option value="admin_grant">Admin Grant</option>
                   <option value="add_records">Add Records</option>
                   <option value="view_only">View Only</option>

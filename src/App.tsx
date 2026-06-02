@@ -44,7 +44,7 @@ export default function App() {
     };
   }, []);
 
-  // Handle distinct realtime channel subscription for profile updates
+  // Handle distinct realtime channel subscription and poll fallback for profile updates
   useEffect(() => {
     if (!session?.user?.id) return;
 
@@ -68,8 +68,14 @@ export default function App() {
 
     channel.subscribe();
 
+    // Constant 15-sec polling interval fallback to handle real-time sync across clients/tabs
+    const pollInterval = setInterval(() => {
+      fetchProfile(userId);
+    }, 15000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [session?.user?.id]);
 
@@ -154,7 +160,7 @@ export default function App() {
         {session ? (
           <Route 
             path="/*" 
-            element={<Dashboard userProfile={userProfile} />} 
+            element={<Dashboard userProfile={userProfile} onProfileUpdate={() => session?.user?.id && fetchProfile(session.user.id)} />} 
           />
         ) : (
           <>

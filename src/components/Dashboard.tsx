@@ -33,6 +33,7 @@ import Papa from 'papaparse';
 
 interface DashboardProps {
   userProfile: UserProfile | null;
+  onProfileUpdate?: () => void;
 }
 
 export type ThemeAccent = 'emerald' | 'blue' | 'amber' | 'slate';
@@ -101,7 +102,7 @@ const THEMES: Record<ThemeAccent, ThemeStyles> = {
   }
 };
 
-export default function Dashboard({ userProfile }: DashboardProps) {
+export default function Dashboard({ userProfile, onProfileUpdate }: DashboardProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
@@ -169,7 +170,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     if (!userProfile) return false;
     
     // Admins should always see everything
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
 
     // Command Deck (Overview) is the baseline landing page for everyone
     if (tab.type === 'OVERVIEW') return true;
@@ -183,9 +184,15 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
       if (tab.type === 'Yellow Card') {
-        return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+        return userProfile.modules.includes('Yellow Card') || 
+               userProfile.modules.includes('AIRPORT') ||
+               userProfile.modules.includes('Yellow Card:read') ||
+               userProfile.modules.includes('AIRPORT:read');
       }
-      return userProfile.modules.includes(tab.type);
+      return userProfile.modules.includes(tab.type) || 
+             userProfile.modules.includes(`${tab.type}:read`) ||
+             userProfile.modules.includes(`${tab.type}:write`) ||
+             userProfile.modules.includes(`${tab.type}:approve`);
     }
 
     // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
@@ -209,11 +216,27 @@ export default function Dashboard({ userProfile }: DashboardProps) {
     { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
   ].filter(at => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       // If they have users/audit module, show them in airport too
       if (at.module === 'USERS') return userProfile.modules.includes('USERS');
       if (at.module === 'AUDIT') return userProfile.modules.includes('AUDIT');
+      
+      // Map general AIRPORT clearance to specific sub-clearance keys
+      if (at.module === 'AIRPORT_VIEW') {
+        return userProfile.modules.includes('AIRPORT') || 
+               userProfile.modules.includes('AIRPORT:read') || 
+               userProfile.modules.includes('AIRPORT_VIEW');
+      }
+      if (at.module === 'AIRPORT_ADD') {
+        return userProfile.modules.includes('AIRPORT:write') || 
+               userProfile.modules.includes('AIRPORT_ADD');
+      }
+      if (at.module === 'AIRPORT_EDIT') {
+        return userProfile.modules.includes('AIRPORT:approve') || 
+               userProfile.modules.includes('AIRPORT:write') || 
+               userProfile.modules.includes('AIRPORT_EDIT');
+      }
       return userProfile.modules.includes(at.module);
     }
     // Fallback
@@ -272,7 +295,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
   const hasAccess = (tabType: typeof allTabs[number]['type']) => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
     return tabs.some(t => t.type === tabType);
   };
 
@@ -370,11 +393,25 @@ export default function Dashboard({ userProfile }: DashboardProps) {
 
   const canAdd = () => {
     if (!userProfile) return false;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    
+    // Check custom granular modules array for activeTab
+    if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      return userProfile.modules.includes(`${activeTab}:write`);
+    }
+    
     return hasCreateAccess(userProfile.role, activeTab, permissionRules);
   };
 
   const canEdit = () => {
     if (!userProfile) return false;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    
+    // Check custom granular modules array for activeTab
+    if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      return userProfile.modules.includes(`${activeTab}:approve`) || userProfile.modules.includes(`${activeTab}:write`);
+    }
+    
     return hasUpdateAccess(userProfile.role, activeTab, permissionRules);
   };
 
@@ -744,7 +781,7 @@ export default function Dashboard({ userProfile }: DashboardProps) {
                 <Route path="/cabinets" element={hasAccess('CABINETS') ? <CabinetsView userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
-                <Route path="/users" element={hasAccess('USERS') ? <UserManagement /> : <Navigate to="/" replace />} />
+                <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
                 <Route path="/airport/:subTab" element={
                   hasAccess('AIRPORT') ? (
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">

@@ -97,7 +97,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant')) {
+      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -138,7 +138,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -179,13 +179,13 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
       // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant') {
+      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant' || newRole === 'staff') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
       } else if (newRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
@@ -231,7 +231,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -248,7 +248,7 @@ async function startServer() {
 
       // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant') {
+      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant' || role === 'staff') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
       } else if (role === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
@@ -294,7 +294,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -340,7 +340,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
         return res.status(403).json({ error: "Forbidden" });
       }
 
