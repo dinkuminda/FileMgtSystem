@@ -76,6 +76,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.visa_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   box_number TEXT NOT NULL,
+  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,

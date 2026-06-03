@@ -146,7 +146,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         passport_number: '',
         request_number: '',
         date: new Date().toISOString().split('T')[0],
-        service_provided: '',
+        service_provided: type === 'VISA' ? 'Turist Visa' : '',
         eoid_number: '',
         residence_id_no: '',
         etd: '',
@@ -293,7 +293,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         request_number: formData.request_number,
         date: formData.date,
         service_provided: 
-          type === 'VISA' ? (formData.service_provided || 'VISA EXTENSION') :
+          type === 'VISA' ? (formData.service_provided || 'Turist Visa') :
           type === 'EOID' ? (formData.service_provided || 'EOID Issuance') :
           type === 'EOID Under_Age' ? (formData.service_provided || 'EOID Issuance') :
           type === 'Residence ID' ? (formData.service_provided || 'Residence ID Issuance') :
@@ -314,6 +314,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         basePayload.under_age = type === 'EOID' ? false : formData.under_age;
         basePayload.attachments = formData.attachments_json;
       }
+      if (type === 'VISA') {
+        basePayload.personal_file_no = formData.personal_file_no;
+      }
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
       if (type === 'Yellow Card' || type === 'AIRPORT') {
@@ -327,13 +330,33 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         if (record) {
           // Remove created_by from update payload as it should remain original creator
           const { created_by, ...updatePayload } = basePayload;
-          const { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
-          if (error) throw error;
+          let { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
+          if (error) {
+            if (error.code === '42703' || error.message?.includes('personal_file_no') || error.message?.includes('does not exist')) {
+              console.warn("Database 'personal_file_no' column missing in visa_records, retrying update without it...");
+              const { personal_file_no, ...fallbackPayload } = updatePayload;
+              const retryRes = await supabase.from(tableName).update(fallbackPayload).eq('id', record.id).select().single();
+              if (retryRes.error) throw retryRes.error;
+              data = retryRes.data;
+            } else {
+              throw error;
+            }
+          }
           savedRecord = data;
           await logger.log('UPDATE', type, `Updated record for ${basePayload.full_name}`, record.id);
         } else {
-          const { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
-          if (error) throw error;
+          let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
+          if (error) {
+            if (error.code === '42703' || error.message?.includes('personal_file_no') || error.message?.includes('does not exist')) {
+              console.warn("Database 'personal_file_no' column missing in visa_records, retrying insert without it...");
+              const { personal_file_no, ...fallbackPayload } = basePayload;
+              const retryRes = await supabase.from(tableName).insert([fallbackPayload]).select().single();
+              if (retryRes.error) throw retryRes.error;
+              data = retryRes.data;
+            } else {
+              throw error;
+            }
+          }
           savedRecord = data;
           await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecord.id);
         }
@@ -372,6 +395,10 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         // Refresh savedRecord to get the attachment_url
         const { data: updatedRecord } = await supabase.from(tableName).select('*').eq('id', savedRecord.id).single();
         if (updatedRecord) savedRecord = updatedRecord;
+      }
+
+      if (savedRecord) {
+        savedRecord = { ...basePayload, ...savedRecord };
       }
 
       onSuccess(savedRecord);
@@ -414,48 +441,19 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         </header>
 
         <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-hide">
-          {/* Flat Inline Row for Date & Service Provided */}
-          {type === 'VISA' ? (
-            <div className="grid grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
-              <div className="relative">
-                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-                <input
-                  required
-                  type="date"
-                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                  value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div>
-                <select
-                  required
-                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                  value={formData.service_provided || 'VISA EXTENSION'}
-                  onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
-                >
-                  <option value="VISA EXTENSION">VISA EXTENSION</option>
-                  <option value="NEW ENTRY REGISTRATION">NEW ENTRY REGISTRATION</option>
-                  <option value="ID CARD VERIFICATION">ID CARD VERIFICATION</option>
-                  <option value="EXIT PERMIT EXEMPT">EXIT PERMIT EXEMPT</option>
-                  <option value="YELLOW CARD HEALTH CHECK">YELLOW CARD HEALTH CHECK</option>
-                </select>
-              </div>
+          {/* Flat Inline Row for Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
+            <div className="relative">
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
+              <input
+                required
+                type="date"
+                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
+                value={formData.date}
+                onChange={e => setFormData({ ...formData, date: e.target.value })}
+              />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
-              <div className="relative">
-                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-                <input
-                  required
-                  type="date"
-                  className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                  value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Core Biodata Form Parameters */}
           <div className="space-y-5 text-left">
@@ -482,7 +480,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               </div>
 
               {/* Field 2: Personal File No. (shown conditionally/positioned specifically) */}
-              {(type === 'EOID' || type === 'EOID Under_Age') ? (
+              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA') ? (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal File No.</label>
                   <input
@@ -560,6 +558,30 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   onChange={e => setFormData({ ...formData, request_number: e.target.value })}
                 />
               </div>
+
+              {type === 'VISA' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Visa Type</label>
+                  <select
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                    value={formData.service_provided}
+                    onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
+                  >
+                    <option value="">Select Visa Type...</option>
+                    <option value="Turist Visa">Turist Visa</option>
+                    <option value="Exit Visa">Exit Visa</option>
+                    <option value="Work Visa">Work Visa</option>
+                    <option value="Investment Visa">Investment Visa</option>
+                    <option value="Student Visa">Student Visa</option>
+                    <option value="NGO Visa">NGO Visa</option>
+                    <option value="Service Visa">Service Visa</option>
+                    <option value="Diplomatic Visa">Diplomatic Visa</option>
+                    <option value="Government Visa">Government Visa</option>
+                    <option value="other">other</option>
+                  </select>
+                </div>
+              )}
 
               {/* Dynamic Module Conditional Parameters */}
               {(type === 'EOID' || type === 'EOID Under_Age') && (
