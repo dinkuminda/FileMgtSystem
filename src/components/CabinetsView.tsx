@@ -84,6 +84,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
   };
 
   const getRecordType = (record: any): RecordType => {
+    if (record._recordType) return record._recordType;
     if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
@@ -99,6 +100,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     if (rType === 'Residence ID') return "Residence ID";
     if (rType === 'ETD') return "Emergency Travel Docs";
     if (rType === 'Yellow Card') return "Yellow Card Registry";
+    if (rType === 'Alien Passport') return "Alien Passport Records";
     return "VISA Records";
   };
 
@@ -108,17 +110,18 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     setLoading(true);
     try {
       // Execute all fetches in parallel
-      const tables: RecordType[] = ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card'];
+      const tables: RecordType[] = ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport'];
       const fetches = tables.map(async (type) => {
         try {
           const { data, error } = await supabase.from(TABLE_MAP[type]).select('*');
           if (error) throw error;
-          return { type, data: data || [] };
+          const mappedData = (data || []).map(r => ({ ...r, _recordType: type }));
+          return { type, data: mappedData };
         } catch (err) {
           console.warn(`Cabinet query failed for table ${type}, attempting local fallback...`);
           if (type === 'EOID Under_Age') {
             const stored = localStorage.getItem('local_records_eoid_under_age');
-            return { type, data: stored ? JSON.parse(stored) : [] };
+            return { type, data: (stored ? JSON.parse(stored) : []).map((r: any) => ({ ...r, _recordType: type })) };
           }
           return { type, data: [] };
         }
@@ -141,6 +144,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
             { boxName: 'ETD-000004', desc: 'Emergency Travel Document Secure Vault', module: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, humidity: 35, isLocked: false },
             { boxName: 'Yellow-000005', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
             { boxName: 'EOID-Underage-000006', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
+            { boxName: 'Alien-000007', desc: 'Alien Passport Secure Vault', module: 'Alien Passport', color: 'from-emerald-600 to-emerald-800', temp: 20.0, humidity: 40, isLocked: false },
           ];
           localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
         }
@@ -992,7 +996,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   <input
                     required
                     type="text"
-                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT"
+                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT, Alien Passport"
                     value={newCabModule}
                     onChange={(e) => setNewCabModule(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"
@@ -1103,7 +1107,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   <input
                     required
                     type="text"
-                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT"
+                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT, Alien Passport"
                     value={editCabModule}
                     onChange={(e) => setEditCabModule(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"

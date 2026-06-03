@@ -11,7 +11,8 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'ETD': 'ETD-000004',
   'Yellow Card': 'Yellow-000005',
   'AIRPORT': 'Bole-000005',
-  'EOID Under_Age': 'EOID-Underage-000006'
+  'EOID Under_Age': 'EOID-Underage-000006',
+  'Alien Passport': 'Alien-000007'
 };
 
 interface RecordFormProps {
@@ -84,6 +85,11 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         { file_type: 'Passport Copy', url: '', verification_status: 'Pending' },
         { file_type: 'Supporting Document', url: '', verification_status: 'Pending' }
       ];
+    } else if (recordType === 'Alien Passport') {
+      return [
+        { file_type: 'Passport Copy', url: '', verification_status: 'Pending' },
+        { file_type: 'Application Form', url: '', verification_status: 'Pending' }
+      ];
     }
     return [
       { file_type: 'Document Scan', url: '', verification_status: 'Pending' }
@@ -146,7 +152,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         passport_number: '',
         request_number: '',
         date: new Date().toISOString().split('T')[0],
-        service_provided: type === 'VISA' ? 'Turist Visa' : '',
+        service_provided: type === 'VISA' ? 'Turist Visa' : type === 'Alien Passport' ? 'Alien Passport Issuance' : '',
         eoid_number: '',
         residence_id_no: '',
         etd: '',
@@ -294,6 +300,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         date: formData.date,
         service_provided: 
           type === 'VISA' ? (formData.service_provided || 'Turist Visa') :
+          type === 'Alien Passport' ? (formData.service_provided || 'Alien Passport Issuance') :
           type === 'EOID' ? (formData.service_provided || 'EOID Issuance') :
           type === 'EOID Under_Age' ? (formData.service_provided || 'EOID Issuance') :
           type === 'Residence ID' ? (formData.service_provided || 'Residence ID Issuance') :
@@ -314,7 +321,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         basePayload.under_age = type === 'EOID' ? false : formData.under_age;
         basePayload.attachments = formData.attachments_json;
       }
-      if (type === 'VISA') {
+      if (type === 'VISA' || type === 'Alien Passport') {
         basePayload.personal_file_no = formData.personal_file_no;
       }
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
@@ -480,7 +487,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               </div>
 
               {/* Field 2: Personal File No. (shown conditionally/positioned specifically) */}
-              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA') ? (
+              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport') ? (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal File No.</label>
                   <input
@@ -578,6 +585,25 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     <option value="Service Visa">Service Visa</option>
                     <option value="Diplomatic Visa">Diplomatic Visa</option>
                     <option value="Government Visa">Government Visa</option>
+                    <option value="other">other</option>
+                  </select>
+                </div>
+              )}
+
+              {type === 'Alien Passport' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Service Provided</label>
+                  <select
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                    value={formData.service_provided}
+                    onChange={e => setFormData({ ...formData, service_provided: e.target.value })}
+                  >
+                    <option value="">Select Service...</option>
+                    <option value="Alien Passport Issuance">Alien Passport Issuance</option>
+                    <option value="Alien Passport Renewal">Alien Passport Renewal</option>
+                    <option value="Alien Passport Stamp">Alien Passport Stamp</option>
+                    <option value="Alien Passport Extension">Alien Passport Extension</option>
                     <option value="other">other</option>
                   </select>
                 </div>

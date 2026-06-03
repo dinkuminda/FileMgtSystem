@@ -27,7 +27,7 @@ export default function RecordTable({
   const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [showReferenceGuide, setShowReferenceGuide] = useState(false);
-  const colSpanCount = activeTab === 'EOID' ? 13 : (activeTab === 'VISA' ? 10 : 9);
+  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Alien Passport' ? 11 : (activeTab === 'VISA' ? 10 : 9);
 
   return (
     <div className="w-full">
@@ -38,7 +38,20 @@ export default function RecordTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-100">
-              {activeTab === 'EOID' ? (
+              {activeTab === 'Alien Passport' ? (
+                <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Box No. (cabinet)</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">fullname</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">service provided</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
+                </>
+              ) : activeTab === 'EOID' ? (
                 <>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal file No.</th>
@@ -99,7 +112,45 @@ export default function RecordTable({
                       className={`hover:bg-slate-50/50 transition-colors cursor-pointer group ${isExpanded ? 'bg-slate-50/20' : ''}`}
                       onClick={() => setExpandedRecordId(isExpanded ? null : record.id)}
                     >
-                      {activeTab === 'EOID' ? (
+                      {activeTab === 'Alien Passport' ? (
+                        <>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
+                            {record.box_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_file_no || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
+                            {record.full_name}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-semibold text-slate-500 uppercase">
+                            {record.sex || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
+                            {record.citizenship}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
+                            {record.passport_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
+                            {record.request_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-555 text-slate-500">
+                            {record.date ? new Date(record.date).toISOString().split('T')[0] : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                            {record.service_provided || 'ALIEN PASSPORT ISSUANCE'}
+                          </td>
+                          <td className="px-3 py-5">
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
+                                ✓
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
+                            </div>
+                          </td>
+                        </>
+                      ) : activeTab === 'EOID' ? (
                         <>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number}

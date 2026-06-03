@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'airport_viewer')),
-  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'],
+  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport'],
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 DO $$ 
 BEGIN 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='modules') THEN
-    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
+    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport'];
   END IF;
 END $$;
 
@@ -179,12 +179,30 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
+-- Alien Passport Table
+CREATE TABLE IF NOT EXISTS public.alien_passport_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  box_number TEXT NOT NULL,
+  personal_file_no TEXT,
+  full_name TEXT NOT NULL,
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
+  citizenship TEXT NOT NULL,
+  passport_number TEXT NOT NULL,
+  request_number TEXT NOT NULL,
+  date DATE NOT NULL,
+  service_provided TEXT NOT NULL,
+  attachment_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
+);
+
 -- Enable RLS on all tables
 ALTER TABLE public.visa_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eoid_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eoid_underage_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.residence_id_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.etd_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.alien_passport_records ENABLE ROW LEVEL SECURITY;
 
 -- 3. Functions and Triggers for Auth Sync
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -297,6 +315,20 @@ CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated
 CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
+-- Alien Passport Policies
+DROP POLICY IF EXISTS "alien_passport_select" ON public.alien_passport_records;
+DROP POLICY IF EXISTS "alien_passport_insert" ON public.alien_passport_records;
+DROP POLICY IF EXISTS "alien_passport_update" ON public.alien_passport_records;
+DROP POLICY IF EXISTS "alien_passport_delete" ON public.alien_passport_records;
+CREATE POLICY "alien_passport_select" ON public.alien_passport_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "alien_passport_insert" ON public.alien_passport_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "alien_passport_update" ON public.alien_passport_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "alien_passport_delete" ON public.alien_passport_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
+
 -- 6. Attachments Table
 CREATE TABLE IF NOT EXISTS public.record_attachments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -378,6 +410,7 @@ CREATE INDEX IF NOT EXISTS idx_records_eoid_name ON public.eoid_records(full_nam
 CREATE INDEX IF NOT EXISTS idx_records_eoid_underage_name ON public.eoid_underage_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_residence_name ON public.residence_id_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_etd_name ON public.etd_records(full_name);
+CREATE INDEX IF NOT EXISTS idx_records_alien_passport_name ON public.alien_passport_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_airport_name ON public.airport_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_attachments_record ON public.record_attachments(record_id);
 
@@ -404,10 +437,10 @@ CREATE POLICY "Allow authenticated access" ON storage.objects
 -- 10. Admin Profile Boost
 -- Ensure the primary admin email always has admin role regardless of when they signed up
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT']
+SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT', 'Alien Passport']
 FROM auth.users
 WHERE email = 'dinkuh12@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
+ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT', 'Alien Passport'];
 
 -- Boost for Ephrem (Airport Only)
 INSERT INTO public.profiles (id, email, role, full_name, modules)
@@ -463,6 +496,10 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
   ON CONFLICT (module) DO NOTHING;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
   ('AIRPORT', ARRAY['admin', 'staff', 'airport_staff', 'airport_viewer'], ARRAY['admin', 'staff', 'airport_staff'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('Alien Passport', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])
   ON CONFLICT (module) DO NOTHING;
 
 -- Force schema reload

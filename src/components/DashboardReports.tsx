@@ -177,6 +177,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   };
 
   const getRecordType = (record: any): RecordType => {
+    if (record._recordType) return record._recordType;
     if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
@@ -306,7 +307,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
               .select('*', { count: 'exact' });
             
             if (error) throw error;
-            return { type, count: count || 0, data };
+            return { type, count: count || 0, data: (data || []).map(r => ({ ...r, _recordType: type })) };
           } catch (dbErr) {
             console.warn(`Stats database read failed for type ${type}, applying local storage fallback...`, dbErr);
             if (type === 'EOID Under_Age') {
@@ -440,7 +441,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
               if (moduleType === 'Yellow Card' || moduleType === 'Yellow Card Logs') {
                 return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
               }
-              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT'];
+              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport'];
               if (moduleKeys.includes(moduleType)) {
                 return userProfile.modules.includes(moduleType);
               }
@@ -528,7 +529,7 @@ SELECT id, email, role, modules FROM public.profiles ORDER BY email ASC;
 
 -- 3. Batch grant all modules to multiple admins
 UPDATE public.profiles 
-SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT']::text[]
+SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport']::text[]
 WHERE role IN ('admin', 'super_admin');`;
   }
 
@@ -974,7 +975,7 @@ WHERE role IN ('admin', 'super_admin');`;
                 <div className="flex gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedUserModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'])}
+                    onClick={() => setSelectedUserModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport'])}
                     className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none"
                   >
                     Select All
@@ -1010,6 +1011,7 @@ WHERE role IN ('admin', 'super_admin');`;
                       { id: 'USERS', label: 'Access Control Deck', icon: Users },
                       { id: 'REPORTS', label: 'Intelligence Reports', icon: BarChart3 },
                       { id: 'VISA', label: 'VISA Desk Portal', icon: FileText },
+                      { id: 'Alien Passport', label: 'Alien Passport Desk', icon: Globe },
                       { id: 'EOID', label: 'EOID Portals Deck', icon: Fingerprint },
                       { id: 'Residence ID', label: 'Residence ID Unit', icon: CreditCard },
                       { id: 'ETD', label: 'Emergency Travel Docs', icon: MapPin },
@@ -1332,6 +1334,17 @@ WHERE role IN ('admin', 'super_admin');`;
                               className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
                             >
                               <MapPin className="w-3.5 h-3.5 text-rose-500" /> ETD Record Document
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                setFormType('Alien Passport');
+                                setIsFormOpen(true);
+                                setIsAddMenuOpen(false);
+                              }}
+                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                            >
+                              <Globe className="w-3.5 h-3.5 text-emerald-500" /> Alien Passport Document
                             </button>
                           </div>
                         )}
