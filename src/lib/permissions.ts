@@ -22,6 +22,12 @@ export const DEFAULT_PERMISSION_RULES: ModulePermissionRule[] = [
     update_roles: []
   },
   {
+    module: 'EOID Under_Age',
+    view_roles: ['admin', 'staff'],
+    create_roles: ['admin'],
+    update_roles: []
+  },
+  {
     module: 'Residence ID',
     view_roles: ['admin', 'staff'],
     create_roles: ['admin', 'staff'],

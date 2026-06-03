@@ -91,6 +91,7 @@ export const PermissionsMatrix: React.FC<PermissionsMatrixProps> = ({
               { id: 'Yellow Card', label: '[🟡] Yellow Card Div.', desc: 'Health clearances, yellow cards registry, & tracking records' },
               { id: 'CABINETS', label: '[📂] File Cabinets', desc: 'Electronic physical archives repository & document structures' },
               { id: 'EOID', label: '[🔑] Origin ID / EOID', desc: 'Electronic Origin ID status certificates & digital validation' },
+              { id: 'EOID Under_Age', label: '[🍼] EOID Under_Age', desc: 'Electronic Origin ID status check & logs for minors & under age entries' },
               { id: 'ETD', label: '[✈️] ETD Division', desc: 'Emergency Travel Document verification, check, & registers' },
               { id: 'AUDIT', label: '[🔍] System Audit Logs', desc: 'Federal system immutable audit logs & database operation events' }
             ].map((m) => {

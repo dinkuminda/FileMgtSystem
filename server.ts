@@ -97,7 +97,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff')) {
+      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -138,7 +138,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -179,14 +179,14 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
       // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant' || newRole === 'staff') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
+      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
       } else if (newRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
       } else if (newRole === 'airport_viewer' || newRole === 'view_only') {
@@ -231,7 +231,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -248,8 +248,8 @@ async function startServer() {
 
       // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant' || role === 'staff') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
+      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
       } else if (role === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
       } else if (role === 'airport_viewer' || role === 'view_only') {
@@ -294,7 +294,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -340,7 +340,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant' && profile?.role !== 'staff') {
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
         return res.status(403).json({ error: "Forbidden" });
       }
 
@@ -381,15 +381,17 @@ async function startServer() {
       const counts = {
         visa: 0,
         eoid: 0,
+        eoid_underage: 0,
         residence: 0,
         etd: 0,
         airport: 0
       };
 
       // Query table counts and brief data safely
-      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
+      const [vRes, eRes, euaRes, rRes, etRes, aRes] = await Promise.all([
         supabaseAdmin.from("visa_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("eoid_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("eoid_underage_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("residence_id_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("etd_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("airport_records").select("citizenship, service_provided, box_number")
@@ -397,12 +399,14 @@ async function startServer() {
 
       const visaData = vRes.data || [];
       const eoidData = eRes.data || [];
+      const eoidUnderageData = euaRes.data || [];
       const residenceData = rRes.data || [];
       const etdData = etRes.data || [];
       const airportData = aRes.data || [];
 
       counts.visa = visaData.length;
       counts.eoid = eoidData.length;
+      counts.eoid_underage = eoidUnderageData.length;
       counts.residence = residenceData.length;
       counts.etd = etdData.length;
       counts.airport = airportData.length;
@@ -410,6 +414,7 @@ async function startServer() {
       const allSampleData = [
         ...visaData.map(r => ({ type: "VISA", ...r })),
         ...eoidData.map(r => ({ type: "EOID", ...r })),
+        ...eoidUnderageData.map(r => ({ type: "EOID Under_Age", ...r })),
         ...residenceData.map(r => ({ type: "Residence ID", ...r })),
         ...etdData.map(r => ({ type: "ETD", ...r })),
         ...airportData.map(r => ({ type: "Bole Airport", ...r }))
@@ -487,9 +492,10 @@ Our secure physical and digital filing cabinets host a secure distribution of **
         return res.status(400).json({ error: "Missing interactive query message" });
       }
 
-      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
+      const [vRes, eRes, euaRes, rRes, etRes, aRes] = await Promise.all([
         supabaseAdmin.from("visa_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15),
-        supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number").limit(15),
+        supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number, personal_id, dob, under_age, personal_file_no, eoid_type").limit(15),
+        supabaseAdmin.from("eoid_underage_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, personal_id, dob, under_age, personal_file_no").limit(15),
         supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, residence_id_no").limit(15),
         supabaseAdmin.from("etd_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, etd").limit(15),
         supabaseAdmin.from("airport_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
@@ -498,6 +504,7 @@ Our secure physical and digital filing cabinets host a secure distribution of **
       const recordsContext = [
         ...(vRes.data || []).map(r => ({ division: "VISA", ...r })),
         ...(eRes.data || []).map(r => ({ division: "EOID", ...r })),
+        ...(euaRes.data || []).map(r => ({ division: "EOID Under_Age", ...r })),
         ...(rRes.data || []).map(r => ({ division: "Residence ID", ...r })),
         ...(etRes.data || []).map(r => ({ division: "ETD", ...r })),
         ...(aRes.data || []).map(r => ({ division: "Bole Airport", ...r }))
@@ -627,6 +634,7 @@ How can I help you support system operations?`;
       const secureRules = [
         { module: 'VISA', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
         { module: 'EOID', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
+        { module: 'EOID Under_Age', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
         { module: 'Residence ID', view_roles: ['admin'], create_roles: ['admin'], update_roles: ['admin'] },
         { module: 'ETD', view_roles: ['admin'], create_roles: [], update_roles: [] },
         { module: 'Yellow Card', view_roles: ['admin', 'airport_staff'], create_roles: [], update_roles: [] },

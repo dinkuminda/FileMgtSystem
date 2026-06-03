@@ -216,7 +216,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
     if (modifyingModulesUser) {
       const initialPerms: Record<string, { list: boolean; show: boolean; edit: boolean }> = {};
       const modulesList = [
-        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
         'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
       ];
       const userSelected = modifyingModulesUser.modules || [];
@@ -1077,7 +1077,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                                 className="w-full text-[10px] font-bold py-1 pl-2 pr-6 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-md text-slate-750 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 hover:bg-slate-100/60 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed font-sans uppercase tracking-wider outline-none appearance-none"
                               >
                                 <option value="super_admin">Super Admin</option>
-                                <option value="staff">Admin</option>
+                                <option value="admin">Admin</option>
                                 <option value="admin_grant">Admin Grant</option>
                                 <option value="add_records">Add Records</option>
                                 <option value="view_only">View Only</option>
@@ -1438,10 +1438,11 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                   <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                     {[
                       { id: 'OVERVIEW', label: 'Command Deck' },
-                      { id: 'USERS', label: 'Credential Registry' },
+                      { id: 'USERS', label: 'Access Registry' },
                       { id: 'REPORTS', label: 'Intel Analytics' },
                       { id: 'VISA', label: 'VISA Division' },
                       { id: 'EOID', label: 'EOID Division' },
+                      { id: 'EOID Under_Age', label: 'EOID Under_Age' },
                       { id: 'Residence ID', label: 'Residence Bureau' },
                       { id: 'ETD', label: 'Emergency Travels' },
                       { id: 'CABINETS', label: 'Physical Cabinets' },
@@ -1649,7 +1650,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                             type="button"
                             onClick={() => {
                               const allModuleIds = [
-                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
                                 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
                               ];
                               setSelectedModules(allModuleIds);
@@ -1665,7 +1666,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                             }}
                             className="flex-1 md:flex-initial px-4 py-2.5 bg-blue-600 hover:bg-blue-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
                           >
-                            <Check className="w-4 h-4 stroke-[2.5]" />
+                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                             Activate All Modules
                           </button>
                           
@@ -1675,7 +1676,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                               setSelectedModules([]);
                               const updated = { ...localSubPerms };
                               const allModuleIds = [
-                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
                                 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
                               ];
                               allModuleIds.forEach(mId => {
@@ -1685,7 +1686,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                             }}
                             className="flex-1 md:flex-initial px-4 py-2.5 bg-rose-600 hover:bg-rose-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
                           >
-                            <X className="w-4 h-4 stroke-[2.5]" />
+                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
                             Deactivate All Modules
                           </button>
                         </div>
@@ -1699,6 +1700,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                           { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and analytical intelligence reporting', icon: FileText },
                           { id: 'VISA', label: 'VISA Desk Portal', desc: 'Official permanent or temporary visa document registries', icon: Globe },
                           { id: 'EOID', label: 'EOID Portals Deck', desc: 'Special security clearance fingerprint border gate controls', icon: Fingerprint },
+                          { id: 'EOID Under_Age', label: 'EOID Under_Age', desc: 'Electronic Origin ID status check & logs for minors & under-age entries', icon: Fingerprint },
                           { id: 'Residence ID', label: 'Residence Verification ID', desc: 'National ID, status, residency credentials and registers', icon: Shield },
                           { id: 'ETD', label: 'Emergency Travel Docs', desc: 'Emergency Travel Document verification and check system', icon: AlertTriangle },
                           { id: 'CABINETS', label: 'Physical Cabinets Metadata', desc: 'Geographical physical paper folders layout and archive metadata', icon: Archive },
@@ -2077,7 +2079,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
                       { id: 'super_admin', label: 'Super Admin', desc: 'Sovereign administrative directory bypass access' },
-                      { id: 'staff', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
+                      { id: 'admin', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
                       { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to assign user roles and manage general accounts' },
                       { id: 'add_records', label: 'Add Records Specialist', desc: 'Register new items, insert records, and attach files' },
                       { id: 'view_only', label: 'View Only Auditor', desc: 'Lookup-only view permission, passive directory observations' },
@@ -2189,7 +2191,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
                     { id: 'super_admin', label: 'Super Admin', desc: 'Complete access to records, security matrix, & audit trails' },
-                    { id: 'staff', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
+                    { id: 'admin', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
                     { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to manage users, assign server-authoritative roles, & configure directories' },
                     { id: 'add_records', label: 'Add Records', desc: 'Register entries, database insertions, and document uploads' },
                     { id: 'view_only', label: 'View Only', desc: 'Restricted lookup-only file viewing authorization' },
@@ -2467,7 +2469,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                 onClick={async () => {
                   setActionLoading(true);
                   const allModules = [
-                    'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 
+                    'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
                     'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
                   ];
                   try {
@@ -2575,7 +2577,7 @@ export default function UserManagement({ currentUserProfile, onProfileUpdate }: 
                 >
                   <option value="">Batch Role Clearances...</option>
                   <option value="super_admin">Super Admin</option>
-                  <option value="staff">Admin</option>
+                  <option value="admin">Admin</option>
                   <option value="admin_grant">Admin Grant</option>
                   <option value="add_records">Add Records</option>
                   <option value="view_only">View Only</option>

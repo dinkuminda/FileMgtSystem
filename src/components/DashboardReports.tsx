@@ -20,7 +20,8 @@ export const BOX_MODULE_DESC: Record<string, string> = {
   'EOID-000002': 'EOID National Registry',
   'Residence-000003': 'Residence Permits',
   'ETD-000004': 'Emergency Travel Docs',
-  'Yellow-000005': 'Yellow Card Logs'
+  'Yellow-000005': 'Yellow Card Logs',
+  'EOID-Underage-000006': 'EOID Under Age Logs'
 };
 
 interface DashboardReportsProps {
@@ -176,6 +177,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   };
 
   const getRecordType = (record: any): RecordType => {
+    if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
@@ -298,12 +300,22 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
             return { type, count: 0, data: [] };
           }
 
-          const { data, count, error } = await supabase
-            .from(table)
-            .select('*', { count: 'exact' });
-          
-          if (error) throw error;
-          return { type, count: count || 0, data };
+          try {
+            const { data, count, error } = await supabase
+              .from(table)
+              .select('*', { count: 'exact' });
+            
+            if (error) throw error;
+            return { type, count: count || 0, data };
+          } catch (dbErr) {
+            console.warn(`Stats database read failed for type ${type}, applying local storage fallback...`, dbErr);
+            if (type === 'EOID Under_Age') {
+              const stored = localStorage.getItem('local_records_eoid_under_age');
+              const localData: any[] = stored ? JSON.parse(stored) : [];
+              return { type, count: localData.length, data: localData };
+            }
+            return { type, count: 0, data: [] };
+          }
         })
       );
 
@@ -373,6 +385,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       if (isAllowedBox('Residence-000003', 'Residence ID')) boxMap['Residence-000003'] = [];
       if (isAllowedBox('ETD-000004', 'ETD')) boxMap['ETD-000004'] = [];
       if (isAllowedBox('Yellow-000005', 'Yellow Card')) boxMap['Yellow-000005'] = [];
+      if (isAllowedBox('EOID-Underage-000006', 'EOID Under_Age')) boxMap['EOID-Underage-000006'] = [];
 
       customCabinetsList.forEach(c => {
         if (isAllowedBox(c.boxName, c.module)) {

@@ -4,7 +4,7 @@ import { supabase, type ImmigrationRecord, type RecordType, TABLE_MAP, type Reco
 import AttachmentIndicator from './AttachmentIndicator';
 import { motion, AnimatePresence } from 'motion/react';
 // @ts-ignore
-import visaSampleImg from '../assets/images/visa_sample_document_1779450724526.png';
+const visaSampleImg = 'https://picsum.photos/seed/visa_specimen/800/600';
 import VisaSpecimenCard from './VisaSpecimenCard';
 
 interface RecordTableProps {
@@ -27,7 +27,7 @@ export default function RecordTable({
   const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [showReferenceGuide, setShowReferenceGuide] = useState(false);
-  const colSpanCount = activeTab === 'VISA' ? 10 : 9;
+  const colSpanCount = activeTab === 'EOID' ? 13 : (activeTab === 'VISA' ? 10 : 9);
 
   return (
     <div className="w-full">
@@ -38,23 +38,42 @@ export default function RecordTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-100">
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">BER</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">
-                <div className="flex items-center gap-1 cursor-pointer select-none">
-                  <span>FULL NAME</span>
-                  <span>⇅</span>
-                </div>
-              </th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SEX</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">CITIZENSHIP</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">PASSPORT NUMBER</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">REQUEST NUMBER</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">DATE</th>
-              {activeTab === 'VISA' && (
-                <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SERVICE PROVIDED</th>
+              {activeTab === 'EOID' ? (
+                <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal file No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">EOID Type</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">service provided</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Attachments</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">BER</th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">
+                    <div className="flex items-center gap-1 cursor-pointer select-none">
+                      <span>FULL NAME</span>
+                      <span>⇅</span>
+                    </div>
+                  </th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SEX</th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">CITIZENSHIP</th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">PASSPORT NUMBER</th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">REQUEST NUMBER</th>
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">DATE</th>
+                  {activeTab === 'VISA' && (
+                    <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SERVICE PROVIDED</th>
+                  )}
+                  <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
+                </>
               )}
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
-              <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em] text-right">ACTIONS</th>
+              <th className="px-5 py-5 text-[10px] font-black text-slate-405 text-slate-400 uppercase tracking-[0.1em] text-right">ACTIONS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/65">
@@ -80,40 +99,114 @@ export default function RecordTable({
                       className={`hover:bg-slate-50/50 transition-colors cursor-pointer group ${isExpanded ? 'bg-slate-50/20' : ''}`}
                       onClick={() => setExpandedRecordId(isExpanded ? null : record.id)}
                     >
-                      <td className="px-5 py-5 text-slate-450 font-normal text-xs text-slate-400">
-                        {index + 1}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
-                        {record.full_name}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-medium text-slate-505 text-slate-500 uppercase">
-                        {record.sex}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-medium text-slate-655 text-slate-600 uppercase">
-                        {record.citizenship}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
-                        {record.passport_number}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
-                        {record.request_number}
-                      </td>
-                      <td className="px-5 py-5 text-xs font-mono text-slate-555 text-slate-500">
-                        {new Date(record.date).toISOString().split('T')[0]}
-                      </td>
-                      {activeTab === 'VISA' && (
-                        <td className="px-5 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
-                          {record.service_provided?.toUpperCase() || 'VISA EXTENSION'}
-                        </td>
+                      {activeTab === 'EOID' ? (
+                        <>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
+                            {record.box_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_file_no || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
+                            {record.full_name}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-semibold text-slate-505 text-slate-500 uppercase">
+                            {record.sex ? record.sex[0].toUpperCase() : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-medium text-slate-655 text-slate-600 uppercase">
+                            {record.citizenship}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-amber-700 uppercase">
+                            <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px]">
+                              {(record as any).eoid_type || '—'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
+                            {record.passport_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
+                            {record.request_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-555 text-slate-500">
+                            {new Date(record.date).toISOString().split('T')[0]}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                            {record.service_provided?.toUpperCase() || 'EOID ISSUANCE'}
+                          </td>
+                          <td className="px-3 py-5">
+                            <div className="flex items-center gap-1 text-slate-500">
+                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
+                                ✓
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-5 py-5 text-slate-450 font-normal text-xs text-slate-400">
+                            {index + 1}
+                          </td>
+                          <td className="px-5 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
+                            <div className="flex flex-col gap-0.5">
+                              <span>{record.full_name}</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {(record as any).personal_file_no && (
+                                  <span className="inline-block text-[8px] font-black text-fuchsia-600 tracking-wider uppercase bg-fuchsia-50 px-1.5 py-0.5 rounded-md border border-fuchsia-100">
+                                    File: {(record as any).personal_file_no}
+                                  </span>
+                                )}
+                                {(record as any).personal_id && (
+                                  <span className="inline-block text-[8px] font-black text-blue-600 tracking-wider uppercase bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                                    ID: {(record as any).personal_id}
+                                  </span>
+                                )}
+                                {(record as any).eoid_type && (
+                                  <span className="inline-block text-[8px] font-black text-amber-600 tracking-wider uppercase bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100 animate-pulse">
+                                    Type: {(record as any).eoid_type}
+                                  </span>
+                                )}
+                                {(record as any).dob && (
+                                  <span className="inline-block text-[8px] font-black text-emerald-605 text-emerald-600 tracking-wider uppercase bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
+                                    DOB: {(record as any).dob}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-5 text-xs font-medium text-slate-505 text-slate-500 uppercase">
+                            {record.sex}
+                          </td>
+                          <td className="px-5 py-5 text-xs font-medium text-slate-655 text-slate-600 uppercase">
+                            {record.citizenship}
+                          </td>
+                          <td className="px-5 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
+                            {record.passport_number}
+                          </td>
+                          <td className="px-5 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
+                            {record.request_number}
+                          </td>
+                          <td className="px-5 py-5 text-xs font-mono text-slate-555 text-slate-500">
+                            {new Date(record.date).toISOString().split('T')[0]}
+                          </td>
+                          {activeTab === 'VISA' && (
+                            <td className="px-5 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                              {record.service_provided?.toUpperCase() || 'VISA EXTENSION'}
+                            </td>
+                          )}
+                          <td className="px-5 py-5">
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
+                                ✓
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
+                            </div>
+                          </td>
+                        </>
                       )}
-                      <td className="px-5 py-5">
-                        <div className="flex items-center gap-1.5 text-slate-500">
-                          <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                            ✓
-                          </span>
-                          <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                        </div>
-                      </td>
                       <td className="px-5 py-5 text-right font-semibold" onClick={e => e.stopPropagation()}>
                         <TableActions 
                           record={record} 
@@ -170,9 +263,28 @@ export default function RecordTable({
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold uppercase shrink-0">
                       {record.full_name[0]}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 leading-tight">{record.full_name}</h4>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{record.citizenship} • {record.sex}</p>
+                     <div>
+                      <h4 className="font-bold text-slate-900 leading-tight">
+                        {record.full_name}
+                      </h4>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(record as any).personal_file_no && (
+                          <span className="inline-block text-[8px] font-black text-fuchsia-600 bg-fuchsia-50 px-1.5 py-0.5 rounded border border-fuchsia-100 uppercase">
+                            File: {(record as any).personal_file_no}
+                          </span>
+                        )}
+                        {(record as any).personal_id && (
+                          <span className="inline-block text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 uppercase">
+                            ID: {(record as any).personal_id}
+                          </span>
+                        )}
+                        {(record as any).dob && (
+                          <span className="inline-block text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase">
+                            DOB: {(record as any).dob}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{record.citizenship} • {record.sex}</p>
                     </div>
                   </div>
                   <span className="text-[9px] font-black font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
@@ -552,14 +664,52 @@ function RecordDetailsModal({
           )}
 
           {/* Module-Specific Parameters in nice detail */}
-          {!isVisa && (record.eoid_number || record.residence_id_no || record.etd || record.letter_number || record.document_type) && (
+          {!isVisa && (record.eoid_number || record.residence_id_no || record.etd || record.letter_number || record.document_type || (record as any).personal_file_no || (record as any).personal_id || (record as any).dob || (record as any).eoid_type) && (
             <div>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3.5">Module Parameters</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {record.eoid_number && (
+                {(record as any).personal_id && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Personal ID</p>
+                    <p className="text-sm font-black text-slate-800 font-mono mt-1">{(record as any).personal_id}</p>
+                  </div>
+                )}
+                {(record as any).eoid_type && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">EOID Type</p>
+                    <p className="text-sm font-black text-amber-700 mt-1">{(record as any).eoid_type}</p>
+                  </div>
+                )}
+                {record.eoid_number && !(record as any).personal_id && (
                   <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">EOID No.</p>
                     <p className="text-sm font-black text-slate-800 font-mono mt-1">{record.eoid_number}</p>
+                  </div>
+                )}
+                {(record as any).personal_file_no && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Personal File No.</p>
+                    <p className="text-sm font-black text-slate-800 font-mono mt-1">{(record as any).personal_file_no}</p>
+                  </div>
+                )}
+                {(record as any).dob && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Date of Birth (DOB)</p>
+                    <p className="text-sm font-black text-slate-800 font-mono mt-1">
+                      {new Date((record as any).dob).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                {(record as any).dob && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Minor Status (Under Age)</p>
+                    <div className="mt-1">
+                      {(record as any).under_age !== false ? (
+                        <span className="inline-flex px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black rounded uppercase">👶 Yes (TRUE)</span>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 bg-rose-50 border border-rose-100 text-rose-700 text-[10px] font-black rounded uppercase">⚠️ No (FALSE)</span>
+                      )}
+                    </div>
                   </div>
                 )}
                 {record.residence_id_no && (
@@ -569,7 +719,7 @@ function RecordDetailsModal({
                   </div>
                 )}
                 {record.etd && (
-                  <div className="border border-slate-105 border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ETD Reference</p>
                     <p className="text-sm font-bold text-slate-800 mt-1">{record.etd}</p>
                   </div>
@@ -586,6 +736,43 @@ function RecordDetailsModal({
                     <p className="text-sm font-bold text-slate-800 mt-1">{record.document_type}</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Secure verifying checklist folders (JSONB attachments schema) */}
+          {(record as any).attachments && Array.isArray((record as any).attachments) && (record as any).attachments.length > 0 && (
+            <div className="mt-2 border border-fuchsia-100 bg-fuchsia-50/5 p-4 rounded-2xl">
+              <h4 className="text-[10px] font-black text-fuchsia-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                {activeTab === 'EOID' ? '💼 Verified EOID attachments checklist (JSONB Schema)' : '🍼 Verified Minors attachments checklist (JSONB Schema)'}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(record as any).attachments.map((doc: any, docIdx: number) => {
+                  const hasUrl = Boolean(doc.url);
+                  return (
+                    <div key={docIdx} className="border border-slate-100 p-3 rounded-xl bg-white shadow-xs flex flex-col justify-between">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-slate-800 truncate">{doc.file_type}</span>
+                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
+                          doc.verification_status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                          doc.verification_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                          'bg-amber-55 bg-amber-50 text-amber-700 border border-amber-100'
+                        }`}>
+                          {doc.verification_status || 'Pending'}
+                        </span>
+                      </div>
+                      {hasUrl ? (
+                        <p className="text-[9px] font-mono text-[#2b825a] hover:underline mt-1.5 truncate">
+                          <a href={doc.url} target="_blank" rel="noreferrer" className="flex items-center gap-1">
+                            📂 open secure document link
+                          </a>
+                        </p>
+                      ) : (
+                        <p className="text-[9px] font-medium text-slate-400 mt-1.5 italic">No scan uploaded</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

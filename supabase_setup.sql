@@ -93,12 +93,51 @@ CREATE TABLE IF NOT EXISTS public.eoid_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   box_number TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
-  eoid_number TEXT NOT NULL,
+  eoid_number TEXT, -- For backward-compatibility (optional now)
+  personal_file_no TEXT,
+  personal_id TEXT,
+  eoid_type TEXT, -- By Marriage, By Residence, By Ownership, By Ras Teferian
   passport_number TEXT NOT NULL,
   request_number TEXT NOT NULL,
-  date DATE NOT NULL,
+  dob DATE,
+  under_age BOOLEAN NOT NULL DEFAULT FALSE,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  service_provided TEXT NOT NULL,
+  attachment_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
+);
+
+-- Migration commands for existing eoid_records tables (Run these in your Supabase SQL editor):
+-- ALTER TABLE public.eoid_records DROP CONSTRAINT IF EXISTS eoid_records_sex_check;
+-- ALTER TABLE public.eoid_records ADD CONSTRAINT eoid_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+-- ALTER TABLE public.eoid_records ALTER COLUMN eoid_number DROP NOT NULL;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS personal_id TEXT;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS eoid_type TEXT;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS dob DATE;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS under_age BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+
+-- EOID Under_Age Table
+CREATE TABLE IF NOT EXISTS public.eoid_underage_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  box_number TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
+  citizenship TEXT NOT NULL,
+  personal_file_no TEXT NOT NULL,
+  personal_id TEXT NOT NULL,
+  eoid_number TEXT,  -- For backward-compatibility / alias
+  passport_number TEXT NOT NULL,
+  request_number TEXT NOT NULL,
+  dob DATE NOT NULL,
+  under_age BOOLEAN NOT NULL DEFAULT TRUE,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
   service_provided TEXT NOT NULL,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -142,6 +181,7 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
 -- Enable RLS on all tables
 ALTER TABLE public.visa_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eoid_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.eoid_underage_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.residence_id_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.etd_records ENABLE ROW LEVEL SECURITY;
 
@@ -163,7 +203,7 @@ BEGIN
       ELSE 'viewer'
     END,
     CASE
-      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
+      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
       WHEN new.email = 'dinku_staff@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
       WHEN new.email LIKE '%weleba%' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
       WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
@@ -212,6 +252,20 @@ CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated
 CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated 
   USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
 CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
+
+-- EOID Under_Age Policies
+DROP POLICY IF EXISTS "eoid_underage_select" ON public.eoid_underage_records;
+DROP POLICY IF EXISTS "eoid_underage_insert" ON public.eoid_underage_records;
+DROP POLICY IF EXISTS "eoid_underage_update" ON public.eoid_underage_records;
+DROP POLICY IF EXISTS "eoid_underage_delete" ON public.eoid_underage_records;
+CREATE POLICY "eoid_underage_select" ON public.eoid_underage_records FOR SELECT TO authenticated 
+  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+CREATE POLICY "eoid_underage_insert" ON public.eoid_underage_records FOR INSERT TO authenticated 
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "eoid_underage_update" ON public.eoid_underage_records FOR UPDATE TO authenticated 
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+CREATE POLICY "eoid_underage_delete" ON public.eoid_underage_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
 -- Residence ID Policies
@@ -320,6 +374,7 @@ CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authentic
 -- 8. Indexes
 CREATE INDEX IF NOT EXISTS idx_records_visa_name ON public.visa_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_eoid_name ON public.eoid_records(full_name);
+CREATE INDEX IF NOT EXISTS idx_records_eoid_underage_name ON public.eoid_underage_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_residence_name ON public.residence_id_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_etd_name ON public.etd_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_airport_name ON public.airport_records(full_name);
@@ -348,10 +403,10 @@ CREATE POLICY "Allow authenticated access" ON storage.objects
 -- 10. Admin Profile Boost
 -- Ensure the primary admin email always has admin role regardless of when they signed up
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT']
+SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT']
 FROM auth.users
 WHERE email = 'dinkuh12@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
+ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
 
 -- Boost for Ephrem (Airport Only)
 INSERT INTO public.profiles (id, email, role, full_name, modules)
@@ -389,6 +444,9 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
   ON CONFLICT (module) DO NOTHING;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
   ('EOID', ARRAY['admin', 'staff'], ARRAY['admin'], ARRAY[]::text[])
+  ON CONFLICT (module) DO NOTHING;
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('EOID Under_Age', ARRAY['admin', 'staff'], ARRAY['admin'], ARRAY[]::text[])
   ON CONFLICT (module) DO NOTHING;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
   ('Residence ID', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])

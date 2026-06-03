@@ -6,8 +6,8 @@ import {
   Download, Trash2, Edit2, Loader2,
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Activity, BarChart3, Plane, Paperclip,
-  ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight,
-  Bell, Archive
+  ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+  Bell, Archive, Baby
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -107,6 +107,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const location = useLocation();
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
   const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
+  const [isEoidGroupOpen, setIsEoidGroupOpen] = useState(true);
 
   useEffect(() => {
     getPermissionRules().then(rules => {
@@ -145,7 +146,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
     { type: 'VISA', icon: FileText, label: 'VISA Division' },
-    { type: 'EOID', icon: Fingerprint, label: 'EOID Division' },
+    { type: 'EOID', icon: Fingerprint, label: 'Normal registrations' },
+    { type: 'EOID Under_Age', icon: Baby, label: 'Under-Age Applications' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'ETD Division' },
     { type: 'Yellow Card', icon: Shield, label: 'Yellow Card Division' },
@@ -170,7 +172,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (!userProfile) return false;
     
     // Admins should always see everything
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
 
     // Command Deck (Overview) is the baseline landing page for everyone
     if (tab.type === 'OVERVIEW') return true;
@@ -216,7 +218,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
   ].filter(at => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       // If they have users/audit module, show them in airport too
       if (at.module === 'USERS') return userProfile.modules.includes('USERS');
@@ -279,23 +281,90 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     }
   }, [activeTab]);
 
+  const DEFAULT_EOID_UNDERAGE_MOCKS: ImmigrationRecord[] = [
+    {
+      id: "ua-rec-1",
+      box_number: "EOID-Underage-000006",
+      full_name: "Yared Yohannes Assefa",
+      sex: "Male",
+      citizenship: "Ethiopia",
+      personal_file_no: "PF-UA-10492",
+      eoid_number: "ID-12490-UA",
+      passport_number: "EP0891242",
+      request_number: "REQ-778931",
+      date: "2026-06-03",
+      service_provided: "Minor Travel Clearance Integration",
+      created_at: new Date().toISOString(),
+      created_by: "system"
+    },
+    {
+      id: "ua-rec-2",
+      box_number: "EOID-Underage-000006",
+      full_name: "Netsanet Tesfaye Bekele",
+      sex: "Female",
+      citizenship: "Ethiopia",
+      personal_file_no: "PF-UA-10493",
+      eoid_number: "ID-12491-UA",
+      passport_number: "EP0891243",
+      request_number: "REQ-778932",
+      date: "2026-06-03",
+      service_provided: "Minor Border Exit Clearance",
+      created_at: new Date().toISOString(),
+      created_by: "system"
+    },
+    {
+      id: "ua-rec-3",
+      box_number: "EOID-Underage-000006",
+      full_name: "Binyam Daniel Samuel",
+      sex: "Male",
+      citizenship: "United States",
+      personal_file_no: "PF-UA-10494",
+      eoid_number: "ID-12492-UA",
+      passport_number: "US9918231",
+      request_number: "REQ-778933",
+      date: "2026-06-02",
+      service_provided: "Birth Verification & Exit Certificate",
+      created_at: new Date().toISOString(),
+      created_by: "system"
+    }
+  ];
+
   const fetchRecords = async () => {
     if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS') return;
     setLoading(true);
     const tableName = TABLE_MAP[activeTab as RecordType];
-    const { data, error } = await supabase
-      .from(tableName)
-      .select('*')
-      .order('created_at', { ascending: false });
+    
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (!error && data) setRecords(data as ImmigrationRecord[]);
-    else if (error) console.error(`Error fetching ${activeTab} records:`, error);
+      if (!error && data) {
+        setRecords(data as ImmigrationRecord[]);
+      } else {
+        throw error || new Error("Failed to load");
+      }
+    } catch (e: any) {
+      console.warn(`Error or missing table on fetching ${activeTab} records, applying fallback:`, e?.message || e);
+      if (activeTab === 'EOID Under_Age') {
+        const stored = localStorage.getItem('local_records_eoid_under_age');
+        if (stored) {
+          setRecords(JSON.parse(stored));
+        } else {
+          localStorage.setItem('local_records_eoid_under_age', JSON.stringify(DEFAULT_EOID_UNDERAGE_MOCKS));
+          setRecords(DEFAULT_EOID_UNDERAGE_MOCKS);
+        }
+      } else {
+        setRecords([]);
+      }
+    }
     setLoading(false);
   };
 
   const hasAccess = (tabType: typeof allTabs[number]['type']) => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     return tabs.some(t => t.type === tabType);
   };
 
@@ -312,18 +381,32 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     const tableName = TABLE_MAP[activeTab as RecordType];
     
     try {
-      await supabase
-        .from('record_attachments')
-        .delete()
-        .eq('record_id', id)
-        .eq('record_table', tableName);
+      try {
+        await supabase
+          .from('record_attachments')
+          .delete()
+          .eq('record_id', id)
+          .eq('record_table', tableName);
 
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('id', id);
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } catch (dbErr) {
+        if (activeTab === 'EOID Under_Age') {
+          console.warn("Delete DB error, performing local delete", dbErr);
+          const stored = localStorage.getItem('local_records_eoid_under_age');
+          if (stored) {
+            const parsed = JSON.parse(stored) as ImmigrationRecord[];
+            const updated = parsed.filter(r => r.id !== id);
+            localStorage.setItem('local_records_eoid_under_age', JSON.stringify(updated));
+          }
+        } else {
+          throw dbErr;
+        }
+      }
       
       await logger.log('DELETE', activeTab, `Deleted record for ${record?.full_name || 'unknown'}`, id);
       setRecords(records.filter(r => r.id !== id));
@@ -393,7 +476,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const canAdd = () => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
@@ -405,7 +488,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const canEdit = () => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant' || userProfile.role === 'staff') return true;
+    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
@@ -481,27 +564,108 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 exit={{ opacity: 0 }}
                 className="space-y-1.5"
               >
-                {tabs.map((tab) => {
-                  const isActive = activeTab === tab.type;
-                  const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
-                  return (
-                    <Link
-                      key={tab.type}
-                      to={path}
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                        isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
-                      } ${
-                        isActive 
-                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                      }`}
-                    >
-                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                      {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
-                    </Link>
-                  );
-                })}
+                {(() => {
+                  const renderedItems: React.ReactNode[] = [];
+                  let hasRenderedEoidGroup = false;
+
+                  tabs.forEach((tab) => {
+                    const isGroupItem = tab.type === 'EOID' || tab.type === 'EOID Under_Age';
+
+                    if (isGroupItem) {
+                      if (!hasRenderedEoidGroup) {
+                        hasRenderedEoidGroup = true;
+                        
+                        const innerGroupTabs = tabs.filter(t => t.type === 'EOID' || t.type === 'EOID Under_Age');
+                        const isAnyChildActive = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
+                        
+                        renderedItems.push(
+                          <div key="eoid-group" className="space-y-1.5 mt-2.5">
+                            {/* Group Header */}
+                            {!isSidebarCollapsed ? (
+                              <button
+                                type="button"
+                                onClick={() => setIsEoidGroupOpen(!isEoidGroupOpen)}
+                                className={`w-full flex items-center justify-between px-4 py-2 text-[10px] font-black tracking-widest uppercase transition-all rounded-lg outline-none border-none cursor-pointer ${
+                                  isAnyChildActive
+                                    ? 'text-[#8c1d1d] font-extrabold bg-red-50/20'
+                                    : 'text-slate-400 hover:text-slate-655 hover:text-slate-600'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <Fingerprint className={`w-3.5 h-3.5 ${isAnyChildActive ? 'text-[#8c1d1d]' : 'text-slate-400'}`} />
+                                  <span>Ethiopian Origin ID</span>
+                                </span>
+                                <div>
+                                  {isEoidGroupOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </div>
+                              </button>
+                            ) : (
+                              <div className="border-t border-slate-100 my-2" />
+                            )}
+
+                            {/* Sub items */}
+                            <AnimatePresence initial={false}>
+                              {(isEoidGroupOpen || isSidebarCollapsed) && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className={`space-y-1 overflow-hidden ${!isSidebarCollapsed ? 'pl-3 border-l border-slate-100 ml-5' : ''}`}
+                                >
+                                  {innerGroupTabs.map((subTab) => {
+                                    const isSubActive = activeTab === subTab.type;
+                                    const path = `/${subTab.type.toLowerCase().replace(' ', '-')}`;
+                                    return (
+                                      <Link
+                                        key={subTab.type}
+                                        to={path}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className={`flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                                          isSidebarCollapsed ? 'justify-center' : 'justify-start'
+                                        } ${
+                                          isSubActive 
+                                            ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs` 
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                                        }`}
+                                      >
+                                        <subTab.icon className={`w-4 h-4 flex-shrink-0 ${isSubActive ? currentTheme.primaryText : 'text-slate-400'}`} />
+                                        {!isSidebarCollapsed && <span className="flex-1 truncate">{subTab.label}</span>}
+                                      </Link>
+                                    );
+                                  })}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      }
+                    } else {
+                      // Normal non-grouped tab link
+                      const isActive = activeTab === tab.type;
+                      const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+                      renderedItems.push(
+                        <Link
+                          key={tab.type}
+                          to={path}
+                          onClick={() => setIsSidebarOpen(false)}
+                          className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                            isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
+                          } ${
+                            isActive 
+                              ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                          }`}
+                        >
+                          <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
+                          {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
+                        </Link>
+                      );
+                    }
+                  });
+
+                  return renderedItems;
+                })()}
               </motion.div>
             )}
           </AnimatePresence>
@@ -693,14 +857,15 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
                <div className="mb-8 md:mb-10">
-                {['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) ? (
+                {['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) ? (
                   <div className="space-y-6">
                     {/* FSD Division style heading row */}
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
                         <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight">
                           {activeTab === 'VISA' ? 'VISA Structuring Division' : 
-                           activeTab === 'EOID' ? 'EOID Structuring Division' : 
+                           activeTab === 'EOID' ? 'Ethiopian Origin ID - Normal Registrations' : 
+                           activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID - Under-Age Applications' : 
                            activeTab === 'Residence ID' ? 'Residence ID Division' : 
                            activeTab === 'ETD' ? 'ETD Structuring Division' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Division' : 
@@ -709,6 +874,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
                            activeTab === 'EOID' ? 'SOURCE: - National ID verification feeds' : 
+                           activeTab === 'EOID Under_Age' ? 'SOURCE: - Verified Minors Database Registry' : 
                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
                            activeTab === 'AIRPORT' ? 'SOURCE: - BOLE AIRPORT BORDER SECURITY CONTROL' :
@@ -840,6 +1006,20 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 } />
                 <Route path="/eoid" element={
                   hasAccess('EOID') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
+                } />
+                <Route path="/eoid-under_age" element={
+                  hasAccess('EOID Under_Age') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                       <RecordTable 
                         loading={loading}

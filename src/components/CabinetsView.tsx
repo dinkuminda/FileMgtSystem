@@ -84,6 +84,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
   };
 
   const getRecordType = (record: any): RecordType => {
+    if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
     if (record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
@@ -93,6 +94,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
 
   const getRecordCategory = (record: any) => {
     const rType = getRecordType(record);
+    if (rType === 'EOID Under_Age') return "EOID Under Age Logs";
     if (rType === 'EOID') return "EOID Logs";
     if (rType === 'Residence ID') return "Residence ID";
     if (rType === 'ETD') return "Emergency Travel Docs";
@@ -106,11 +108,20 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     setLoading(true);
     try {
       // Execute all fetches in parallel
-      const tables: RecordType[] = ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card'];
+      const tables: RecordType[] = ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card'];
       const fetches = tables.map(async (type) => {
-        const { data, error } = await supabase.from(TABLE_MAP[type]).select('*');
-        if (error) throw error;
-        return { type, data: data || [] };
+        try {
+          const { data, error } = await supabase.from(TABLE_MAP[type]).select('*');
+          if (error) throw error;
+          return { type, data: data || [] };
+        } catch (err) {
+          console.warn(`Cabinet query failed for table ${type}, attempting local fallback...`);
+          if (type === 'EOID Under_Age') {
+            const stored = localStorage.getItem('local_records_eoid_under_age');
+            return { type, data: stored ? JSON.parse(stored) : [] };
+          }
+          return { type, data: [] };
+        }
       });
 
       const results = await Promise.all(fetches);
@@ -129,6 +140,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
             { boxName: 'Residence-000003', desc: 'Residence Permit Physical Registry Drawer', module: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, humidity: 45, isLocked: false },
             { boxName: 'ETD-000004', desc: 'Emergency Travel Document Secure Vault', module: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, humidity: 35, isLocked: false },
             { boxName: 'Yellow-000005', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
+            { boxName: 'EOID-Underage-000006', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
           ];
           localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
         }

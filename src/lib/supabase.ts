@@ -28,7 +28,7 @@ export interface UserProfile {
   theme?: string;
 }
 
-export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'AIRPORT';
+export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'AIRPORT' | 'EOID Under_Age';
 
 export const TABLE_MAP: Record<RecordType, string> = {
   'VISA': 'visa_records',
@@ -36,7 +36,8 @@ export const TABLE_MAP: Record<RecordType, string> = {
   'Residence ID': 'residence_id_records',
   'ETD': 'etd_records',
   'Yellow Card': 'airport_records',
-  'AIRPORT': 'airport_records'
+  'AIRPORT': 'airport_records',
+  'EOID Under_Age': 'eoid_underage_records'
 };
 
 export const REVERSE_TABLE_MAP: Record<string, RecordType> = Object.entries(TABLE_MAP).reduce((acc, [key, value]) => {
@@ -48,7 +49,7 @@ export interface ImmigrationRecord {
   id: string;
   box_number: string;
   full_name: string;
-  sex: 'Male' | 'Female' | 'Other';
+  sex: 'Male' | 'Female' | 'Other' | 'M' | 'F';
   citizenship: string;
   passport_number: string;
   request_number: string;
@@ -59,6 +60,12 @@ export interface ImmigrationRecord {
   // Specific fields
   eoid_number?: string;
   residence_id_no?: string;
+  personal_file_no?: string;
+  personal_id?: string;
+  eoid_type?: string;
+  dob?: string;
+  under_age?: boolean;
+  attachments?: any;
   etd?: string;
   letter_number?: string;
   document_type?: string;
