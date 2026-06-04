@@ -53,12 +53,32 @@ export default function Home() {
       description: "Processing and cataloging of Emergency Travel Documents, facilitating consular support pipelines and secure cross-border permits.",
       badge: "Consular"
     },
+{
+  icon: FileText, 
+  title: "Alien Passport Module",
+  description: "Processes, validates, and tracks travel documents and pass permits issued to non-citizen residents, stateless individuals, and foreign nationals.",
+  badge: "Alien Passport"
+}
+    ,
+ {
+  icon: UserCheck, 
+  title: "Eritrean ID Module",
+  description: "Processes, verifies, and catalogs origin identity credentials and community residency records within the secure national registry.",
+  badge: "Origin Desk"
+} ,
+{
+  icon: Shield, // Guaranteed to work, represents a secure national card/status
+  title: "Yellow Card Module",
+  description: "Manages registry records, digital verification, and status tracking for foreign nationals of Ethiopian origin.",
+  badge: "Origin Desk"
+},
     {
       icon: Plane,
       title: "Bole Airport Border Logs",
       description: "Continuous real-time passenger transit logging, border status checks, and instant authorization sync for Bole International checkpoints.",
       badge: "Border Control"
     }
+
   ];
 
   const features = [
