@@ -803,11 +803,9 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       {/* Scaffold */}
       <main className="flex-1 flex flex-col w-full pb-20 md:pb-0">
         {/* Header Bar */}
-        <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-white border-b border-slate-100 sticky top-0 z-30">
+        <header className="">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-slate-400 font-extrabold text-[11px] uppercase tracking-[0.1em]">
-              <Shield className="w-4 h-4 text-emerald-500 animate-pulse" />
-              <span>System Secure</span>
             </div>
           </div>
 

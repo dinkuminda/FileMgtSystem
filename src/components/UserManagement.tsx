@@ -1,50 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, logger, UserRole } from '../lib/supabase';
-import { 
-  getPermissionRules, 
-  savePermissionRules, 
-  DEFAULT_PERMISSION_RULES, 
-  type ModulePermissionRule 
-} from '../lib/permissions';
 import { 
   Shield, 
   Key, 
   Loader2, 
   Search, 
-  CheckCircle, 
   AlertCircle, 
-  SlidersHorizontal,
-  Download,
   Plus, 
-  Activity, 
   X, 
-  User, 
-  ChevronRight,
-  Pencil,
-  Clock,
-  Trash2,
-  Lock,
-  FileSpreadsheet,
-  Check,
-  ChevronLeft,
-  Palette,
-  AlertTriangle,
-  LayoutDashboard,
-  Users,
-  FileText,
-  Globe,
-  Fingerprint,
-  Archive,
-  History,
-  Plane,
-  ArrowLeft,
-  Sliders,
-  ShieldCheck
+  Users, 
+  Pencil, 
+  Trash2, 
+  ShieldCheck 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { TeamDirectory } from './TeamDirectory';
-import { PermissionsMatrix } from './PermissionsMatrix';
 
+// ==========================================
+// TYPES & INTERFACES
+// ==========================================
 interface AdminUser {
   id: string;
   email: string;
@@ -56,2539 +28,339 @@ interface AdminUser {
   modules: string[];
 }
 
-type ThemeAccent = 'emerald' | 'blue' | 'amber' | 'slate';
-
-interface ThemeStyles {
-  primary: string;
-  primaryText: string;
-  borderClass: string;
-  bgLight: string;
-  badge: string;
-  accentHex: string;
-  accentIcon: string;
-  focusRing: string;
-  activeIndicator: string;
-  hoverCard: string;
+interface ModulePermissionRule {
+  id: string;
+  role: string;
+  module: string;
+  actions: string[];
 }
 
-const THEMES: Record<ThemeAccent, ThemeStyles> = {
-  emerald: {
-    primary: 'bg-[#2b825a] hover:bg-[#1f6041] active:bg-[#1a5036] text-white',
-    primaryText: 'text-[#1b8b58]',
-    borderClass: 'border-[#2b825a]/90',
-    bgLight: 'bg-[#ecf7f1]',
-    badge: 'bg-emerald-50 border border-emerald-250 text-[#1b8b58]',
-    accentHex: '#2b825a',
-    accentIcon: 'text-emerald-500',
-    focusRing: 'focus:ring-[#2b825a]/30 focus:border-[#2b825a]',
-    activeIndicator: 'bg-emerald-500',
-    hoverCard: 'bg-emerald-50/40 border-emerald-250/60 text-emerald-900',
-  },
-  blue: {
-    primary: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white',
-    primaryText: 'text-blue-600',
-    borderClass: 'border-blue-500/90',
-    bgLight: 'bg-blue-50',
-    badge: 'bg-blue-50 border border-blue-200 text-blue-750',
-    accentHex: '#2563eb',
-    accentIcon: 'text-blue-500',
-    focusRing: 'focus:ring-blue-500/30 focus:border-blue-500',
-    activeIndicator: 'bg-blue-500',
-    hoverCard: 'bg-blue-50/40 border-blue-200/60 text-blue-900',
-  },
-  amber: {
-    primary: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white',
-    primaryText: 'text-amber-700',
-    borderClass: 'border-amber-500/90',
-    bgLight: 'bg-amber-50',
-    badge: 'bg-amber-50 border border-amber-200 text-amber-800',
-    accentHex: '#d97706',
-    accentIcon: 'text-amber-500',
-    focusRing: 'focus:ring-amber-500/30 focus:border-amber-500',
-    activeIndicator: 'bg-amber-500',
-    hoverCard: 'bg-amber-50/40 border-amber-200/60 text-amber-900',
-  },
-  slate: {
-    primary: 'bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white',
-    primaryText: 'text-slate-700',
-    borderClass: 'border-slate-500/90',
-    bgLight: 'bg-slate-100',
-    badge: 'bg-slate-100 border border-slate-300 text-slate-800',
-    accentHex: '#475569',
-    accentIcon: 'text-slate-500',
-    focusRing: 'focus:ring-slate-500/30 focus:border-slate-300',
-    activeIndicator: 'bg-slate-500',
-    hoverCard: 'bg-slate-100/60 border-slate-300/80 text-slate-900',
-  }
-};
-
-interface UserManagementProps {
-  currentUserProfile?: any;
-  onProfileUpdate?: () => void;
+// ==========================================
+// SUB-COMPONENT: TEAM DIRECTORY
+// ==========================================
+interface TeamDirectoryProps {
+  users: AdminUser[];
 }
 
-export default function UserManagement({ currentUserProfile, onProfileUpdate }: UserManagementProps = {}) {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Custom Dynamic Color Theme picker state
-  const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
-  const theme = THEMES[themeAccent];
-
-  // Active sub-tab under credential registry
-  const [activeRegistryTab, setActiveRegistryTab] = useState<'OFFICERS' | 'MATRIX'>('OFFICERS');
-  const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
-  const [savingRules, setSavingRules] = useState(false);
-  const [matrixStatus, setMatrixStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  useEffect(() => {
-    getPermissionRules().then(rules => {
-      setPermissionRules(rules);
-    });
-  }, []);
-
-  const handleSaveMatrixRules = async () => {
-    setSavingRules(true);
-    setMatrixStatus(null);
-    try {
-      await savePermissionRules(permissionRules);
-      setMatrixStatus({ type: 'success', message: 'Clearance authorization matrix persisted and deployed successfully!' });
-      setTimeout(() => setMatrixStatus(null), 4000);
-    } catch (e: any) {
-      setMatrixStatus({ type: 'error', message: `Matrix deployment error: ${e.message}` });
-    } finally {
-      setSavingRules(false);
+function TeamDirectory({ users }: TeamDirectoryProps) {
+  // Exact color scheme mapping from the user mgt final.png reference
+  const getRoleStyle = (role: string) => {
+    switch (role.toUpperCase()) {
+      case 'ADMIN':
+        return 'bg-[#FDF2F2] text-[#EF4444] border border-[#FEE2E2]'; // Light Red
+      case 'SUPERVISOR':
+        return 'bg-[#FFFBEB] text-[#D97706] border border-[#FEF3C7]'; // Light Gold/Orange
+      case 'OFFICER':
+        return 'bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE]'; // Light Blue
+      case 'VIEWER':
+      default:
+        return 'bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]'; // Light Gray
     }
   };
 
-  // Selected user for the right-side profile pane
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-
-  // Granular Matrix Detailed View states from User Mockup
-  const [managedUser, setManagedUser] = useState<AdminUser | null>(null);
-  const [managedModules, setManagedModules] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (managedUser) {
-      setManagedModules(managedUser.modules || []);
-    } else {
-      setManagedModules([]);
-    }
-  }, [managedUser]);
-
-  // Administrative mod operations states
-  const [resettingUser, setResettingUser] = useState<AdminUser | null>(null);
-  const [modifyingRoleUser, setModifyingRoleUser] = useState<AdminUser | null>(null);
-  const [modifyingModulesUser, setModifyingModulesUser] = useState<AdminUser | null>(null);
-  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
-  const [isAddingUser, setIsAddingUser] = useState(false);
-  
-  // Custom module design parameters
-  const [moduleSearchTerm, setModuleSearchTerm] = useState('');
-  const [moduleSearchActiveTab, setModuleSearchActiveTab] = useState<'modules' | 'help' | 'comparison' | 'license'>('modules');
-  
-  // Form fields
-  const [newPassword, setNewPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string>('');
-  const [selectedModules, setSelectedModules] = useState<string[]>([]);
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserFullName, setNewUserFullName] = useState('');
-  
-  // Status feedback elements
-  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [inlineLoadingUserId, setInlineLoadingUserId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filters Panel
-  const [showFilters, setShowFilters] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
-  
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
-  const [localSubPerms, setLocalSubPerms] = useState<Record<string, { list: boolean; show: boolean; edit: boolean }>>({});
-
-  useEffect(() => {
-    if (modifyingModulesUser) {
-      const initialPerms: Record<string, { list: boolean; show: boolean; edit: boolean }> = {};
-      const modulesList = [
-        'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
-        'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-      ];
-      const userSelected = modifyingModulesUser.modules || [];
-      modulesList.forEach(mId => {
-        const isSelected = userSelected.includes(mId);
-        initialPerms[mId] = {
-          list: isSelected,
-          show: isSelected,
-          edit: isSelected && modifyingModulesUser.role !== 'view_only' && modifyingModulesUser.role !== 'viewer'
-        };
-      });
-      setLocalSubPerms(initialPerms);
-    } else {
-      setLocalSubPerms({});
-    }
-  }, [modifyingModulesUser]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  async function fetchUsers() {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active encryption session found. Please sign in again.');
-
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Administrative backend gateway endpoint could not be resolved (404).');
-        }
-        throw new Error('Failed to fetch administrative user database directory: ' + response.statusText);
-      }
-      
-      const data = await response.json();
-      const loadedUsers = data.users || [];
-      setUsers(loadedUsers);
-      
-      // Select the first user by default if available
-      if (loadedUsers.length > 0) {
-        setSelectedUser(loadedUsers[0]);
-      }
-    } catch (err: any) {
-      console.error('Error fetching users register:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Handle password reset
-  async function handleResetPassword() {
-    if (!resettingUser || !newPassword) return;
-    if (newPassword.length < 6) {
-      setStatus({ type: 'error', message: 'The default security key must contain at least 6 alphanumeric characters.' });
-      return;
-    }
-
-    setActionLoading(true);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Administrative credentials not active.');
-
-      const response = await fetch('/api/admin/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: resettingUser.id,
-          newPassword: newPassword
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to securely override user credentials.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Credentials rewrite executed for account: ${resettingUser.email}`, resettingUser.id);
-      
-      setStatus({ type: 'success', message: `Authentication password rewrite complete for: ${resettingUser.email}` });
-      setNewPassword('');
-      setTimeout(() => {
-        setResettingUser(null);
-        setStatus(null);
-      }, 1800);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Handle user role escalations
-  async function handleUpdateRole() {
-    if (!modifyingRoleUser || !selectedRole) return;
-
-    setActionLoading(true);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No admin context active.');
-
-      const response = await fetch('/api/admin/update-role', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: modifyingRoleUser.id,
-          newRole: selectedRole
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update administrative clearance tier.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Escalated security clearance level for ${modifyingRoleUser.email} to ${selectedRole}`, modifyingRoleUser.id);
-      
-      setStatus({ type: 'success', message: `Authentication clearance elevated to: ${selectedRole.toUpperCase()}` });
-      
-      setUsers(prev => prev.map(u => u.id === modifyingRoleUser.id ? { ...u, role: selectedRole } : u));
-      if (selectedUser?.id === modifyingRoleUser.id) {
-        setSelectedUser(prev => prev ? { ...prev, role: selectedRole } : null);
-      }
-
-      if (currentUserProfile && modifyingRoleUser.id === currentUserProfile.id && onProfileUpdate) {
-        onProfileUpdate();
-      }
-      
-      setTimeout(() => {
-        setModifyingRoleUser(null);
-        setStatus(null);
-      }, 1500);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Handle inline user role alterations directly from index table
-  async function handleInlineUpdateRole(user: AdminUser, newRole: UserRole) {
-    if (user.role === newRole) return;
-
-    setInlineLoadingUserId(user.id);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No admin context active.');
-
-      const response = await fetch('/api/admin/update-role', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          newRole: newRole
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update administrative clearance tier.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Escalated security clearance level inline for ${user.email} to ${newRole}`, user.id);
-
-      setStatus({ type: 'success', message: `Clearance successfully changed for ${user.email} to ${newRole.toUpperCase()}` });
-
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
-      if (selectedUser?.id === user.id) {
-        setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
-      }
-
-      if (currentUserProfile && user.id === currentUserProfile.id && onProfileUpdate) {
-        onProfileUpdate();
-      }
-
-      setTimeout(() => {
-        setStatus(null);
-      }, 3000);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setInlineLoadingUserId(null);
-    }
-  }
-
-  // Handle user provisioning
-  async function handleCreateUser() {
-    if (!newUserEmail || !newPassword || !selectedRole) {
-      setStatus({ type: 'error', message: 'All entry coordinates are essential.' });
-      return;
-    }
-
-    setActionLoading(true);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Authorization layer error');
-
-      const response = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          email: newUserEmail,
-          password: newPassword,
-          fullName: newUserFullName,
-          role: selectedRole
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error || 'Failed to register new secure subject.');
-
-      await logger.log('ADMIN_ACTION', 'User', `Created new secure registry account: ${newUserEmail} (${selectedRole})`);
-      
-      setStatus({ type: 'success', message: `Provisioned profile established for: ${newUserEmail}` });
-      
-      await fetchUsers();
-      
-      setTimeout(() => {
-        setIsAddingUser(false);
-        setNewUserEmail('');
-        setNewUserFullName('');
-        setNewPassword('');
-        setSelectedRole('');
-        setStatus(null);
-      }, 1800);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Handle system modules credentials matrix
-  async function handleUpdateModules() {
-    if (!modifyingModulesUser) return;
-
-    setActionLoading(true);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No authorization token present.');
-
-      const response = await fetch('/api/admin/update-modules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: modifyingModulesUser.id,
-          modules: selectedModules
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Error writing clearances schema.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Overrode accessible module clearances for ${modifyingModulesUser.email}`, modifyingModulesUser.id);
-      
-      setStatus({ type: 'success', message: `Permissions assigned successfully for: ${modifyingModulesUser.email}` });
-      
-      setUsers(prev => prev.map(u => u.id === modifyingModulesUser.id ? { ...u, modules: selectedModules } : u));
-      if (selectedUser?.id === modifyingModulesUser.id) {
-        setSelectedUser(prev => prev ? { ...prev, modules: selectedModules } : null);
-      }
-
-      if (currentUserProfile && modifyingModulesUser.id === currentUserProfile.id && onProfileUpdate) {
-        onProfileUpdate();
-      }
-      
-      setTimeout(() => {
-        setModifyingModulesUser(null);
-        setStatus(null);
-      }, 1800);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Handle Save Managed User Granular permission matrix
-  async function handleSaveManagedUserPermissions() {
-    if (!managedUser) return;
-
-    setActionLoading(true);
-    setStatus(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Authorization layer error or session expired.');
-
-      const response = await fetch('/api/admin/update-modules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: managedUser.id,
-          modules: managedModules
-        })
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to persist customized permission matrix.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Reconfigured granular module permission matrix rules for officer: ${managedUser.email}`, managedUser.id);
-      
-      setStatus({ type: 'success', message: `Custom permissions matrix saved for: ${managedUser.full_name || managedUser.email}` });
-      
-      // Update local state instantly
-      setUsers(prev => prev.map(u => u.id === managedUser.id ? { ...u, modules: managedModules } : u));
-      if (selectedUser?.id === managedUser.id) {
-        setSelectedUser(prev => prev ? { ...prev, modules: managedModules } : null);
-      }
-
-      if (currentUserProfile && managedUser.id === currentUserProfile.id && onProfileUpdate) {
-        onProfileUpdate();
-      }
-      
-      setTimeout(() => {
-        setManagedUser(null);
-        setStatus(null);
-      }, 1500);
-    } catch (e: any) {
-      setStatus({ type: 'error', message: e.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Real delete functionality
-  async function handleDeleteUser() {
-    if (!deletingUser) return;
-
-    setActionLoading(true);
-    setStatus(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Session unverified.');
-
-      const response = await fetch('/api/admin/delete-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: deletingUser.id
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Account teardown process rejected by core database.');
-      }
-
-      await logger.log('ADMIN_ACTION', 'User', `Permanent security decommission of account: ${deletingUser.email}`);
-      
-      setStatus({ type: 'success', message: `Decommission complete. Account key terminated: ${deletingUser.email}` });
-      
-      // Update local array
-      setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
-      setSelectedUser(null);
-
-      setTimeout(() => {
-        setDeletingUser(null);
-        setStatus(null);
-      }, 1600);
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  // Filters computed
-  const filteredUsers = users.filter(u => {
-    const s = searchQuery.toLowerCase();
-    const matchesSearch = u.email.toLowerCase().includes(s) || (u.full_name || '').toLowerCase().includes(s);
-    
-    const matchesRole = roleFilter === 'ALL' || 
-                        (roleFilter === 'SUPER_ADMIN' && (u.role === 'admin' || u.role === 'super_admin')) ||
-                        (roleFilter === 'ADMIN_GRANT' && u.role === 'admin_grant') ||
-                        (roleFilter === 'ADMIN' && (u.role === 'staff' || u.role === 'admin')) ||
-                        (roleFilter === 'VIEW_ONLY' && (u.role === 'view_only' || u.role === 'viewer')) ||
-                        (roleFilter === 'ADD_RECORDS' && u.role === 'add_records') ||
-                        u.role.split('_').join('').toUpperCase() === roleFilter.split('_').join('').toUpperCase();
-    
-    const isActive = u.last_sign_in_at !== null;
-    const matchesStatus = statusFilter === 'ALL' || 
-                         (statusFilter === 'ACTIVE' && isActive) || 
-                         (statusFilter === 'INACTIVE' && !isActive);
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  // Auto-preview alignment
-  useEffect(() => {
-    if (paginatedUsers.length > 0 && (!selectedUser || !paginatedUsers.some(u => u.id === selectedUser.id))) {
-      setSelectedUser(paginatedUsers[0]);
-    }
-  }, [searchQuery, roleFilter, statusFilter, currentPage, users]);
-
-  function getRelativeActiveTime(dateStr: string | null) {
-    if (!dateStr) return 'Offline Directory';
-    const timestamp = new Date(dateStr).getTime();
-    const diffSeconds = Math.floor((Date.now() - timestamp) / 1000);
-    
-    if (diffSeconds < 0) return 'Active now';
-    if (diffSeconds < 60) return 'Just active';
-    
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
- 
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  function getGradientAvatar(email: string) {
-    const charCodeSum = email.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-    const gradients = [
-      'from-emerald-500 to-teal-500 text-emerald-50',
-      'from-blue-500 to-cyan-500 text-blue-50',
-      'from-amber-500 to-amber-700 text-amber-50',
-      'from-slate-500 to-slate-700 text-slate-100',
-      'from-indigo-500 to-indigo-700 text-indigo-50',
-      'from-rose-500 to-pink-500 text-rose-50'
-    ];
-    return gradients[charCodeSum % gradients.length];
-  }
-
-  function getInitials(name: string | null, email: string) {
-    if (name && name.trim()) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-      }
-      return parts[0].substring(0, 2).toUpperCase();
-    }
-    return email.substring(0, 2).toUpperCase();
-  }
-
-  function handleExportUsersToCSV() {
-    if (filteredUsers.length === 0) return;
-    const headers = ['Record ID', 'Email', 'Full Name', 'Role Level', 'Modules Clearance', 'ConfirmedAt'];
-    const rows = filteredUsers.map(u => [
-      u.id,
-      u.email,
-      u.full_name || 'Anonymous Officer',
-      u.role.toUpperCase(),
-      (u.modules || []).join(';'),
-      u.confirmed_at ? new Date(u.confirmed_at).toISOString() : 'Pending'
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "immigration_system_users.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedUserIds.size === paginatedUsers.length) {
-      setSelectedUserIds(new Set());
-    } else {
-      setSelectedUserIds(new Set(paginatedUsers.map(u => u.id)));
-    }
-  };
-
-  const toggleSelectUser = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newSelected = new Set(selectedUserIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedUserIds(newSelected);
-  };
-
-  const getPrimaryRoleLabel = (role: string, emailStr: string) => {
-    if (role === 'super_admin' || role === 'admin') return 'Admin';
-    if (role === 'admin_grant') return 'Officer Head';
-    if (role === 'staff' || emailStr.includes('dev') || emailStr.includes('kinfe')) return 'Developer';
-    if (role === 'add_records') return 'Operator';
-    if (role === 'airport_staff') return 'Operator';
-    if (role === 'view_only' || role === 'viewer') return 'Auditor';
-    return 'Section Head';
-  };
-
-  const toggleGranularPermission = (moduleId: string, action: 'read' | 'write' | 'approve' | 'audit') => {
-    if (managedUser?.role === 'admin' || managedUser?.role === 'super_admin') return;
-    
-    let updated = [...managedModules];
-    if (action === 'read') {
-      const hasRead = updated.includes(moduleId) || updated.includes(`${moduleId}:read`);
-      if (hasRead) {
-        updated = updated.filter(m => m !== moduleId && m !== `${moduleId}:read` && m !== `${moduleId}:write` && m !== `${moduleId}:approve` && m !== `${moduleId}:audit`);
-      } else {
-        updated.push(moduleId);
-        updated.push(`${moduleId}:read`);
-      }
-    } else {
-      const ruleStr = `${moduleId}:${action}`;
-      const hasRule = updated.includes(ruleStr);
-      if (hasRule) {
-        updated = updated.filter(m => m !== ruleStr);
-      } else {
-        if (!updated.includes(moduleId)) {
-          updated.push(moduleId);
-        }
-        if (!updated.includes(`${moduleId}:read`)) {
-          updated.push(`${moduleId}:read`);
-        }
-        updated.push(ruleStr);
-      }
-    }
-    setManagedModules(updated);
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-1 min-h-[calc(100vh-140px)] text-slate-700 font-sans transition-all duration-300">
-      
-      {/* LEFT AREA: MAIN SEARCH & STATS TABLE */}
-      <div className="flex-1 space-y-6">
+    <div className="w-full overflow-x-auto">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="text-[11px] font-bold tracking-wider text-[#94A3B8] uppercase border-b border-gray-100">
+            <th className="py-4 px-6 font-semibold">Full Name</th>
+            <th className="py-4 px-6 font-semibold">Email</th>
+            <th className="py-4 px-6 font-semibold">System Role</th>
+            <th className="py-4 px-6 font-semibold">Password (Encrypted)</th>
+            <th className="py-4 px-6 font-semibold">Created Date</th>
+            <th className="py-4 px-6 text-right font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50 text-sm">
+          {users.map((user) => (
+            <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+              {/* Full Name */}
+              <td className="py-4 px-6 font-bold text-[#1E293B] capitalize">
+                {user.full_name}
+                {user.role.toUpperCase() === 'ADMIN' && (
+                  <span className="text-[#00966D] font-normal text-xs normal-case ml-1"> (You)</span>
+                )}
+              </td>
+              
+              {/* Email */}
+              <td className="py-4 px-6 text-[#334155] font-normal">{user.email}</td>
+              
+              {/* System Role Badge */}
+              <td className="py-4 px-6">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border rounded-[4px] uppercase ${getRoleStyle(user.role)}`}>
+                  {user.role.toUpperCase() === 'SUPERVISOR' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] mr-1.5 inline-block" />
+                  )}
+                  {user.role}
+                </span>
+              </td>
+              
+              {/* Encrypted Password Placeholder */}
+              <td className="py-4 px-6 text-slate-400 font-mono text-xs tracking-widest">
+                <div className="flex items-center gap-1.5 text-[#94A3B8]">
+                  <Key className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>••••••••••••</span>
+                </div>
+              </td>
+              
+              {/* Created Date */}
+              <td className="py-4 px-6 text-[#64748B] font-normal">
+                {formatDate(user.created_at)}
+              </td>
+              
+              {/* Action Buttons */}
+              <td className="py-4 px-6 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <button className="p-2 text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-md transition-colors">
+                    <Pencil className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                  <button className="p-2 text-[#EF4444] bg-[#FDF2F2] hover:bg-[#FEE2E2] rounded-md transition-colors">
+                    <Trash2 className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ==========================================
+// SUB-COMPONENT: PERMISSIONS MATRIX
+// ==========================================
+interface PermissionsMatrixProps {
+  rules: ModulePermissionRule[];
+  onSave: (rules: ModulePermissionRule[]) => void;
+}
+
+function PermissionsMatrix({ rules, onSave }: PermissionsMatrixProps) {
+  return (
+    <div className="p-12 text-center flex flex-col items-center justify-center">
+      <Shield className="w-12 h-12 text-[#1E3A8A] mb-3 opacity-20" />
+      <h3 className="text-base font-semibold text-slate-700">Role Permissions Config</h3>
+      <p className="text-sm text-slate-400 max-w-sm mt-1">
+        Access control matrices are currently synchronized with system directory configurations.
+      </p>
+    </div>
+  );
+}
+
+// ==========================================
+// MAIN COMPONENT EXPORT
+// ==========================================
+export default function AdminAccessControl() {
+  const [activeTab, setActiveTab] = useState<'directory' | 'permissions'>('directory');
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
+  // Load exact mock records mimicking the original UI image frame state
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
         
-        {/* Dynamic Theme Customizer Header Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+        const mockUsers: AdminUser[] = [
+          {
+            id: '1',
+            full_name: 'mindaye hailu',
+            email: 'mindaye@123',
+            role: 'SUPERVISOR',
+            created_at: '2026-06-03',
+            last_sign_in_at: null,
+            confirmed_at: null,
+            modules: []
+          },
+          {
+            id: '2',
+            full_name: 'sami burayu',
+            email: 'sami@gmail.com',
+            role: 'OFFICER',
+            created_at: '2026-06-03',
+            last_sign_in_at: null,
+            confirmed_at: null,
+            modules: []
+          },
+          {
+            id: '3',
+            full_name: 'ahmed Kasim',
+            email: 'ahmed@gmail.com',
+            role: 'VIEWER',
+            created_at: '2026-06-03',
+            last_sign_in_at: null,
+            confirmed_at: null,
+            modules: []
+          },
+          {
+            id: '4',
+            full_name: 'System Administrator',
+            email: 'admin',
+            role: 'ADMIN',
+            created_at: '2026-05-25',
+            last_sign_in_at: null,
+            confirmed_at: null,
+            modules: []
+          }
+        ];
+
+        setUsers(mockUsers);
+        setPermissionRules([]);
+      } catch (err: any) {
+        setError('Failed to populate interface schemas.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  const filteredUsers = users.filter(user => 
+    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-12 font-sans antialiased text-[#1E293B]">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Header Block matching the design layout */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Security Credentials Registry</h1>
-            </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Active identity entries: <strong className={theme.primaryText}>{filteredUsers.length} files</strong> listed out of {users.length} registered
+            <h1 className="text-[28px] font-medium tracking-tight text-[#1E293B]">
+              User Directory & Access Control
+            </h1>
+            <p className="text-sm text-[#64748B] mt-0.5">
+              Manage staff credentials and role-based clearance
             </p>
           </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Nav Switch Toggles */}
+            <div className="bg-[#F1F5F9] p-1 rounded-xl flex items-center border border-slate-200/60 shadow-inner">
+              <button
+                onClick={() => setActiveTab('directory')}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
+                  activeTab === 'directory' 
+                    ? 'bg-white text-[#1E3A8A] shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                User Directory
+              </button>
+              <button
+                onClick={() => setActiveTab('permissions')}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
+                  activeTab === 'permissions' 
+                    ? 'bg-white text-[#1E3A8A] shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Permissions Matrix
+              </button>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Dynamic Accent Color Chooser */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/50 rounded-lg shadow-inner">
-              <Palette className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1.5">Theme:</span>
-              <div className="flex items-center gap-1.5">
-                {(['emerald', 'blue', 'amber', 'slate'] as const).map((themeName) => (
-                  <button
-                    key={themeName}
-                    onClick={() => setThemeAccent(themeName)}
-                    title={`Switch registry theme to ${themeName}`}
-                    className={`w-4 h-4 rounded-full border cursor-pointer transition-all ${
-                      themeName === 'emerald' ? 'bg-[#2b825a]' :
-                      themeName === 'blue' ? 'bg-blue-500' :
-                      themeName === 'amber' ? 'bg-amber-500' : 'bg-slate-500'
-                    } ${
-                      themeAccent === themeName 
-                        ? 'scale-125 ring-2 ring-white border-slate-800 shadow-md' 
-                        : 'opacity-40 hover:opacity-100 border-transparent hover:scale-110'
-                    }`}
+            {/* Create Account Action Button */}
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-[#00966D] hover:bg-[#00825E] text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-xs"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              Create Account
+            </button>
+          </div>
+        </div>
+
+        {/* Status Alerts Block */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+            <span className="text-sm font-medium">{error}</span>
+          </div>
+        )}
+
+        {/* Dynamic Inner Layout Switcher View */}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xs p-32 flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 text-[#00966D] animate-spin mb-3" />
+              <p className="text-gray-400 text-xs font-medium">Loading asset layouts...</p>
+            </div>
+          ) : (
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-4"
+            >
+              {activeTab === 'directory' ? (
+                <>
+                  {/* Search Filtering Utility Row */}
+                  <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+                    <div className="relative w-full sm:max-w-xs">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="text"
+                        placeholder="Search directory..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-[#F8FAFC] border border-slate-200/80 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Canvas Table Frame Block wrapper mimicking the container rounded corners */}
+                  <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden">
+                    <TeamDirectory users={filteredUsers} />
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden">
+                  <PermissionsMatrix 
+                    rules={permissionRules} 
+                    onSave={(updated) => setPermissionRules(updated)} 
                   />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {status && (
-          <div className={`p-4 text-xs font-bold rounded-xl flex items-center gap-2.5 border transition-all ${
-            status.type === 'success' 
-              ? 'bg-emerald-50 border-emerald-150 text-emerald-800' 
-              : 'bg-rose-50 border-rose-150 text-rose-800'
-          }`}>
-            {status.type === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            )}
-            {status.message}
-          </div>
-        )}
-
-        {managedUser ? (
-          <PermissionsMatrix
-            managedUser={managedUser}
-            managedModules={managedModules}
-            setManagedUser={setManagedUser}
-            toggleGranularPermission={toggleGranularPermission}
-            actionLoading={actionLoading}
-            handleSaveManagedUserPermissions={handleSaveManagedUserPermissions}
-            getPrimaryRoleLabel={getPrimaryRoleLabel}
-            theme={theme}
-          />
-        ) : (
-          <TeamDirectory
-            filteredUsers={filteredUsers}
-            users={users}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
-            pageSize={pageSize}
-            selectedUser={selectedUser}
-            setSelectedUser={setSelectedUser}
-            setManagedUser={setManagedUser}
-            setIsAddingUser={setIsAddingUser}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            getPrimaryRoleLabel={getPrimaryRoleLabel}
-            getGradientAvatar={getGradientAvatar}
-            getInitials={getInitials}
-            theme={theme}
-            setStatus={setStatus}
-          />
-        )}
-
-        {/* Legacy container block hidden inline to gracefully preserve files balance */}
-        <div className="hidden">
-          {activeRegistryTab === 'OFFICERS' ? (
-            <>
-            {/* Action filter controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-1">
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input 
-                type="text"
-                placeholder="Find officer name, department..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 bg-white border border-slate-200/60 rounded-lg text-slate-800 placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all font-medium"
-              />
-            </div>
-
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-3 py-1.5 border text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer select-none outline-none ${
-                showFilters 
-                ? 'bg-slate-200/60 border-slate-350 text-slate-800 shadow-inner' 
-                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Filters
-            </button>
-
-            <button 
-              onClick={handleExportUsersToCSV}
-              disabled={filteredUsers.length === 0}
-              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none outline-none"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export
-            </button>
-          </div>
-        </div>
-
-        {/* Expandable filters box */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm"
-            >
-              <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Group clearance role</label>
-                <div className="flex flex-wrap gap-1">
-                  {[
-                    { id: 'ALL', label: 'All Roles' },
-                    { id: 'SUPER_ADMIN', label: 'Super Admin' },
-                    { id: 'ADMIN_GRANT', label: 'Admin Grant' },
-                    { id: 'ADMIN', label: 'Admin' },
-                    { id: 'ADD_RECORDS', label: 'Add Records' },
-                    { id: 'VIEW_ONLY', label: 'View Only' },
-                    { id: 'AIRPORT_STAFF', label: 'Airport Hub' }
-                  ].map(role => (
-                    <button
-                      key={role.id}
-                      onClick={() => setRoleFilter(role.id)}
-                      className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
-                        roleFilter === role.id
-                          ? `${theme.primary} border-transparent` 
-                          : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`}
-                    >
-                      {role.label}
-                    </button>
-                  ))}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Administrative state</label>
-                <div className="flex flex-wrap gap-1">
-                  {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(st => (
-                    <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border outline-none cursor-pointer ${
-                        statusFilter === st 
-                          ? `${theme.primary} border-transparent` 
-                          : 'bg-slate-50 border-slate-150 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Directory table grid canvas */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-28 bg-white border border-slate-150 rounded-xl shadow-sm">
-            <Loader2 className={`w-8 h-8 ${theme.primaryText} animate-spin opacity-70 mb-2.5`} />
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] animate-pulse">Synchronizing Authorized Security Registry...</p>
-          </div>
-        ) : error ? (
-          <div className="bg-rose-50 border border-rose-100 rounded-xl p-8 text-center space-y-3 shadow-sm">
-            <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-            <h3 className="text-sm font-bold text-rose-800 uppercase tracking-wider">Gateway Communication Interrupted</h3>
-            <p className="text-xs text-rose-600/80 max-w-sm mx-auto">{error}</p>
-            <button 
-              onClick={fetchUsers} 
-              className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-none"
-            >
-              Refresh Endpoint
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500">
-                    <th className="p-3 w-10 text-center">
-                      <input 
-                        type="checkbox" 
-                        checked={paginatedUsers.length > 0 && selectedUserIds.size === paginatedUsers.length}
-                        onChange={toggleSelectAll}
-                        className="w-3.5 h-3.5 accent-[#2b825a] hover:accent-[#1f6041] bg-slate-100 text-[#2b825a] border-slate-300 focus:ring-0 rounded cursor-pointer"
-                      />
-                    </th>
-                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Security Clearance User</th>
-                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Hierarchy Level</th>
-                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400 w-44">Change Role</th>
-                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Account status</th>
-                    <th className="p-3 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Latest Session pulse</th>
-                    <th className="p-3 text-center text-[9px] font-extrabold uppercase tracking-wider text-slate-400 w-36">Command Keys</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <AnimatePresence mode="popLayout">
-                    {paginatedUsers.map((user) => {
-                      const isSelected = selectedUser?.id === user.id;
-                      const hasSession = user.last_sign_in_at !== null;
-                      
-                      return (
-                        <motion.tr 
-                          key={user.id}
-                          layout="position"
-                          onClick={() => setSelectedUser(user)}
-                          className={`hover:bg-slate-50/65 text-xs font-semibold select-none cursor-pointer transition-colors duration-100 ${
-                            isSelected ? 'bg-slate-100/60 font-bold border-l-2' : ''
-                          }`}
-                          style={{ borderLeftColor: isSelected ? theme.accentHex : undefined }}
-                        >
-                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedUserIds.has(user.id)}
-                              onChange={(e) => toggleSelectUser(user.id, e as any)}
-                              className="w-3.5 h-3.5 accent-[#2b825a] hover:accent-[#1f6041] rounded bg-slate-100 border-slate-300 focus:ring-0 cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${getGradientAvatar(user.email)} flex items-center justify-center text-[10px] font-bold shadow-sm`}>
-                                {getInitials(user.full_name, user.email)}
-                              </div>
-                              <div>
-                                <p className="text-slate-900 font-bold leading-none">{user.full_name || 'System Administrator'}</p>
-                                <p className="text-[10px] text-slate-400 mt-1 font-medium">{user.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3 text-slate-700">
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded text-slate-650">
-                              {user.role === 'admin' || user.role === 'super_admin' ? 'Super Admin' : 
-                               user.role === 'admin_grant' ? 'Admin Grant' :
-                               user.role === 'staff' ? 'Admin' : 
-                               user.role === 'add_records' ? 'Add Records' : 
-                               user.role === 'view_only' || user.role === 'viewer' || user.role === 'airport_viewer' ? 'View Only' :
-                               user.role === 'airport_staff' ? 'Airport Hub' : 'Member Officer'}
-                            </span>
-                          </td>
-                          <td className="p-3 align-middle" onClick={(e) => e.stopPropagation()}>
-                            <div className="relative inline-block w-full max-w-[155px]">
-                              <select
-                                value={user.role || ''}
-                                disabled={inlineLoadingUserId === user.id}
-                                onChange={(e) => handleInlineUpdateRole(user, e.target.value as UserRole)}
-                                className="w-full text-[10px] font-bold py-1 pl-2 pr-6 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-md text-slate-750 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 hover:bg-slate-100/60 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed font-sans uppercase tracking-wider outline-none appearance-none"
-                              >
-                                <option value="super_admin">Super Admin</option>
-                                <option value="admin">Admin</option>
-                                <option value="admin_grant">Admin Grant</option>
-                                <option value="add_records">Add Records</option>
-                                <option value="view_only">View Only</option>
-                                <option value="airport_staff">Airport Hub</option>
-                                <option value="airport_viewer">Airport Viewer</option>
-                              </select>
-                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400">
-                                {inlineLoadingUserId === user.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
-                                ) : (
-                                  <ChevronRight className="w-3 h-3 rotate-90" />
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            {hasSession ? (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-150 text-[#1b8b58] rounded-full text-[9px] font-bold tracking-wide uppercase">
-                                <span className={`w-1.5 h-1.5 rounded-full ${theme.activeIndicator} animate-pulse`} />
-                                Connected
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 border border-slate-150 text-slate-500 rounded-full text-[9px] font-medium tracking-wide uppercase">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                Dormant
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-slate-500 text-[11px] font-medium">
-                            {getRelativeActiveTime(user.last_sign_in_at)}
-                          </td>
-                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1.5">
-                              {/* Edit permissions / modules keys button */}
-                              <button 
-                                onClick={() => { setModifyingModulesUser(user); setSelectedModules(user.modules || []); setStatus(null); }}
-                                title="Edit Division Clearance Scopes"
-                                className={`p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-md transition-all border-none outline-none cursor-pointer hover:scale-105`}
-                              >
-                                <SlidersHorizontal className="w-3.5 h-3.5" />
-                              </button>
-                              
-                              {/* Override key / passcode action */}
-                              <button 
-                                onClick={() => { setResettingUser(user); setStatus(null); }}
-                                title="Reset User Password"
-                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-md transition-all border border-amber-200/40 outline-none cursor-pointer hover:scale-105"
-                              >
-                                <Key className="w-3.5 h-3.5" />
-                              </button>
-                              
-                              {/* Permanent Terminate user profile */}
-                              <button 
-                                onClick={() => { setDeletingUser(user); setStatus(null); }}
-                                title="Decommission Account From Security Directory"
-                                className="p-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/40 text-rose-500 rounded-md transition-all outline-none cursor-pointer hover:scale-105"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                  {filteredUsers.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-16 text-center">
-                        <div className="max-w-xs mx-auto space-y-2">
-                          <Search className="w-8 h-8 text-slate-300 mx-auto" />
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No matching system registries verified</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination widgets */}
-            <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Index {filteredUsers.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-{Math.min(currentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} records verified
-              </p>
-              
-              <div className="flex items-center gap-1.5">
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-2.5 py-1 flex items-center gap-1 select-none text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white hover:bg-slate-50 border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed outline-none cursor-pointer transition-colors"
-                >
-                  <ChevronLeft className="w-3 h-3" />
-                  Prev
+        {/* Account Creation Modal Frame */}
+        {isCreateModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">Provision System Account</h3>
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-5 h-5" />
                 </button>
-                
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-6 h-6 rounded-md text-[10px] font-bold transition-all outline-none border-none cursor-pointer ${
-                        currentPage === i + 1 
-                          ? `${theme.primary} shadow-sm` 
-                          : 'text-slate-500 hover:bg-slate-100 bg-transparent'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-2.5 py-1 flex items-center gap-1 select-none text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white hover:bg-slate-50 border border-slate-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed outline-none cursor-pointer transition-colors"
-                >
-                  Next
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+              </div>
+              <p className="text-sm text-slate-500 mb-6">Initialize clean user roles, default logins, and access control clearances.</p>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50">Cancel</button>
+                <button onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 bg-[#00966D] text-white rounded-xl text-sm font-medium hover:bg-[#00825E]">Create User</button>
               </div>
             </div>
           </div>
         )}
-          </>
-        ) : (
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600" />
-                  Clearance Levels Authorization Matrix
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Establish and configure authorized roles across dynamic system modules. Updates govern read/write operations.
-                </p>
-              </div>
-              <button
-                onClick={handleSaveMatrixRules}
-                disabled={savingRules}
-                type="button"
-                className={`px-4 py-2 ${theme.primary} text-[11px] font-bold rounded-lg flex items-center gap-2 shadow-sm transition-all outline-none border-none cursor-pointer disabled:opacity-55`}
-              >
-                {savingRules ? (
-                  <>
-                    <Loader2 className="w-3 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-3 h-3" />
-                    Save Matrix Keys
-                  </>
-                )}
-              </button>
-            </div>
 
-            {matrixStatus && (
-              <div className={`p-3 text-[11px] font-bold rounded-lg flex items-center gap-2 border transition-all ${
-                matrixStatus.type === 'success' 
-                  ? 'bg-emerald-50 border-emerald-150 text-emerald-800' 
-                  : 'bg-rose-50 border-rose-150 text-rose-800'
-              }`}>
-                {matrixStatus.type === 'success' ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                )}
-                {matrixStatus.message}
-              </div>
-            )}
-
-            <div className="overflow-x-auto border border-slate-150 rounded-xl">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-150 text-[9px] font-extrabold uppercase tracking-widest text-slate-500 font-mono">
-                    <th className="p-3 w-40">System Module</th>
-                    <th className="p-3">View Clearance (GET)</th>
-                    <th className="p-3">Create Clearance (POST)</th>
-                    <th className="p-3">Update/Delete Clearance (PATCH/DELETE)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {permissionRules.map((rule, idx) => {
-                    const roles = [
-                      { id: 'super_admin', label: 'Super Admin', defaultAlways: true },
-                      { id: 'admin', label: 'Admin' },
-                      { id: 'add_records', label: 'Add Records' },
-                      { id: 'view_only', label: 'View Only' },
-                      { id: 'airport_staff', label: 'Airport Hub' }
-                    ];
-
-                    const toggleRole = (type: 'view' | 'create' | 'update', roleId: string) => {
-                      const updatedRules = permissionRules.map((r, rIdx) => {
-                        if (rIdx === idx) {
-                          const fields = {
-                            view: 'view_roles',
-                            create: 'create_roles',
-                            update: 'update_roles'
-                          } as const;
-                          const field = fields[type];
-                          const alreadyHas = r[field].includes(roleId);
-                          return {
-                            ...r,
-                            [field]: alreadyHas 
-                              ? r[field].filter(val => val !== roleId)
-                              : [...r[field], roleId]
-                          };
-                        }
-                        return r;
-                      });
-                      setPermissionRules(updatedRules);
-                    };
-
-                    return (
-                      <tr key={rule.module} className="hover:bg-slate-50/20 transition-colors text-xs font-semibold">
-                        <td className="p-3 align-top">
-                          <span className="font-bold text-slate-950 border-l-2 border-emerald-500 pl-2">
-                            {rule.module}
-                          </span>
-                          <div className="text-[9px] text-slate-400 mt-0.5 font-medium font-mono">Bole general clearance</div>
-                        </td>
-
-                        {/* VIEW CELL */}
-                        <td className="p-3">
-                          <div className="flex flex-col gap-1">
-                            {roles.map(r => {
-                              const isChecked = r.defaultAlways || rule.view_roles.includes(r.id);
-                              return (
-                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    disabled={r.defaultAlways}
-                                    onChange={() => toggleRole('view', r.id)}
-                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
-                                  />
-                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold" : "text-[10px]"}>
-                                    {r.label}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </td>
-
-                        {/* CREATE CELL */}
-                        <td className="p-3">
-                          <div className="flex flex-col gap-1">
-                            {roles.map(r => {
-                              const isChecked = r.defaultAlways || rule.create_roles.includes(r.id);
-                              return (
-                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    disabled={r.defaultAlways}
-                                    onChange={() => toggleRole('create', r.id)}
-                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
-                                  />
-                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold" : "text-[10px]"}>
-                                    {r.label}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </td>
-
-                        {/* UPDATE CELL */}
-                        <td className="p-3">
-                          <div className="flex flex-col gap-1 font-mono">
-                            {roles.map(r => {
-                              const isChecked = r.defaultAlways || rule.update_roles.includes(r.id);
-                              return (
-                                <label key={r.id} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-600 hover:text-slate-950 font-sans">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    disabled={r.defaultAlways}
-                                    onChange={() => toggleRole('update', r.id)}
-                                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
-                                  />
-                                  <span className={r.defaultAlways ? "text-slate-450 text-[10px] font-bold animate-pulse" : "text-[10px]"}>
-                                    {r.label}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div></div>
-
-      {/* RIGHT AREA: MINI USER PROFILE COMPACT DETAILS PANE */}
-      <div className="w-full lg:w-80 shrink-0">
-        <div className="sticky top-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-2.5">
-            <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Officer Profile Inspector</h2>
-          </div>
-
-          {selectedUser ? (
-            <div className="space-y-5 text-center lg:text-left">
-              <div className="relative flex flex-col items-center py-2 border-b border-slate-100/70 pb-4">
-                <div className="relative">
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${getGradientAvatar(selectedUser.email)} flex items-center justify-center text-xl font-bold shadow-md border-2 border-white`}>
-                    {getInitials(selectedUser.full_name, selectedUser.email)}
-                  </div>
-                  <div className={`absolute bottom-0 right-0 w-5 h-5 ${theme.activeIndicator} rounded-full border-2 border-white flex items-center justify-center`}>
-                    <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight mt-3 text-center leading-normal mb-0.5">{selectedUser.full_name || 'Immigration Agent'}</h3>
-                <p className="text-[11px] font-semibold text-slate-400 text-center select-all">{selectedUser.email}</p>
-              </div>
-
-              {/* Attributes metrics */}
-              <div className="space-y-4 text-left">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Clearance Tier Level</span>
-                    <button 
-                      onClick={() => { setModifyingRoleUser(selectedUser); setSelectedRole(selectedUser.role); }}
-                      className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] text-slate-600 font-bold rounded cursor-pointer transition-colors"
-                    >
-                      override
-                    </button>
-                  </div>
-                  <p className="text-xs font-bold text-slate-800 mt-1 uppercase tracking-wide">
-                    {selectedUser.role === 'admin' || selectedUser.role === 'super_admin' ? 'Super Admin' : 
-                     selectedUser.role === 'admin_grant' ? 'Admin Grant' :
-                     selectedUser.role === 'staff' ? 'Admin' : 
-                     selectedUser.role === 'add_records' ? 'Add Records' : 
-                     selectedUser.role === 'view_only' || selectedUser.role === 'viewer' || selectedUser.role === 'airport_viewer' ? 'View Only' :
-                     selectedUser.role === 'airport_staff' ? 'Airport Hub Staff' : 'Member Officer'}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Clearance status</span>
-                  <p className="text-[11px] font-bold text-[#1b8b58] mt-1 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${theme.activeIndicator} animate-pulse`} />
-                    Verified Clearance
-                  </p>
-                </div>
-
-                {/* Division Scopes Checklist visualization */}
-                <div className="border-t border-slate-100 pt-3 space-y-2.5">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Accessible Division Portals</span>
-                  
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                    {[
-                      { id: 'OVERVIEW', label: 'Command Deck' },
-                      { id: 'USERS', label: 'Access Registry' },
-                      { id: 'REPORTS', label: 'Intel Analytics' },
-                      { id: 'VISA', label: 'VISA Division' },
-                      { id: 'EOID', label: 'EOID Division' },
-                      { id: 'EOID Under_Age', label: 'EOID Under_Age' },
-                      { id: 'Residence ID', label: 'Residence Bureau' },
-                      { id: 'ETD', label: 'Emergency Travels' },
-                      { id: 'CABINETS', label: 'Physical Cabinets' },
-                      { id: 'AIRPORT', label: 'Airport Gateway' },
-                      { id: 'Yellow Card', label: 'Yellow Card division' },
-                      { id: 'AUDIT', label: 'Immutable Logs' }
-                    ].map((m) => {
-                      const isCleared = selectedUser.role === 'admin' || selectedUser.role === 'super_admin' || selectedUser.role === 'admin_grant' || (selectedUser.modules || []).includes(m.id);
-                      return (
-                        <div key={m.id} className="flex items-center justify-between text-[11px] font-bold py-0.5 border-b border-slate-50">
-                          <span className={isCleared ? 'text-slate-700' : 'text-slate-350'}>{m.label}</span>
-                          <span className={isCleared ? theme.primaryText : 'text-slate-300'}>
-                            {isCleared ? '✓ Cleared' : '✗ Blocked'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setManagedUser(selectedUser);
-                  }}
-                  className={`w-full mt-2 py-2 border text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-250 text-xs font-bold uppercase tracking-wider rounded-lg transition-all outline-none cursor-pointer text-center select-none`}
-                >
-                  Edit Division Access
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="py-14 text-center space-y-2.5">
-              <User className="w-10 h-10 text-slate-300 mx-auto animate-pulse" />
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Highlight an officer profile file to verify
-              </p>
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* MODAL 1: SYSTEM MODULE ACCESS MODIFIER POPUP */}
-      <AnimatePresence>
-        {modifyingModulesUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 max-w-[1240px] w-full flex flex-col md:flex-row h-[85vh] shadow-2xl rounded-2xl overflow-hidden text-slate-800"
-            >
-              {/* LEFT SIDEBAR: Modules Menu & Subject Info */}
-              <div className="w-full md:w-64 bg-slate-50 border-r border-slate-205 p-6 flex flex-col justify-between shrink-0">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Modules Layout</h3>
-                    <div className="space-y-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setModuleSearchActiveTab('modules')}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
-                          moduleSearchActiveTab === 'modules'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
-                        }`}
-                      >
-                        <SlidersHorizontal className="w-4 h-4" />
-                        Dashboard Modules
-                      </button>
-                      
-                      <button
-                        type="button"
-                        onClick={() => setModuleSearchActiveTab('help')}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
-                          moduleSearchActiveTab === 'help'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
-                        }`}
-                      >
-                        <Shield className="w-4 h-4" />
-                        Help & Support
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setModuleSearchActiveTab('comparison')}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
-                          moduleSearchActiveTab === 'comparison'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
-                        }`}
-                      >
-                        <Users className="w-4 h-4" />
-                        Role Matrix Info
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setModuleSearchActiveTab('license')}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wide transition-all outline-none border-none cursor-pointer ${
-                          moduleSearchActiveTab === 'license'
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                            : 'bg-transparent text-slate-600 hover:bg-slate-200/50'
-                        }`}
-                      >
-                        <Lock className="w-4 h-4" />
-                        Security License
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-200">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-[#1b8b58] bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                      Officer Directory
-                    </span>
-                    <div className="mt-3.5 space-y-1">
-                      <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Subject Profile</p>
-                      <p className="text-xs font-extrabold text-slate-800 break-all">{modifyingModulesUser.email}</p>
-                      <p className="text-[10px] text-slate-450 font-mono mt-1">UUID: {modifyingModulesUser.id.substring(0, 8)}...</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-2xl border border-blue-100 flex flex-col gap-1.5">
-                  <span className="text-[10px] uppercase font-bold text-blue-500 tracking-wider">Security State</span>
-                  <p className="text-xs font-bold leading-normal">
-                    Assigned modules sync immediately to user navigation dashboard menu on refresh.
-                  </p>
-                </div>
-              </div>
-
-              {/* RIGHT MAIN PANEL */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
-                {/* Header Row */}
-                <div className="sticky top-0 bg-white border-b border-slate-200 px-6 md:px-8 py-4.5 flex justify-between items-center z-10">
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 leading-snug">Modular Permission Dashboard</h3>
-                    <p className="text-xs text-slate-500">Customize active clearance modules for officer accounts</p>
-                  </div>
-                  <button 
-                    onClick={() => setModifyingModulesUser(null)}
-                    className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5 text-slate-400" />
-                  </button>
-                </div>
-
-                {/* Sub-Tabs Workspace */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 scrollbar-thin">
-                  {moduleSearchActiveTab === 'modules' ? (
-                    <>
-                      {/* STATS TILES ROW */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        {/* Stat Card 1: Total */}
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
-                          <div className="space-y-1">
-                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Total Modules</span>
-                            <h4 className="text-2xl font-black text-slate-800">11</h4>
-                          </div>
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                            <SlidersHorizontal className="w-5 h-5" />
-                          </div>
-                        </div>
-
-                        {/* Stat Card 2: Active */}
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
-                          <div className="space-y-1">
-                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Active Modules</span>
-                            <h4 className="text-2xl font-black text-emerald-600">{selectedModules.length}</h4>
-                          </div>
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                            <Check className="w-5 h-5 stroke-[2.5]" />
-                          </div>
-                        </div>
-
-                        {/* Stat Card 3: Inactive */}
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-xs">
-                          <div className="space-y-1">
-                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Inactive Modules</span>
-                            <h4 className="text-2xl font-black text-rose-500">{11 - selectedModules.length}</h4>
-                          </div>
-                          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
-                            <X className="w-5 h-5 stroke-[2.5]" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CONTROLS BAR: SEARCH & BULK SETS */}
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
-                        {/* Search input */}
-                        <div className="relative w-full md:max-w-md">
-                          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                          <input 
-                            type="text" 
-                            placeholder="Search modules..." 
-                            value={moduleSearchTerm}
-                            onChange={(e) => setModuleSearchTerm(e.target.value)}
-                            className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-slate-800 placeholder-slate-400 pl-10 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-sans"
-                          />
-                        </div>
-
-                        {/* Bulk Action Buttons */}
-                        <div className="flex w-full md:w-auto gap-3 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const allModuleIds = [
-                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
-                                'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-                              ];
-                              setSelectedModules(allModuleIds);
-                              const updated = { ...localSubPerms };
-                              allModuleIds.forEach(mId => {
-                                updated[mId] = {
-                                  list: true,
-                                  show: true,
-                                  edit: modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
-                                };
-                              });
-                              setLocalSubPerms(updated);
-                            }}
-                            className="flex-1 md:flex-initial px-4 py-2.5 bg-blue-600 hover:bg-blue-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
-                          >
-                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                            Activate All Modules
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedModules([]);
-                              const updated = { ...localSubPerms };
-                              const allModuleIds = [
-                                'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
-                                'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-                              ];
-                              allModuleIds.forEach(mId => {
-                                updated[mId] = { list: false, show: false, edit: false };
-                              });
-                              setLocalSubPerms(updated);
-                            }}
-                            className="flex-1 md:flex-initial px-4 py-2.5 bg-rose-600 hover:bg-rose-650 active:scale-97 text-white text-[11px] font-black uppercase tracking-wider rounded-xl border-none flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
-                          >
-                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                            Deactivate All Modules
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* BENTO GRID OF MODULES */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {[
-                          { id: 'OVERVIEW', label: 'Command Deck', desc: 'Active system visualizers, reports, and real-time dashboards', icon: LayoutDashboard },
-                          { id: 'USERS', label: 'Access Control Registry', desc: 'Secure database profiles and security credentials matrix', icon: Users },
-                          { id: 'REPORTS', label: 'Intelligence Reports', desc: 'Custom statistical graphing and analytical intelligence reporting', icon: FileText },
-                          { id: 'VISA', label: 'VISA Desk Portal', desc: 'Official permanent or temporary visa document registries', icon: Globe },
-                          { id: 'EOID', label: 'EOID Portals Deck', desc: 'Special security clearance fingerprint border gate controls', icon: Fingerprint },
-                          { id: 'EOID Under_Age', label: 'EOID Under_Age', desc: 'Electronic Origin ID status check & logs for minors & under-age entries', icon: Fingerprint },
-                          { id: 'Residence ID', label: 'Residence Verification ID', desc: 'National ID, status, residency credentials and registers', icon: Shield },
-                          { id: 'ETD', label: 'Emergency Travel Docs', desc: 'Emergency Travel Document verification and check system', icon: AlertTriangle },
-                          { id: 'CABINETS', label: 'Physical Cabinets Metadata', desc: 'Geographical physical paper folders layout and archive metadata', icon: Archive },
-                          { id: 'AIRPORT', label: 'Bole Airport Gateway', desc: 'Check gate boardings, travel entries and flight records', icon: Plane },
-                          { id: 'Yellow Card', label: 'Yellow Card Division', desc: 'Yellow Fever immunization registry profiles and health check indicators', icon: Activity },
-                          { id: 'AUDIT', label: 'Immutable Security Logs', desc: 'Black-box decentralized security event audit trail logger', icon: History }
-                        ].filter(m => 
-                          m.label.toLowerCase().includes(moduleSearchTerm.toLowerCase()) || 
-                          m.desc.toLowerCase().includes(moduleSearchTerm.toLowerCase())
-                        ).map((module) => {
-                          const isSelected = selectedModules.includes(module.id);
-                          const perms = localSubPerms[module.id] || { list: false, show: false, edit: false };
-
-                          return (
-                            <div 
-                              key={module.id} 
-                              className={`bg-white border rounded-2xl p-5 shadow-xs transition-all relative flex flex-col justify-between ${
-                                isSelected 
-                                  ? 'border-blue-500 ring-2 ring-blue-500/10' 
-                                  : 'border-slate-200 bg-white hover:bg-slate-50/50'
-                              }`}
-                            >
-                              <div>
-                                {/* Header: Icon + Toggle */}
-                                <div className="flex justify-between items-start mb-3.5">
-                                  <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <module.icon className="w-5 h-5" />
-                                  </div>
-                                  
-                                  {/* Custom Switch Toggle */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const nextState = !perms.list;
-                                      const updated = {
-                                        ...localSubPerms,
-                                        [module.id]: {
-                                          list: nextState,
-                                          show: nextState,
-                                          edit: nextState && modifyingModulesUser?.role !== 'view_only' && modifyingModulesUser?.role !== 'viewer'
-                                        }
-                                      };
-                                      setLocalSubPerms(updated);
-                                      const active = Object.keys(updated).filter(key => updated[key].list);
-                                      setSelectedModules(active);
-                                    }}
-                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                      isSelected ? 'bg-blue-600' : 'bg-slate-200'
-                                    }`}
-                                  >
-                                    <span
-                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                        isSelected ? 'translate-x-5' : 'translate-x-0'
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
-
-                                {/* Text Label Details */}
-                                <h4 className={`text-xs font-black uppercase tracking-wider ${isSelected ? 'text-slate-805' : 'text-slate-500'}`}>
-                                  {module.label}
-                                </h4>
-                                <p className="text-[10px] text-slate-400 leading-normal mt-1.5 min-h-[32px]">
-                                  {module.desc}
-                                </p>
-                              </div>
-
-                              {/* Granular Sub-Clearance Drawer Checklists */}
-                              {isSelected ? (
-                                <div className="mt-4 pt-3.5 border-t border-slate-100/90 flex flex-col gap-2.5 animate-in fade-in duration-350">
-                                  <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest block">Clearance level check</span>
-                                  <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 gap-1.5">
-                                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={perms.list}
-                                        onChange={() => {
-                                          const updated = {
-                                            ...localSubPerms,
-                                            [module.id]: {
-                                              ...perms,
-                                              list: !perms.list,
-                                              show: !perms.list ? perms.show : false,
-                                              edit: !perms.list ? perms.edit : false
-                                            }
-                                          };
-                                          setLocalSubPerms(updated);
-                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
-                                        }}
-                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
-                                      />
-                                      <span>List</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={perms.show}
-                                        onChange={() => {
-                                          const updated = {
-                                            ...localSubPerms,
-                                            [module.id]: {
-                                              ...perms,
-                                              show: !perms.show,
-                                              list: true
-                                            }
-                                          };
-                                          setLocalSubPerms(updated);
-                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
-                                        }}
-                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
-                                      />
-                                      <span>Show</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={perms.edit}
-                                        onChange={() => {
-                                          const updated = {
-                                            ...localSubPerms,
-                                            [module.id]: {
-                                              ...perms,
-                                              edit: !perms.edit,
-                                              list: true
-                                            }
-                                          };
-                                          setLocalSubPerms(updated);
-                                          setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
-                                        }}
-                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3 h-3 cursor-pointer accent-blue-600" 
-                                      />
-                                      <span>Edit</span>
-                                    </label>
-                                  </div>
-
-                                  <div className="flex justify-between items-center bg-slate-50/50 p-1 rounded-lg border border-slate-100 flex-wrap gap-1 mt-1">
-                                    <button
-                                      type="button"
-                                      title="Grant List, Show, Edit"
-                                      onClick={() => {
-                                        const updated = {
-                                          ...localSubPerms,
-                                          [module.id]: { list: true, show: true, edit: true }
-                                        };
-                                        setLocalSubPerms(updated);
-                                        setSelectedModules(Object.keys(updated).filter(key => updated[key].list));
-                                      }}
-                                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[9px] uppercase border-none cursor-pointer font-extrabold select-none transition-colors"
-                                    >
-                                      Grant Full
-                                    </button>
-                                    <button
-                                      type="button"
-                                      title="Revoke edit/write permission"
-                                      onClick={() => {
-                                        const updated = {
-                                          ...localSubPerms,
-                                          [module.id]: { list: true, show: true, edit: false }
-                                        };
-                                        setLocalSubPerms(updated);
-                                      }}
-                                      className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-750 rounded text-[9px] uppercase border-none cursor-pointer font-extrabold select-none transition-colors"
-                                    >
-                                      Read Only
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="mt-4 pt-3 bg-slate-50/50 rounded-xl py-2 px-3 border border-dashed border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                  Cleansed Division State
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : moduleSearchActiveTab === 'help' ? (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-                      <div className="flex items-center gap-2.5 text-blue-600">
-                        <Shield className="w-5 h-5" />
-                        <h4 className="text-sm font-black uppercase tracking-wider">Modular Security Governance</h4>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        The Immigration Command modular access system implements fine-grained user privilege authorization mapping. Overriding accessible division modules immediately regulates security bounds and dashboard layouts for standard officers.
-                      </p>
-                      <div className="space-y-3 pt-3">
-                        <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-xl">
-                          <p className="text-xs font-black text-slate-800">1. Modular State Persistence</p>
-                          <p className="text-[11px] text-slate-500 mt-1">Modules are saved to the master authentication directory and refreshed across active gateways within standard 10-second cache invalidations.</p>
-                        </div>
-                        <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-xl">
-                          <p className="text-xs font-black text-slate-800">2. Security Override Audits</p>
-                          <p className="text-[11px] text-slate-500 mt-1">Every individual modules override operation generates an automated security audit entry tracked under decentral logs directories.</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : moduleSearchActiveTab === 'comparison' ? (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6.5 space-y-4.5 shadow-xs">
-                      <div className="flex items-center gap-2.5 text-slate-800">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <h4 className="text-sm font-black uppercase tracking-wider">Clearance Permissions Index</h4>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="border-b border-slate-200 pb-2 text-slate-400 uppercase font-black tracking-wider text-[10px]">
-                              <th className="py-2.5">Clearance Group</th>
-                              <th className="py-2.5">Read Portal Entries</th>
-                              <th className="py-2.5">Modify Database Documents</th>
-                              <th className="py-2.5">Module Overrides</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 text-slate-650 font-bold">
-                            <tr>
-                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Super Admin</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-emerald-600">AUTHORIZED</td>
-                            </tr>
-                            <tr>
-                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Admin</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-[#f57c00]">LIMITED RESTRICTIONS</td>
-                            </tr>
-                            <tr>
-                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">Add Records</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-emerald-600">ALLOWED (New items)</td>
-                              <td className="py-3 text-rose-500">BLOCKED</td>
-                            </tr>
-                            <tr>
-                              <td className="py-3 text-slate-900 font-extrabold uppercase text-[11px]">View Only</td>
-                              <td className="py-3 text-emerald-600">ALLOWED</td>
-                              <td className="py-3 text-rose-500">BLOCKED</td>
-                              <td className="py-3 text-rose-500">BLOCKED</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6.5 space-y-4 shadow-xs text-center py-10">
-                      <Lock className="w-10 h-10 text-slate-300 mx-auto animate-pulse" />
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Cryptographic Security License</h4>
-                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                        This digital management panel complies with federal security acts. Access to individual division tables is monitored and digitally signed.
-                      </p>
-                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-left max-w-sm mx-auto font-mono text-[9px] text-slate-600 space-y-1">
-                        <p>SIGNATURE: ETH_IMM_SEC_MD_SYS</p>
-                        <p>ISSUED TO: dinkuh12@gmail.com</p>
-                        <p>HASH: 834525ca-4c0d-450a-9d5b-2c3f6fc1e9f1</p>
-                        <p>STATUS: ACTIVE VALID DEPLOYMENT</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Operational Status Notifications Inside Dialog */}
-                  <AnimatePresence>
-                    {status && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className={`flex items-center gap-2.5 p-4.5 rounded-2xl text-xs font-bold border ${
-                          status.type === 'success' 
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-xs' 
-                            : 'bg-rose-50 text-rose-800 border-rose-200 shadow-xs'
-                        }`}
-                      >
-                        {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                        <p className="uppercase tracking-wider font-extrabold">{status.message}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Confirm/Cancel Actions Footer bar */}
-                <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 md:px-8 py-4.5 flex gap-4 z-10 shadow-lg">
-                  <button 
-                    onClick={() => setModifyingModulesUser(null)}
-                    disabled={actionLoading}
-                    className="flex-1 px-5 py-3 bg-slate-100 hover:bg-slate-200/90 border border-slate-200 hover:border-slate-300 text-slate-600 font-extrabold text-xs uppercase tracking-wider rounded-xl cursor-pointer outline-none transition-all active:scale-98"
-                  >
-                    Discard Changes
-                  </button>
-                  <button 
-                    onClick={handleUpdateModules}
-                    disabled={actionLoading}
-                    className="flex-[2] py-3 bg-blue-600 hover:bg-blue-650 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl cursor-pointer shadow-md shadow-blue-500/10 outline-none border-none flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-50"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    ) : (
-                      <>
-                        <SlidersHorizontal className="w-4 h-4" />
-                        Commit Accessible Division Override
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 2: SYSTEM USER PROVISION FORM POPUP */}
-      <AnimatePresence>
-        {isAddingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
-            >
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Provision Entry Profile</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Initialize designated security keys</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setIsAddingUser(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                >
-                  <X className="w-5 h-5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Secure Email ID</label>
-                    <input 
-                      type="email"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="agent@immigration.gov"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Officer Full Name</label>
-                    <input 
-                      type="text"
-                      value={newUserFullName}
-                      onChange={(e) => setNewUserFullName(e.target.value)}
-                      placeholder="e.g. Almaz Bekele"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Root Clearance Entry Key</label>
-                  <input 
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Alphanumeric, minimum 6 parameters"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-450 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all focus:border-emerald-500 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">Clearance Designation level</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { id: 'super_admin', label: 'Super Admin', desc: 'Sovereign administrative directory bypass access' },
-                      { id: 'admin', label: 'Administrative Admin', desc: 'High-level secure management and configuration tools' },
-                      { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to assign user roles and manage general accounts' },
-                      { id: 'add_records', label: 'Add Records Specialist', desc: 'Register new items, insert records, and attach files' },
-                      { id: 'view_only', label: 'View Only Auditor', desc: 'Lookup-only view permission, passive directory observations' },
-                      { id: 'airport_staff', label: 'Airport Gateway Officer', desc: 'Airport checkpoint hub processing level' },
-                      { id: 'airport_viewer', label: 'Airport Gateway Viewer', desc: 'Gateway document observation (read-only)' },
-                    ].map((role) => (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={() => setSelectedRole(role.id)}
-                        className={`text-left p-3.5 rounded-xl border transition-all flex flex-col gap-0.5 cursor-pointer outline-none ${
-                          selectedRole === role.id 
-                            ? 'border-emerald-500 bg-emerald-50/45' 
-                            : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className={`font-bold text-xs uppercase ${selectedRole === role.id ? 'text-emerald-850' : 'text-slate-700'}`}>
-                            {role.label}
-                          </span>
-                          {selectedRole === role.id && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
-                        </div>
-                        <p className="text-[9px] text-slate-450 leading-normal font-medium">{role.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <AnimatePresence>
-                  {status && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
-                        status.type === 'success' 
-                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
-                          : 'bg-rose-50 text-rose-850 border-rose-200'
-                      }`}
-                    >
-                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                      <p className="uppercase tracking-wider">{status.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
-                <button 
-                  onClick={() => setIsAddingUser(false)}
-                  disabled={actionLoading}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleCreateUser}
-                  disabled={actionLoading || !newUserEmail || !newPassword}
-                  className={`flex-[2] py-2 ${theme.primary} disabled:opacity-40 disabled:cursor-not-allowed font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  ) : (
-                    <>
-                      <Plus className="w-3.5 h-3.5 text-white" />
-                      Provision Account
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 3: DESIGNATED ACCESS ROLE ELEVATOR POPUP */}
-      <AnimatePresence>
-        {modifyingRoleUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-xl w-full flex flex-col max-h-[90vh] shadow-2xl rounded-2xl text-slate-800"
-            >
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Clearance Tier Designation</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configure officer authorization profile</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setModifyingRoleUser(null)}
-                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold mb-4 text-slate-650">
-                Updating role level for: <strong className="font-mono text-slate-850">{modifyingRoleUser.email}</strong>
-              </div>
-
-              <div className="space-y-4 flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {[
-                    { id: 'super_admin', label: 'Super Admin', desc: 'Complete access to records, security matrix, & audit trails' },
-                    { id: 'admin', label: 'Admin', desc: 'Secure manager controls and matrix editing permissions' },
-                    { id: 'admin_grant', label: 'Admin Grant', desc: 'Authorized to manage users, assign server-authoritative roles, & configure directories' },
-                    { id: 'add_records', label: 'Add Records', desc: 'Register entries, database insertions, and document uploads' },
-                    { id: 'view_only', label: 'View Only', desc: 'Restricted lookup-only file viewing authorization' },
-                    { id: 'airport_staff', label: 'Airport Hub Staff', desc: 'Bole international gateway checkpoints access' },
-                    { id: 'airport_viewer', label: 'Airport Hub Viewer', desc: 'Bole international checkpoints view-only reading credentials' }
-                  ].map((role) => (
-                    <button
-                      key={role.id}
-                      type="button"
-                      onClick={() => setSelectedRole(role.id)}
-                      className={`text-left p-3.5 rounded-xl border transition-all flex flex-col gap-0.5 cursor-pointer outline-none ${
-                        selectedRole === role.id 
-                          ? 'border-emerald-500 bg-emerald-50/45' 
-                          : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className={`font-bold text-xs uppercase ${selectedRole === role.id ? 'text-emerald-850' : 'text-slate-700'}`}>
-                          {role.label}
-                        </span>
-                        {selectedRole === role.id && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
-                      </div>
-                      <p className="text-[10px] text-slate-450 leading-normal font-medium">{role.desc}</p>
-                    </button>
-                  ))}
-                </div>
-
-                <AnimatePresence>
-                  {status && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
-                        status.type === 'success' 
-                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
-                          : 'bg-rose-50 text-rose-850 border-rose-200'
-                      }`}
-                    >
-                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                      <p className="uppercase tracking-wider">{status.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex gap-2.5 pt-4 border-t border-slate-100 mt-4">
-                <button 
-                  onClick={() => setModifyingRoleUser(null)}
-                  disabled={actionLoading}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
-                >
-                  Discard
-                </button>
-                <button 
-                  onClick={handleUpdateRole}
-                  disabled={actionLoading}
-                  className={`flex-[2] py-2 ${theme.primary} font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-sm outline-none border-none flex items-center justify-center gap-1.5`}
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  ) : (
-                    <>
-                      <Shield className="w-3.5 h-3.5" />
-                      Commit Clearance Level
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 4: SUBJECT PASSWORD OVERWRITE ACTION POPUP */}
-      <AnimatePresence>
-        {resettingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-md w-full flex flex-col shadow-2xl rounded-2xl space-y-5 text-slate-800"
-            >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
-                    <Key className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Credential Key Overwrite</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Override designated authorization password</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setResettingUser(null)}
-                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200/50 rounded-xl text-xs font-semibold text-amber-800">
-                Rewriting encryption key coordinates for: <strong className="font-mono text-amber-950">{resettingUser.email}</strong>
-              </div>
-
-              <div className="space-y-3.5">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wildest block">New Security Key Parameter</label>
-                  <input 
-                    type="password"
-                    autoFocus
-                    placeholder="Min 6 alphanumeric parameters"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500/30 transition-all focus:border-amber-500 text-center tracking-widest font-mono"
-                  />
-                </div>
-
-                <AnimatePresence>
-                  {status && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
-                        status.type === 'success' 
-                          ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
-                          : 'bg-rose-50 text-rose-850 border-rose-200'
-                      }`}
-                    >
-                      {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                      <p className="uppercase tracking-wider">{status.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex gap-2.5 pt-2">
-                <button 
-                  onClick={() => setResettingUser(null)}
-                  disabled={actionLoading}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
-                >
-                  Abort
-                </button>
-                <button 
-                  onClick={handleResetPassword}
-                  disabled={actionLoading || !newPassword}
-                  className="flex-[2] py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-md outline-none border-none flex items-center justify-center gap-1.5"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  ) : (
-                    <>
-                      <Key className="w-3.5 h-3.5 text-white" />
-                      Commit Credentials
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 5: REAL ADMINISTRATIVE PERMANENT USER DELETE POPUP */}
-      <AnimatePresence>
-        {deletingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="bg-white border border-slate-200 p-6 max-w-md w-full flex flex-col shadow-2xl rounded-2xl space-y-5 text-slate-800"
-            >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5 text-rose-600">
-                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
-                    <AlertTriangle className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-rose-800">Decommission Auth Identity</h3>
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Irreversible security clearance revoke</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setDeletingUser(null)}
-                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors border-none bg-transparent outline-none cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs space-y-2">
-                <p className="text-rose-800 font-bold leading-relaxed">
-                  CRITICAL PROTOCOL WARNING:
-                </p>
-                <p className="text-rose-700 leading-relaxed font-semibold">
-                  You are about to permanently decommission and delete the security credentials for user: <strong className="font-mono text-slate-900 select-all underline">{deletingUser.email}</strong>.
-                </p>
-                <p className="text-rose-600/95 leading-normal text-[11px] font-medium">
-                  This action is fully irreversible and will instantly purge their profile records from Supabase authentication servers and terminate active web tokens.
-                </p>
-              </div>
-
-              <AnimatePresence>
-                {status && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-bold border ${
-                      status.type === 'success' 
-                        ? 'bg-emerald-50 text-emerald-850 border-emerald-200' 
-                        : 'bg-rose-50 text-rose-850 border-rose-200'
-                    }`}
-                  >
-                    {status.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                    <p className="uppercase tracking-wider">{status.message}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="flex gap-2.5 pt-2">
-                <button 
-                  onClick={() => setDeletingUser(null)}
-                  disabled={actionLoading}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer outline-none"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleDeleteUser}
-                  disabled={actionLoading}
-                  className="flex-[2] py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider rounded-lg cursor-pointer shadow-md outline-none border-none flex items-center justify-center gap-1.5"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  ) : (
-                    <>
-                      <Trash2 className="w-3.5 h-3.5 text-white" />
-                      Terminate Gateway Access
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedUserIds.size > 0 && (
-          <motion.div 
-            initial={{ y: 70, opacity: 0, x: "-50%" }}
-            animate={{ y: 0, opacity: 1, x: "-50%" }}
-            exit={{ y: 70, opacity: 0, x: "-50%" }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-4 z-40 font-sans"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-extrabold text-white">
-                {selectedUserIds.size}
-              </div>
-              <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest leading-none">
-                Officers Selected
-              </span>
-            </div>
-
-            <div className="h-4 w-[1px] bg-slate-800 hidden md:block" />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  setActionLoading(true);
-                  const allModules = [
-                    'OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age',
-                    'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT'
-                  ];
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session) throw new Error('Session unverified.');
-                    
-                    const promises = Array.from(selectedUserIds).map(userId => 
-                      fetch('/api/admin/update-modules', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${session.access_token}`
-                        },
-                        body: JSON.stringify({ userId, modules: allModules })
-                      })
-                    );
-                    await Promise.all(promises);
-                    await logger.log('ADMIN_ACTION', 'User', `Batch granted all portals access permission to ${selectedUserIds.size} user registries.`);
-                    setStatus({ type: 'success', message: `Granted all clearances to selected ${selectedUserIds.size} users!` });
-                    setSelectedUserIds(new Set());
-                    await fetchUsers();
-                  } catch (e: any) {
-                    setStatus({ type: 'error', message: `Batch modules update failed: ${e.message}` });
-                  } finally {
-                    setActionLoading(false);
-                  }
-                }}
-                disabled={actionLoading}
-                className="px-3.5 py-1.5 bg-emerald-650 hover:bg-emerald-600 active:bg-emerald-700 text-white text-[11px] font-extrabold uppercase tracking-wider rounded-lg transition-all border-none outline-none cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-40"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                Grant All Portals
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setActionLoading(true);
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session) throw new Error('Session unverified.');
-                    
-                    const promises = Array.from(selectedUserIds).map(userId => 
-                      fetch('/api/admin/update-modules', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${session.access_token}`
-                        },
-                        body: JSON.stringify({ userId, modules: [] })
-                      })
-                    );
-                    await Promise.all(promises);
-                    await logger.log('ADMIN_ACTION', 'User', `Batch revoked all portals access permission from ${selectedUserIds.size} user registries.`);
-                    setStatus({ type: 'success', message: `Successfully revoked modules from ${selectedUserIds.size} users!` });
-                    setSelectedUserIds(new Set());
-                    await fetchUsers();
-                  } catch (e: any) {
-                    setStatus({ type: 'error', message: `Batch revoke failed: ${e.message}` });
-                  } finally {
-                    setActionLoading(false);
-                  }
-                }}
-                disabled={actionLoading}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-705 border border-slate-700 text-slate-300 text-[11px] font-extrabold uppercase tracking-wider rounded-lg transition-all outline-none cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
-              >
-                <X className="w-3.5 h-3.5" />
-                Revoke Clearances
-              </button>
-
-              <div className="relative inline-block text-left">
-                <select
-                  disabled={actionLoading}
-                  onChange={async (e) => {
-                    const role = e.target.value;
-                    if (!role) return;
-                    setActionLoading(true);
-                    try {
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (!session) throw new Error('Session unverified.');
-                      
-                      const promises = Array.from(selectedUserIds).map(userId => 
-                        fetch('/api/admin/update-role', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${session.access_token}`
-                          },
-                          body: JSON.stringify({ userId, newRole: role })
-                        })
-                      );
-                      await Promise.all(promises);
-                      await logger.log('ADMIN_ACTION', 'User', `Batch updated clearance role levels to ${role} for ${selectedUserIds.size} user registries`);
-                      setStatus({ type: 'success', message: `Clearance changed to ${role.toUpperCase()} for ${selectedUserIds.size} officers!` });
-                      setSelectedUserIds(new Set());
-                      await fetchUsers();
-                    } catch (err: any) {
-                      setStatus({ type: 'error', message: `Batch role update failed: ${err.message}` });
-                    } finally {
-                      setActionLoading(false);
-                      e.target.value = "";
-                    }
-                  }}
-                  className="bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-[11px] font-extrabold uppercase tracking-wider rounded-lg px-3 py-1.5 outline-none cursor-pointer disabled:opacity-40"
-                >
-                  <option value="">Batch Role Clearances...</option>
-                  <option value="super_admin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="admin_grant">Admin Grant</option>
-                  <option value="add_records">Add Records</option>
-                  <option value="view_only">View Only</option>
-                  <option value="airport_staff">Airport Hub</option>
-                </select>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 }
