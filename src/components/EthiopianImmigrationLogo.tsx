@@ -21,8 +21,8 @@ export default function EthiopianImmigrationLogo({ className = '', size = 'md' }
       id="ethiopian-immigration-logo"
     >
       <img 
-        src="/Ics-logo-horizontal.png" // Replace with your actual public asset path or import variable
-        alt=""
+        src="/ics-logo.png" // Replace with your actual public asset path or import variable
+        alt="Immigration and Citizenship Services Logo"
         className={`${logoHeightClass} w-auto object-contain`} 
       />
     </div>
