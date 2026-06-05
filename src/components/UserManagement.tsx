@@ -636,12 +636,42 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
         return;
       }
 
-      // Fetch users from our custom admin server endpoint
-      const res = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
+      // Fetch users from our custom admin server endpoint with self-healing retries during boots/restarts
+      let res: Response | null = null;
+      let lastError: Error | null = null;
+      const maxRetries = 4;
+      const retryDelayMs = 1200;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          res = await fetch('/api/admin/users', {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+
+          const contentType = res?.headers.get('content-type');
+          // If 404, or not JSON, might be server booting/proxying. Retry if we have attempts remaining.
+          if (!res || res.status === 404 || !contentType || !contentType.includes('application/json')) {
+            if (attempt < maxRetries) {
+              console.warn(`[API SYNC] Connection attempt ${attempt}/${maxRetries} busy/offline. Retrying in ${retryDelayMs}ms...`);
+              await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+              continue;
+            }
+          }
+          break; // Succeeded or exhausted retries
+        } catch (fetchErr: any) {
+          lastError = fetchErr;
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
         }
-      });
+      }
+
+      if (!res) {
+        throw new Error(lastError?.message || "Secure endpoint could not be contacted.");
+      }
 
       const contentType = res.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
