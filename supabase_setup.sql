@@ -35,6 +35,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- New Helper for checking authorized admin roles (aliases/compatibilities)
+CREATE OR REPLACE FUNCTION public.is_authorized_admin() 
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- New Helper for checking authorized staff roles
 CREATE OR REPLACE FUNCTION public.is_auth_staff() 
 RETURNS BOOLEAN AS $$
