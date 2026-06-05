@@ -7,7 +7,7 @@ import {
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Activity, BarChart3, Plane, Paperclip,
   ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Bell, Archive, Baby
+  Bell, Archive, Baby, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -144,13 +144,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'AIRPORT'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
-    { type: 'AIRPORT', icon: Plane, label: 'Bole Airport' },
+    { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'Normal EOID' },
     { type: 'EOID Under_Age', icon: Baby, label: 'Under-Age EOID' },
-     { type: 'Alien Passport', icon: CreditCard, label: 'Alien Passport' },
+    { type: 'Alien Passport', icon: CreditCard, label: 'Alien Passport' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
-     { type: 'Eritrean ID', icon: CreditCard, label: 'Eritrean ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
     { type: 'Yellow Card', icon: Shield, label: 'Yellow Card ' },
     { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
@@ -803,10 +802,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       {/* Scaffold */}
       <main className="flex-1 flex flex-col w-full pb-20 md:pb-0">
         {/* Header Bar */}
-        <header className="">
+        <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-white border-b border-slate-100 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-slate-400 font-extrabold text-[11px] uppercase tracking-[0.1em]">
-            </div>
           </div>
 
           <div className="flex items-center gap-4">

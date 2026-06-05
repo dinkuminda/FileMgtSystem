@@ -101,6 +101,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     if (rType === 'ETD') return "Emergency Travel Docs";
     if (rType === 'Yellow Card') return "Yellow Card Registry";
     if (rType === 'Alien Passport') return "Alien Passport Records";
+    if (rType === 'Eritrean ID') return "Eritrean ID Registry";
     return "VISA Records";
   };
 
@@ -110,7 +111,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     setLoading(true);
     try {
       // Execute all fetches in parallel
-      const tables: RecordType[] = ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport'];
+      const tables: RecordType[] = ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
       const fetches = tables.map(async (type) => {
         try {
           const { data, error } = await supabase.from(TABLE_MAP[type]).select('*');
@@ -145,6 +146,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
             { boxName: 'Yellow-000005', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
             { boxName: 'EOID-Underage-000006', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
             { boxName: 'Alien-000007', desc: 'Alien Passport Secure Vault', module: 'Alien Passport', color: 'from-emerald-600 to-emerald-800', temp: 20.0, humidity: 40, isLocked: false },
+            { boxName: 'Eritrean-000008', desc: 'Eritrean ID division Physical Registry Box', module: 'Eritrean ID', color: 'from-blue-600 to-emerald-800', temp: 20.5, humidity: 42, isLocked: false },
           ];
           localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
         }

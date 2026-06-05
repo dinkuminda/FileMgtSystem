@@ -10,9 +10,23 @@ import {
   Users, 
   Pencil, 
   Trash2, 
-  ShieldCheck 
+  ShieldCheck,
+  Check,
+  Save,
+  RefreshCw,
+  Eye,
+  Settings,
+  Lock,
+  EyeOff,
+  UserCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabase, type UserProfile } from '../lib/supabase';
+import { 
+  getPermissionRules, 
+  savePermissionRules, 
+  type ModulePermissionRule 
+} from '../lib/permissions';
 
 // ==========================================
 // TYPES & INTERFACES
@@ -28,38 +42,72 @@ interface AdminUser {
   modules: string[];
 }
 
-interface ModulePermissionRule {
-  id: string;
-  role: string;
-  module: string;
-  actions: string[];
-}
+const ALL_MODULES = [
+  { id: 'OVERVIEW', name: 'Overview' },
+  { id: 'USERS', name: 'User Management' },
+  { id: 'REPORTS', name: 'Global Reporting' },
+  { id: 'AUDIT', name: 'System Logs Vault' },
+  { id: 'VISA', name: 'Visa Records' },
+  { id: 'EOID', name: 'EOID Registries' },
+  { id: 'EOID Under_Age', name: 'EOID Minor Registries' },
+  { id: 'Residence ID', name: 'Residence ID Cards' },
+  { id: 'ETD', name: 'Emergency Travels' },
+  { id: 'AIRPORT', name: 'Bole Airport Letters' },
+  { id: 'Yellow Card', name: 'Yellow Cards' },
+  { id: 'Alien Passport', name: 'Alien Passport' },
+  { id: 'Eritrean ID', name: 'Eritrean IDs' }
+];
 
 // ==========================================
 // SUB-COMPONENT: TEAM DIRECTORY
 // ==========================================
 interface TeamDirectoryProps {
   users: AdminUser[];
+  onEdit: (user: AdminUser) => void;
+  onDelete: (user: AdminUser) => void;
+  currentUserProfile: UserProfile | null;
 }
 
-function TeamDirectory({ users }: TeamDirectoryProps) {
-  // Exact color scheme mapping from the user mgt final.png reference
+function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDirectoryProps) {
+  const getRoleLabel = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+      case 'super_admin':
+        return 'Admin';
+      case 'staff':
+        return 'Officer / Supervisor';
+      case 'viewer':
+        return 'Viewer Account';
+      case 'airport_staff':
+        return 'Bole Airport Staff';
+      case 'airport_viewer':
+        return 'Bole Airport Viewer';
+      default:
+        return role;
+    }
+  };
+
   const getRoleStyle = (role: string) => {
-    switch (role.toUpperCase()) {
-      case 'ADMIN':
+    switch (role.toLowerCase()) {
+      case 'admin':
+      case 'super_admin':
         return 'bg-[#FDF2F2] text-[#EF4444] border border-[#FEE2E2]'; // Light Red
-      case 'SUPERVISOR':
-        return 'bg-[#FFFBEB] text-[#D97706] border border-[#FEF3C7]'; // Light Gold/Orange
-      case 'OFFICER':
+      case 'staff':
         return 'bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE]'; // Light Blue
-      case 'VIEWER':
+      case 'airport_staff':
+        return 'bg-[#FFFBEB] text-[#D97706] border border-[#FEF3C7]'; // Light Yellow/Amber
+      case 'airport_viewer':
+        return 'bg-[#ECFDF5] text-[#059669] border border-[#D1FAE5]'; // Light Emerald
+      case 'viewer':
       default:
         return 'bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]'; // Light Gray
     }
   };
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
 
@@ -71,7 +119,7 @@ function TeamDirectory({ users }: TeamDirectoryProps) {
             <th className="py-4 px-6 font-semibold">Full Name</th>
             <th className="py-4 px-6 font-semibold">Email</th>
             <th className="py-4 px-6 font-semibold">System Role</th>
-            <th className="py-4 px-6 font-semibold">Password (Encrypted)</th>
+            <th className="py-4 px-6 font-semibold">Credentials Status</th>
             <th className="py-4 px-6 font-semibold">Created Date</th>
             <th className="py-4 px-6 text-right font-semibold">Actions</th>
           </tr>
@@ -81,8 +129,8 @@ function TeamDirectory({ users }: TeamDirectoryProps) {
             <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
               {/* Full Name */}
               <td className="py-4 px-6 font-bold text-[#1E293B] capitalize">
-                {user.full_name}
-                {user.role.toUpperCase() === 'ADMIN' && (
+                {user.full_name || 'Anonymous User'}
+                {currentUserProfile?.id === user.id && (
                   <span className="text-[#00966D] font-normal text-xs normal-case ml-1"> (You)</span>
                 )}
               </td>
@@ -93,10 +141,10 @@ function TeamDirectory({ users }: TeamDirectoryProps) {
               {/* System Role Badge */}
               <td className="py-4 px-6">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border rounded-[4px] uppercase ${getRoleStyle(user.role)}`}>
-                  {user.role.toUpperCase() === 'SUPERVISOR' && (
+                  {user.role.toLowerCase() === 'airport_staff' && (
                     <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] mr-1.5 inline-block" />
                   )}
-                  {user.role}
+                  {getRoleLabel(user.role)}
                 </span>
               </td>
               
@@ -116,16 +164,36 @@ function TeamDirectory({ users }: TeamDirectoryProps) {
               {/* Action Buttons */}
               <td className="py-4 px-6 text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <button className="p-2 text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-md transition-colors">
+                  <button 
+                    onClick={() => onEdit(user)}
+                    className="p-2 text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-md transition-all border border-[#DBEAFE] shadow-2xs"
+                    title="Edit roles and clearance modules"
+                  >
                     <Pencil className="w-4 h-4 stroke-[2.5]" />
                   </button>
-                  <button className="p-2 text-[#EF4444] bg-[#FDF2F2] hover:bg-[#FEE2E2] rounded-md transition-colors">
+                  <button 
+                    onClick={() => onDelete(user)}
+                    disabled={currentUserProfile?.id === user.id}
+                    className={`p-2 rounded-md border transition-all shadow-2xs ${
+                      currentUserProfile?.id === user.id 
+                        ? 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed' 
+                        : 'text-[#EF4444] bg-[#FDF2F2] hover:bg-[#FEE2E2] border-[#FEE2E2]'
+                    }`}
+                    title={currentUserProfile?.id === user.id ? "Cannot delete own active profile" : "Purge staff account"}
+                  >
                     <Trash2 className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
               </td>
             </tr>
           ))}
+          {users.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                No active staff matching query specifications located.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -137,17 +205,391 @@ function TeamDirectory({ users }: TeamDirectoryProps) {
 // ==========================================
 interface PermissionsMatrixProps {
   rules: ModulePermissionRule[];
-  onSave: (rules: ModulePermissionRule[]) => void;
+  onSave: (rules: ModulePermissionRule[]) => Promise<void>;
+  loading: boolean;
 }
 
-function PermissionsMatrix({ rules, onSave }: PermissionsMatrixProps) {
+function PermissionsMatrix({ rules, onSave, loading }: PermissionsMatrixProps) {
+  const [localRules, setLocalRules] = useState<ModulePermissionRule[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalRules(rules);
+    setDirty(false);
+  }, [rules]);
+
+  const ROLES = [
+    { id: 'admin', label: 'Admin' },
+    { id: 'staff', label: 'Staff' },
+    { id: 'viewer', label: 'Viewer' },
+    { id: 'airport_staff', label: 'Airport Staff' },
+    { id: 'airport_viewer', label: 'Airport Viewer' }
+  ];
+
+  const toggleVal = (moduleKey: string, roleId: string, type: 'view' | 'create' | 'update') => {
+    const next = localRules.map(r => {
+      if (r.module === moduleKey) {
+        const arrName = type === 'view' ? 'view_roles' : type === 'create' ? 'create_roles' : 'update_roles';
+        const currentArr = r[arrName] || [];
+        const updatedArr = currentArr.includes(roleId)
+          ? currentArr.filter(x => x !== roleId)
+          : [...currentArr, roleId];
+        return {
+          ...r,
+          [arrName]: updatedArr
+        };
+      }
+      return r;
+    });
+    setLocalRules(next);
+    setDirty(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await onSave(localRules);
+      setDirty(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-16 text-center flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#00966D] animate-spin mb-3" />
+        <p className="text-gray-400 text-xs">Synchronizing clearance rules...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-12 text-center flex flex-col items-center justify-center">
-      <Shield className="w-12 h-12 text-[#1E3A8A] mb-3 opacity-20" />
-      <h3 className="text-base font-semibold text-slate-700">Role Permissions Config</h3>
-      <p className="text-sm text-slate-400 max-w-sm mt-1">
-        Access control matrices are currently synchronized with system directory configurations.
-      </p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 border border-slate-200/60 p-4 rounded-2xl gap-4">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-[#00966D] shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800">Global Role Permissions Matrix</h4>
+            <p className="text-xs text-slate-500 mt-0.5">Configure which system roles have clearance to View, Create, or Edit each document module.</p>
+          </div>
+        </div>
+        {dirty && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 bg-[#00966D] hover:bg-[#00825E] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-md transition-all self-end sm:self-auto disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Save className="w-3.5 h-3.5" />
+            )}
+            Apply Matrix Layout
+          </button>
+        )}
+      </div>
+
+      <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+              <th className="py-4 px-6 min-w-[200px]">Document Module</th>
+              {ROLES.map(({ id, label }) => (
+                <th key={id} className="py-4 px-6 text-center">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+            {localRules.map((rule) => (
+              <tr key={rule.module} className="hover:bg-slate-50/30 transition-colors">
+                <td className="py-4 px-6 font-bold text-slate-800">{rule.module}</td>
+                {ROLES.map((role) => {
+                  const hasView = (rule.view_roles || []).includes(role.id);
+                  const hasCreate = (rule.create_roles || []).includes(role.id);
+                  const hasUpdate = (rule.update_roles || []).includes(role.id);
+                  const isRoleAdmin = role.id === 'admin';
+
+                  return (
+                    <td key={role.id} className="py-4 px-6">
+                      <div className="flex flex-col items-center justify-center gap-2 min-w-[120px]">
+                        {/* View Checkbox */}
+                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all cursor-pointer ${
+                          hasView || isRoleAdmin ? 'bg-emerald-50/50 border border-emerald-100/50' : 'hover:bg-slate-100/40 border border-transparent'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={hasView || isRoleAdmin}
+                            disabled={isRoleAdmin}
+                            onChange={() => toggleVal(rule.module, role.id, 'view')}
+                            className="rounded text-[#00966D] focus:ring-[#00966D]/25 w-3 h-3 cursor-pointer"
+                          />
+                          <span className={`text-[10px] font-semibold ${hasView || isRoleAdmin ? 'text-[#00966D]' : 'text-slate-400'}`}>View</span>
+                        </label>
+                        {/* Create Checkbox */}
+                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all cursor-pointer ${
+                          hasCreate || isRoleAdmin ? 'bg-[#EFF6FF] border border-[#DBEAFE]' : 'hover:bg-slate-100/40 border border-transparent'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={hasCreate || isRoleAdmin}
+                            disabled={isRoleAdmin}
+                            onChange={() => toggleVal(rule.module, role.id, 'create')}
+                            className="rounded text-[#2563EB] focus:ring-[#2563EB]/25 w-3 h-3 cursor-pointer"
+                          />
+                          <span className={`text-[10px] font-semibold ${hasCreate || isRoleAdmin ? 'text-[#2563EB]' : 'text-slate-400'}`}>Add</span>
+                        </label>
+                        {/* Update Checkbox */}
+                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all cursor-pointer ${
+                          hasUpdate || isRoleAdmin ? 'bg-amber-50 border border-amber-100' : 'hover:bg-slate-100/40 border border-transparent'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={hasUpdate || isRoleAdmin}
+                            disabled={isRoleAdmin}
+                            onChange={() => toggleVal(rule.module, role.id, 'update')}
+                            className="rounded text-amber-600 focus:ring-amber-500/25 w-3 h-3 cursor-pointer"
+                          />
+                          <span className={`text-[10px] font-semibold ${hasUpdate || isRoleAdmin ? 'text-amber-600' : 'text-slate-400'}`}>Edit</span>
+                        </label>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// SUB-COMPONENT: EDIT CLEARANCE MODAL
+// ==========================================
+interface EditUserModalProps {
+  user: AdminUser;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
+  const [role, setRole] = useState(user.role);
+  const [modules, setModules] = useState<string[]>(user.modules || []);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleModuleToggle = (modId: string) => {
+    if (modules.includes(modId)) {
+      setModules(modules.filter(m => m !== modId));
+    } else {
+      setModules([...modules, modId]);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Authentication failure. Re-login required.");
+      const token = session.access_token;
+      
+      // 1. Update role if modified
+      if (role !== user.role) {
+        const res = await fetch('/api/admin/update-role', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId: user.id, newRole: role })
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Failed to update role descriptor.");
+        }
+      }
+      
+      // 2. Update clear modules
+      const resMod = await fetch('/api/admin/update-modules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: user.id, modules })
+      });
+      if (!resMod.ok) {
+        const d = await resMod.json();
+        throw new Error(d.error || "Failed to update custom module list.");
+      }
+      
+      // 3. Update password if provided
+      if (password.trim()) {
+        if (password.length < 6) {
+          throw new Error("Credentials override must contain at least 6 characters.");
+        }
+        const resPass = await fetch('/api/admin/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId: user.id, newPassword: password })
+        });
+        if (!resPass.ok) {
+          const d = await resPass.json();
+          throw new Error(d.error || "Failed to update password credentials.");
+        }
+      }
+      
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-[1.5rem] max-w-lg w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <Settings className="w-5 h-5 text-[#2b825a]" />
+            <h3 className="text-lg font-bold text-slate-900 font-sans tracking-tight">Security Clearance Control</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-50 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto pr-1 py-1 space-y-5 flex-1 text-sm text-slate-600">
+          {/* User Meta Info header */}
+          <div className="bg-slate-50 p-4 border border-slate-200/50 rounded-xl space-y-1">
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Configuring Access For:</div>
+            <div className="font-bold text-slate-800 text-sm capitalize">{user.full_name || 'Anonymous User'}</div>
+            <div className="text-xs text-slate-500 font-medium font-mono">{user.email}</div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Role selector dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-slate-400" />
+              System Clearance Role
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all font-medium text-slate-800"
+            >
+              <option value="admin">System Administrator (Full Clearance)</option>
+              <option value="staff">Supervisor / Operations Officer</option>
+              <option value="viewer">Executive Viewer (Read Only)</option>
+              <option value="airport_staff">Bole Airport Operations Staff</option>
+              <option value="airport_viewer">Bole Airport Terminal Inspector</option>
+            </select>
+          </div>
+
+          {/* Module Clearances checklist */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-750 uppercase tracking-wide flex items-center gap-1.5 text-slate-700">
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              Active System Module Clearance
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 border border-slate-100 rounded-xl bg-slate-50/40">
+              {ALL_MODULES.map((mod) => {
+                const checked = modules.includes(mod.id);
+                return (
+                  <button
+                    key={mod.id}
+                    onClick={() => handleModuleToggle(mod.id)}
+                    className={`flex items-center text-left px-3 py-2 border rounded-xl transition-all gap-2 ${
+                      checked 
+                        ? 'bg-white border-[#00966D]/30 shadow-xs text-slate-800' 
+                        : 'bg-transparent border-slate-200/50 hover:bg-white text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
+                      checked 
+                        ? 'bg-[#00966D] border-[#00966D] text-white' 
+                        : 'border-slate-300'
+                    }`}>
+                      {checked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-xs font-semibold">{mod.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Reset password panel */}
+          <div className="space-y-1.5 pt-1 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-755 uppercase tracking-wide flex items-center gap-1.5 text-slate-700">
+              <Key className="w-3.5 h-3.5 text-slate-400" />
+              Override Password Credentials
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter new 6+ characters pass to override, otherwise leave empty..."
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all placeholder:text-slate-400 font-medium font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-5 pt-3 border-t border-slate-100 shrink-0">
+          <button 
+            onClick={onClose} 
+            disabled={saving}
+            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="px-5 py-2 bg-[#00966D] hover:bg-[#00825E] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Applying Changes...</span>
+              </>
+            ) : (
+              <>
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Update Credentials</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -155,94 +597,200 @@ function PermissionsMatrix({ rules, onSave }: PermissionsMatrixProps) {
 // ==========================================
 // MAIN COMPONENT EXPORT
 // ==========================================
-export default function AdminAccessControl() {
+export default function AdminAccessControl({ currentUserProfile, onProfileUpdate }: { currentUserProfile: UserProfile | null, onProfileUpdate?: () => void }) {
   const [activeTab, setActiveTab] = useState<'directory' | 'permissions'>('directory');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [rulesLoading, setRulesLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Create User States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createFullName, setCreateFullName] = useState('');
+  const [createRole, setCreateRole] = useState('staff');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
-  // Load exact mock records mimicking the original UI image frame state
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        
-        const mockUsers: AdminUser[] = [
-          {
-            id: '1',
-            full_name: 'mindaye hailu',
-            email: 'mindaye@123',
-            role: 'SUPERVISOR',
-            created_at: '2026-06-03',
-            last_sign_in_at: null,
-            confirmed_at: null,
-            modules: []
-          },
-          {
-            id: '2',
-            full_name: 'sami burayu',
-            email: 'sami@gmail.com',
-            role: 'OFFICER',
-            created_at: '2026-06-03',
-            last_sign_in_at: null,
-            confirmed_at: null,
-            modules: []
-          },
-          {
-            id: '3',
-            full_name: 'ahmed Kasim',
-            email: 'ahmed@gmail.com',
-            role: 'VIEWER',
-            created_at: '2026-06-03',
-            last_sign_in_at: null,
-            confirmed_at: null,
-            modules: []
-          },
-          {
-            id: '4',
-            full_name: 'System Administrator',
-            email: 'admin',
-            role: 'ADMIN',
-            created_at: '2026-05-25',
-            last_sign_in_at: null,
-            confirmed_at: null,
-            modules: []
-          }
-        ];
+  // Edit User States
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
-        setUsers(mockUsers);
-        setPermissionRules([]);
-      } catch (err: any) {
-        setError('Failed to populate interface schemas.');
-      } finally {
+  // Delete Confirm States
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Load exact records and permission keys dynamically
+  const loadUsersAndRules = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Authentication session timed out or invalid. Re-login is requested.');
         setLoading(false);
+        return;
       }
-    }
 
-    loadData();
+      // Fetch users from our custom admin server endpoint
+      const res = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      const data = await res.json();
+      if (res.ok && data.users) {
+        setUsers(data.users);
+      } else {
+        throw new Error(data.error || 'Unable to scan active credentials vault.');
+      }
+
+      // Load permissions rules
+      const rules = await getPermissionRules();
+      setPermissionRules(rules);
+
+      // Trigger profile updates so the global context stays synchronized
+      onProfileUpdate?.();
+
+    } catch (err: any) {
+      console.error("User management loading exception:", err);
+      setError(err.message || 'Failed to populate directory matrices.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsersAndRules();
   }, []);
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setCreateLoading(true);
+      setCreateError(null);
+
+      if (!createEmail || !createPassword || !createRole) {
+        throw new Error("All clearance definitions must be fully satisfied.");
+      }
+
+      if (createPassword.length < 6) {
+        throw new Error("Initial passkey must contain at least 6 characters.");
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active credentials.");
+
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          email: createEmail,
+          password: createPassword,
+          fullName: createFullName,
+          role: createRole
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Server could not allocate new profile record.");
+      }
+
+      // Reset Create States
+      setCreateEmail('');
+      setCreatePassword('');
+      setCreateFullName('');
+      setCreateRole('staff');
+      setShowCreatePassword(false);
+      setIsCreateModalOpen(false);
+
+      // Re-load Users Directory
+      loadUsersAndRules();
+
+    } catch (err: any) {
+      setCreateError(err.message);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    try {
+      setDeleteLoading(true);
+      setError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Credentials session expired.");
+
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId: deletingUser.id })
+      });
+
+      const d = await res.json();
+      if (!res.ok) {
+        throw new Error(d.error || "Failed to finalize account termination.");
+      }
+
+      setDeletingUser(null);
+      loadUsersAndRules();
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleSaveMatrix = async (updatedRules: ModulePermissionRule[]) => {
+    try {
+      setRulesLoading(true);
+      setError(null);
+      const success = await savePermissionRules(updatedRules);
+      if (success) {
+        setPermissionRules(updatedRules);
+      } else {
+        throw new Error("Failed to write revised permission matrix rules.");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRulesLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(user => 
-    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+    (user.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (user.role || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-12 font-sans antialiased text-[#1E293B]">
       <div className="max-w-7xl mx-auto">
         
-        {/* Header Block matching the design layout */}
+        {/* Header Block */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
             <h1 className="text-[28px] font-medium tracking-tight text-[#1E293B]">
               User Directory & Access Control
             </h1>
             <p className="text-sm text-[#64748B] mt-0.5">
-              Manage staff credentials and role-based clearance
+              Manage staff credentials, passwords, and role-based clearance rules
             </p>
           </div>
           
@@ -254,7 +802,7 @@ export default function AdminAccessControl() {
                 className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
                   activeTab === 'directory' 
                     ? 'bg-white text-[#1E3A8A] shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-900'
+                    : 'text-slate-500 hover:text-slate-900 font-medium'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -265,7 +813,7 @@ export default function AdminAccessControl() {
                 className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
                   activeTab === 'permissions' 
                     ? 'bg-white text-[#1E3A8A] shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-900'
+                    : 'text-slate-500 hover:text-slate-900 font-medium'
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -276,7 +824,7 @@ export default function AdminAccessControl() {
             {/* Create Account Action Button */}
             <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-[#00966D] hover:bg-[#00825E] text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-xs"
+              className="inline-flex items-center gap-2 bg-[#00966D] hover:bg-[#00825E] text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-xs shrink-0"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               Create Account
@@ -286,18 +834,27 @@ export default function AdminAccessControl() {
 
         {/* Status Alerts Block */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-            <span className="text-sm font-medium">{error}</span>
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+              <span className="text-sm font-semibold">{error}</span>
+            </div>
+            <button 
+              onClick={loadUsersAndRules} 
+              className="p-1 px-2 text-xs bg-red-100 hover:bg-red-200/80 rounded-lg text-red-800 font-bold transition-all flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry Sync
+            </button>
           </div>
         )}
 
         {/* Dynamic Inner Layout Switcher View */}
         <AnimatePresence mode="wait">
           {loading ? (
-            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xs p-32 flex flex-col items-center justify-center">
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-32 flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-[#00966D] animate-spin mb-3" />
-              <p className="text-gray-400 text-xs font-medium">Loading asset layouts...</p>
+              <p className="text-gray-400 text-xs font-semibold">Synchronizing secure credentials directories...</p>
             </div>
           ) : (
             <motion.div
@@ -311,29 +868,43 @@ export default function AdminAccessControl() {
               {activeTab === 'directory' ? (
                 <>
                   {/* Search Filtering Utility Row */}
-                  <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+                  <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex flex-col sm:flex-row items-center gap-3 justify-between">
                     <div className="relative w-full sm:max-w-xs">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input 
                         type="text"
-                        placeholder="Search directory..."
+                        placeholder="Search security directory..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-slate-200/80 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                        className="w-full bg-[#F8FAFC] border border-slate-200/80 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-[#475569] transition-all placeholder:text-slate-400"
                       />
                     </div>
+                    <button 
+                      onClick={loadUsersAndRules}
+                      className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 font-semibold"
+                      title="Sync table with Supabase profiles"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Sync Directory Tree
+                    </button>
                   </div>
 
-                  {/* Canvas Table Frame Block wrapper mimicking the container rounded corners */}
+                  {/* Canvas Table Frame Block wrapper */}
                   <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden">
-                    <TeamDirectory users={filteredUsers} />
+                    <TeamDirectory 
+                      users={filteredUsers} 
+                      onEdit={(user) => setEditingUser(user)}
+                      onDelete={(user) => setDeletingUser(user)}
+                      currentUserProfile={currentUserProfile}
+                    />
                   </div>
                 </>
               ) : (
                 <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden">
                   <PermissionsMatrix 
                     rules={permissionRules} 
-                    onSave={(updated) => setPermissionRules(updated)} 
+                    onSave={handleSaveMatrix} 
+                    loading={rulesLoading} 
                   />
                 </div>
               )}
@@ -344,17 +915,166 @@ export default function AdminAccessControl() {
         {/* Account Creation Modal Frame */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
+            <div className="bg-white rounded-[1.5rem] max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">Provision System Account</h3>
-                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-1.5 bg-emerald-50 rounded-lg text-[#00966D] shrink-0 border border-emerald-100">
+                    <Plus className="w-5 h-5 stroke-[2.5]" />
+                  </span>
+                  <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">Provision System Account</h3>
+                </div>
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-50 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-slate-500 mb-6">Initialize clean user roles, default logins, and access control clearances.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50">Cancel</button>
-                <button onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 bg-[#00966D] text-white rounded-xl text-sm font-medium hover:bg-[#00825E]">Create User</button>
+
+              <p className="text-xs text-slate-500 mb-5">Initialize safe user roles, baseline login emails, and access control clearances inside the main credential index database.</p>
+              
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                {createError && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                    <span>{createError}</span>
+                  </div>
+                )}
+
+                {/* Full Name */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Full Staff Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. John Doe"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-800"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Account Login Email</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. employee@ministry.gov"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-805"
+                  />
+                </div>
+
+                {/* Initial Password */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Account Initial Passkey</label>
+                  <div className="relative">
+                    <input
+                      type={showCreatePassword ? 'text' : 'password'}
+                      required
+                      placeholder="Minimum 6 characters requested"
+                      value={createPassword}
+                      onChange={(e) => setCreatePassword(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-mono font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword(!showCreatePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors"
+                    >
+                      {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Role select */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Assigned Clearance Role</label>
+                  <select
+                    value={createRole}
+                    onChange={(e) => setCreateRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-800"
+                  >
+                    <option value="admin">System Administrator (Full Settings Control)</option>
+                    <option value="staff">Supervisor / Operations Officer</option>
+                    <option value="viewer">Executive Viewer (Read-only System)</option>
+                    <option value="airport_staff">Bole Airport Staff Representative</option>
+                    <option value="airport_viewer">Bole Airport Checker Viewer</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-3 border-t border-slate-100 shrink-0">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreateModalOpen(false)} 
+                    disabled={createLoading}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={createLoading}
+                    className="px-5 py-2 bg-[#00966D] hover:bg-[#00825E] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50"
+                  >
+                    {createLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Creating User...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Allocate User</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Clearance Modal Wrapper */}
+        {editingUser && (
+          <EditUserModal 
+            user={editingUser} 
+            onClose={() => setEditingUser(null)} 
+            onSave={loadUsersAndRules} 
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deletingUser && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-red-50">
+              <div className="flex items-center gap-3 text-red-600 mb-3">
+                <AlertCircle className="w-6 h-6 stroke-[2.5]" />
+                <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">Purge Account Credentials?</h3>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                Are you completely sure you want to terminate the security access control profile for <strong className="text-slate-800 capitalize font-bold">{deletingUser.full_name || deletingUser.email}</strong>? This will permanently delete their profile and void their system access credentials.
+              </p>
+              
+              <div className="flex justify-end gap-3 shrink-0">
+                <button 
+                  onClick={() => setDeletingUser(null)} 
+                  disabled={deleteLoading}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteUser} 
+                  disabled={deleteLoading}
+                  className="px-5 py-2 bg-[#EF4444] text-white rounded-xl text-xs font-bold hover:bg-[#DC2626] transition-all flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                >
+                  {deleteLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  Terminate Account
+                </button>
               </div>
             </div>
           </div>

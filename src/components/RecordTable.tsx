@@ -27,7 +27,7 @@ export default function RecordTable({
   const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [showReferenceGuide, setShowReferenceGuide] = useState(false);
-  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Alien Passport' ? 11 : (activeTab === 'VISA' ? 10 : 9);
+  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Yellow Card' ? 13 : activeTab === 'Eritrean ID' ? 12 : activeTab === 'Alien Passport' ? 11 : (activeTab === 'VISA' ? 10 : 9);
 
   return (
     <div className="w-full">
@@ -40,16 +40,16 @@ export default function RecordTable({
             <tr className="border-b border-slate-100">
               {activeTab === 'Alien Passport' ? (
                 <>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Box No. (cabinet)</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">fullname</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">service provided</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Attachment</th>
                 </>
               ) : activeTab === 'EOID' ? (
                 <>
@@ -65,6 +65,35 @@ export default function RecordTable({
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">service provided</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Attachments</th>
+                </>
+              ) : activeTab === 'Yellow Card' ? (
+                <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-rose-500 uppercase tracking-[0.1em] font-black">Personal ID No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-rose-500 uppercase tracking-[0.1em] font-black">Yellow Card Type</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">service provided</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Attachment</th>
+                </>
+              ) : activeTab === 'Eritrean ID' ? (
+                <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Sex</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Id No.</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">service provided</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Attachment</th>
                 </>
               ) : (
                 <>
@@ -189,6 +218,93 @@ export default function RecordTable({
                           </td>
                           <td className="px-3 py-5">
                             <div className="flex items-center gap-1 text-slate-500">
+                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
+                                ✓
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
+                            </div>
+                          </td>
+                        </>
+                      ) : activeTab === 'Yellow Card' ? (
+                        <>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
+                            {record.box_number || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {record.personal_file_no || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
+                            {record.full_name}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-semibold text-slate-500 uppercase">
+                            {record.sex ? record.sex[0].toUpperCase() : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
+                            {record.citizenship}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-rose-700">
+                            {record.personal_id || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-rose-700 uppercase">
+                            <span className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[10px]">
+                              {record.eoid_type || '—'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-700 uppercase">
+                            {record.passport_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600 uppercase">
+                            {record.request_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500">
+                            {record.date ? new Date(record.date).toISOString().split('T')[0] : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                            {record.service_provided || 'YELLOW CARD ISSUANCE'}
+                          </td>
+                          <td className="px-3 py-5">
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
+                                ✓
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
+                            </div>
+                          </td>
+                        </>
+                      ) : activeTab === 'Eritrean ID' ? (
+                        <>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
+                            {record.box_number || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {record.personal_file_no || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
+                            {record.full_name}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-semibold text-slate-500 uppercase">
+                            {record.sex ? record.sex[0].toUpperCase() : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
+                            {record.citizenship}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
+                            {record.personal_id || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-700 uppercase">
+                            {record.passport_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600 uppercase">
+                            {record.request_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500 font-bold">
+                            {record.date ? new Date(record.date).toISOString().split('T')[0] : '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
+                            {record.service_provided || 'ERITREAN ID REGISTRATION'}
+                          </td>
+                          <td className="px-3 py-5">
+                            <div className="flex items-center gap-1.5 text-slate-500">
                               <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
                                 ✓
                               </span>

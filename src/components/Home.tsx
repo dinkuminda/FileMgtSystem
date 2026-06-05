@@ -60,12 +60,6 @@ export default function Home() {
   badge: "Alien Passport"
 }
     ,
- {
-  icon: UserCheck, 
-  title: "Eritrean ID Module",
-  description: "Processes, verifies, and catalogs origin identity credentials and community residency records within the secure national registry.",
-  badge: "Origin Desk"
-} ,
 {
   icon: Shield, // Guaranteed to work, represents a secure national card/status
   title: "Yellow Card Module",

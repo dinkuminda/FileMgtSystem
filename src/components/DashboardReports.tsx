@@ -439,9 +439,12 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
             const moduleType = log.entity_type;
             if (userProfile.modules) {
               if (moduleType === 'Yellow Card' || moduleType === 'Yellow Card Logs') {
-                return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+                return userProfile.modules.includes('Yellow Card');
               }
-              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport'];
+              if (moduleType === 'Eritrean ID' || moduleType === 'Eritrean ID Logs') {
+                return userProfile.modules.includes('Eritrean ID');
+              }
+              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
               if (moduleKeys.includes(moduleType)) {
                 return userProfile.modules.includes(moduleType);
               }
@@ -529,7 +532,7 @@ SELECT id, email, role, modules FROM public.profiles ORDER BY email ASC;
 
 -- 3. Batch grant all modules to multiple admins
 UPDATE public.profiles 
-SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport']::text[]
+SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID']::text[]
 WHERE role IN ('admin', 'super_admin');`;
   }
 
@@ -975,7 +978,7 @@ WHERE role IN ('admin', 'super_admin');`;
                 <div className="flex gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedUserModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport'])}
+                    onClick={() => setSelectedUserModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'])}
                     className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none"
                   >
                     Select All
@@ -1018,6 +1021,7 @@ WHERE role IN ('admin', 'super_admin');`;
                       { id: 'CABINETS', label: 'Physical Cabinets', icon: Archive },
                       { id: 'AIRPORT', label: 'Bole Airport Gateway', icon: Plane },
                       { id: 'Yellow Card', label: 'Yellow Card Division', icon: Shield },
+                      { id: 'Eritrean ID', label: 'Eritrean ID Desk', icon: Folder },
                       { id: 'AUDIT', label: 'Immutable Security Logs', icon: Activity }
                     ].map((mod) => {
                       const isActive = selectedUserModules.includes(mod.id);

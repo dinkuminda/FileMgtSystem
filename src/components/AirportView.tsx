@@ -449,7 +449,7 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
           </div>
         </div>
       ) : activeSubTab === 'users' ? (
-        <UserManagement />
+        <UserManagement currentUserProfile={userProfile} />
       ) : activeSubTab === 'audit' ? (
         <AuditLogView filter="AIRPORT" />
       ) : (

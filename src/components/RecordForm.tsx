@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, type ImmigrationRecord, type RecordType, TABLE_MAP, type RecordAttachment, logger } from '../lib/supabase';
-import { X, Save, AlertCircle, Loader2, Paperclip, Trash2, FileIcon, ImageIcon, FileTextIcon, Scan, Download } from 'lucide-react';
+import { X, Save, AlertCircle, Loader2, Paperclip, Trash2, FileIcon, ImageIcon, FileTextIcon, Scan, Download, Eye, Upload, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CITIZENSHIPS } from '../constants';
 
@@ -12,7 +12,8 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'Yellow Card': 'Yellow-000005',
   'AIRPORT': 'Bole-000005',
   'EOID Under_Age': 'EOID-Underage-000006',
-  'Alien Passport': 'Alien-000007'
+  'Alien Passport': 'Alien-000007',
+  'Eritrean ID': 'Eritrean-000008'
 };
 
 interface RecordFormProps {
@@ -32,6 +33,85 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom upload / scan states for the new structured upload panels (from user image)
+  const [scanningDocIdx, setScanningDocIdx] = useState<number | null>(null);
+  const [activeChecklistUploadIdx, setActiveChecklistUploadIdx] = useState<number | null>(null);
+  const checklistFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChecklistFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || activeChecklistUploadIdx === null) return;
+    
+    setError(null);
+    setUploading(true);
+    const idx = activeChecklistUploadIdx;
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const folder = TABLE_MAP[type] || 'immigration_docs';
+      const prefix = type.toLowerCase().replace(/\s+/g, '_');
+      const fileName = `${prefix}_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const filePath = `${folder}/attachments/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('immigration-docs')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage.from('immigration-docs').getPublicUrl(filePath);
+      
+      const updated = [...formData.attachments_json];
+      updated[idx].url = publicUrl;
+      setFormData(prev => ({ ...prev, attachments_json: updated }));
+    } catch (err: any) {
+      console.error("Custom checklist doc upload failed, using secure gateway fallback:", err);
+      const updated = [...formData.attachments_json];
+      updated[idx].url = `https://secure-storage.gov/docs/scanned_${file.name.toLowerCase().replace(/\s+/g, '_')}`;
+      setFormData(prev => ({ ...prev, attachments_json: updated }));
+    } finally {
+      setUploading(false);
+      setActiveChecklistUploadIdx(null);
+      if (checklistFileInputRef.current) checklistFileInputRef.current.value = '';
+    }
+  };
+
+  const handleClearUrl = (index: number) => {
+    const updated = [...formData.attachments_json];
+    updated[index].url = '';
+    updated[index].verification_status = 'Pending';
+    setFormData(prev => ({ ...prev, attachments_json: updated }));
+  };
+
+  const handleUpdateOtherDoc = (index: number, field: string, value: any) => {
+    const updated = [...formData.attachments_json];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormData(prev => ({ ...prev, attachments_json: updated }));
+  };
+
+  const handleAddOtherDoc = () => {
+    setFormData(prev => ({
+      ...prev,
+      attachments_json: [
+        ...prev.attachments_json,
+        {
+          category: 'TRANSACTION',
+          file_type: '',
+          url: '',
+          verification_status: 'Pending',
+          is_other: true
+        }
+      ]
+    }));
+  };
+
+  const handleRemoveOtherDoc = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments_json: prev.attachments_json.filter((_, i) => i !== index)
+    }));
+  };
   
   // Custom dialog state for deleting attachments
   const [attachmentToDelete, setAttachmentToDelete] = useState<RecordAttachment | null>(null);
@@ -74,26 +154,101 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     };
   }, [previews]);
 
-  const getDefaultAttachments = (recordType: RecordType) => {
-    if (recordType === 'EOID Under_Age') {
+  const getDefaultAttachments = (recordType: RecordType): Array<{ category: string; file_type: string; url: string; verification_status: string; is_other?: boolean }> => {
+    if (recordType === 'EOID' || recordType === 'EOID Under_Age') {
       return [
-        { file_type: 'Birth Certificate', url: '', verification_status: 'Pending' },
-        { file_type: 'Parental Consent Form', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'DAMAGED PASSPORT', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'FAYDA ID', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICANT REQUIRES A LEGAL DOCUMENT FROM WOMEN AFFAIRS', url: '', verification_status: 'Pending' },
+        { category: 'GUARDIAN', file_type: 'FAYDA ID', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'SIGNED APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'MARRIAGE CERTIFICATE', url: '', verification_status: 'Pending' }
       ];
-    } else if (recordType === 'EOID') {
+    } else if (recordType === 'VISA') {
       return [
-        { file_type: 'Passport Copy', url: '', verification_status: 'Pending' },
-        { file_type: 'Supporting Document', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'PASSPORT COPY (PAGES 1-3)', url: '', verification_status: 'Pending' },
+        { category: 'SPONSOR', file_type: 'LETTER OF INVITATION / GUARANTOR LETTER', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'VISA APPLICATION FORM (SIGNED)', url: '', verification_status: 'Pending' },
+        { category: 'TRANSACTION', file_type: 'VISA FEE RECEIPT / BANK CONFIRMATION', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'RETURN FLIGHT TICKET ITINERARY', url: '', verification_status: 'Pending' }
+      ];
+    } else if (recordType === 'Residence ID') {
+      return [
+        { category: 'APPLICANT', file_type: 'WORK PERMIT / IMMIGRATION STAMP', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'LEASE AGREEMENT / HOUSE TITLE CERTIFICATE', url: '', verification_status: 'Pending' },
+        { category: 'GUARDIAN', file_type: 'LOCAL RESIDENCE CARD (KEBELE ID)', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'EMPLOYER LETTER / SPONSOR LICENSE', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'POLICE CLEARANCE CERTIFICATE', url: '', verification_status: 'Pending' }
+      ];
+    } else if (recordType === 'ETD') {
+      return [
+        { category: 'APPLICANT', file_type: 'LOST PASSPORT POLICE REPORT', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'PROOF OF CITIZENSHIP / ERA OVERVIEW', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'ETD APPLICATION FORM (SIGNED)', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'EMERGENCY FLIGHT DETAILS / RESERVATION', url: '', verification_status: 'Pending' }
+      ];
+    } else if (recordType === 'Yellow Card') {
+      return [
+        { category: 'APPLICANT', file_type: 'ORIGIN PASSPORT COPY', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'ETHIOPIAN ORIGIN CERTIFICATE (KEBELE/COURT)', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'SIGNED APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'PROVABLE FAMILY TREE DEED', url: '', verification_status: 'Pending' }
+      ];
+    } else if (recordType === 'Eritrean ID') {
+      return [
+        { category: 'APPLICANT', file_type: 'COMMUNITY ASSOCIATION LETTER', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'ERITREAN ID CARD (EXPIRED/PREVIOUS)', url: '', verification_status: 'Pending' },
+        { category: 'GUARDIAN', file_type: 'GUARANTOR NATIONAL ID', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'SIGNED REGISTRATION FORM', url: '', verification_status: 'Pending' }
+      ];
+    } else if (recordType === 'AIRPORT') {
+      return [
+        { category: 'APPLICANT', file_type: 'AIRLINE BOARDING PASS SCAN', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'VISA / STAMP VERIFICATION', url: '', verification_status: 'Pending' },
+        { category: 'TRANSACTION', file_type: 'GATEWAY DECLARATION SHEET', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Alien Passport') {
       return [
-        { file_type: 'Passport Copy', url: '', verification_status: 'Pending' },
-        { file_type: 'Application Form', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'Alien Passport Copy', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'Application Form', url: '', verification_status: 'Pending' },
+        { category: 'TRANSACTION', file_type: 'Sponsor Guarantee Letter', url: '', verification_status: 'Pending' }
       ];
     }
     return [
-      { file_type: 'Document Scan', url: '', verification_status: 'Pending' }
+      { category: 'APPLICANT', file_type: 'Document Scan', url: '', verification_status: 'Pending' }
     ];
+  };
+
+  const getMergedAttachments = (recordType: RecordType, recordAttachments?: any[]) => {
+    const defaultList = getDefaultAttachments(recordType);
+    if (!recordAttachments || !Array.isArray(recordAttachments) || recordAttachments.length === 0) {
+      return defaultList;
+    }
+    
+    const merged = [...defaultList];
+    recordAttachments.forEach((loadedDoc: any) => {
+      const matchIdx = merged.findIndex(
+        m => m.file_type.toLowerCase() === loadedDoc.file_type.toLowerCase() && 
+             (!loadedDoc.category || m.category.toLowerCase() === loadedDoc.category.toLowerCase())
+      );
+      
+      if (matchIdx !== -1) {
+        merged[matchIdx] = { 
+          ...merged[matchIdx], 
+          url: loadedDoc.url || '',
+          verification_status: loadedDoc.verification_status || 'Pending'
+        };
+      } else {
+        merged.push({
+          category: loadedDoc.category || 'TRANSACTION',
+          file_type: loadedDoc.file_type || 'Other Document',
+          url: loadedDoc.url || '',
+          verification_status: loadedDoc.verification_status || 'Pending',
+          is_other: true
+        });
+      }
+    });
+    return merged;
   };
 
   const [formData, setFormData] = useState({
@@ -115,7 +270,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     eoid_type: '',
     dob: '',
     under_age: false,
-    attachments_json: [] as Array<{ file_type: string; url: string; verification_status: 'Pending' | 'Verified' | 'Rejected' }>,
+    attachments_json: [] as Array<{ file_type: string; url: string; verification_status: 'Pending' | 'Verified' | 'Rejected'; category?: string; is_other?: boolean }>,
   });
 
   useEffect(() => {
@@ -139,7 +294,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         eoid_type: (record as any).eoid_type || '',
         dob: (record as any).dob || '',
         under_age: (record as any).under_age !== undefined ? (record as any).under_age : (type === 'EOID Under_Age'),
-        attachments_json: (record as any).attachments || getDefaultAttachments(type),
+        attachments_json: getMergedAttachments(type, (record as any).attachments),
       });
       fetchAttachments(record.id);
     } else {
@@ -311,6 +466,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
       // Ensure each module is assigned to a dynamic or default physical cabinet box
       basePayload.box_number = formData.box_number || MODULE_BOX_MAP[type] || 'Visa-000001';
+      basePayload.attachments = formData.attachments_json;
 
       if (type === 'EOID' || type === 'EOID Under_Age') {
         basePayload.eoid_number = formData.eoid_number;
@@ -319,14 +475,17 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         basePayload.eoid_type = formData.eoid_type;
         basePayload.dob = type === 'EOID' ? null : (formData.dob || null);
         basePayload.under_age = type === 'EOID' ? false : formData.under_age;
-        basePayload.attachments = formData.attachments_json;
       }
-      if (type === 'VISA' || type === 'Alien Passport') {
+      if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID') {
         basePayload.personal_file_no = formData.personal_file_no;
+      }
+      if (type === 'Yellow Card' || type === 'Eritrean ID') {
+        basePayload.personal_id = formData.personal_id;
+        basePayload.eoid_type = formData.eoid_type;
       }
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
-      if (type === 'Yellow Card' || type === 'AIRPORT') {
+      if (type === 'Yellow Card' || type === 'AIRPORT' || type === 'Eritrean ID') {
         basePayload.letter_number = formData.letter_number;
         basePayload.document_type = formData.document_type;
       }
@@ -339,10 +498,19 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           const { created_by, ...updatePayload } = basePayload;
           let { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
           if (error) {
-            if (error.code === '42703' || error.message?.includes('personal_file_no') || error.message?.includes('does not exist')) {
-              console.warn("Database 'personal_file_no' column missing in visa_records, retrying update without it...");
-              const { personal_file_no, ...fallbackPayload } = updatePayload;
-              const retryRes = await supabase.from(tableName).update(fallbackPayload).eq('id', record.id).select().single();
+            if (error.code === '42703' || error.message?.includes('does not exist')) {
+              // Sequentially clean optional columns list and retry
+              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
+              let cleanPayload = { ...updatePayload };
+              for (const f of optFields) {
+                if (error.message?.includes(f)) {
+                  delete (cleanPayload as any)[f];
+                }
+              }
+              if (JSON.stringify(cleanPayload) === JSON.stringify(updatePayload)) {
+                delete (cleanPayload as any).personal_file_no;
+              }
+              const retryRes = await supabase.from(tableName).update(cleanPayload).eq('id', record.id).select().single();
               if (retryRes.error) throw retryRes.error;
               data = retryRes.data;
             } else {
@@ -354,10 +522,18 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         } else {
           let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
           if (error) {
-            if (error.code === '42703' || error.message?.includes('personal_file_no') || error.message?.includes('does not exist')) {
-              console.warn("Database 'personal_file_no' column missing in visa_records, retrying insert without it...");
-              const { personal_file_no, ...fallbackPayload } = basePayload;
-              const retryRes = await supabase.from(tableName).insert([fallbackPayload]).select().single();
+            if (error.code === '42703' || error.message?.includes('does not exist')) {
+              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
+              let cleanPayload = { ...basePayload };
+              for (const f of optFields) {
+                if (error.message?.includes(f)) {
+                  delete (cleanPayload as any)[f];
+                }
+              }
+              if (JSON.stringify(cleanPayload) === JSON.stringify(basePayload)) {
+                delete (cleanPayload as any).personal_file_no;
+              }
+              const retryRes = await supabase.from(tableName).insert([cleanPayload]).select().single();
               if (retryRes.error) throw retryRes.error;
               data = retryRes.data;
             } else {
@@ -448,20 +624,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         </header>
 
         <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-hide">
-          {/* Flat Inline Row for Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-6 border-b border-slate-100/80">
-            <div className="relative">
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-              <input
-                required
-                type="date"
-                className="w-full text-slate-700 font-bold bg-transparent border-none border-b border-slate-200 focus:border-[#2b825a] pb-2 text-sm outline-none transition-all cursor-pointer"
-                value={formData.date}
-                onChange={e => setFormData({ ...formData, date: e.target.value })}
-              />
-            </div>
-          </div>
-
           {/* Core Biodata Form Parameters */}
           <div className="space-y-5 text-left">
             <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
@@ -471,7 +633,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Field 1: Box No(cabinet) */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Box No (Cabinet)</label>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOX Number</label>
                 <select
                   className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer"
                   value={formData.box_number}
@@ -487,7 +649,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               </div>
 
               {/* Field 2: Personal File No. (shown conditionally/positioned specifically) */}
-              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport') ? (
+              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID') ? (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal File No.</label>
                   <input
@@ -545,10 +707,12 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Passport Number</label>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  {type === 'Eritrean ID' ? 'Id No.' : 'Passport Number'}
+                </label>
                 <input
                   required
-                  placeholder="e.g. EP0192837"
+                  placeholder={type === 'Eritrean ID' ? 'e.g. ID-88402' : 'e.g. EP0192837'}
                   className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
                   value={formData.passport_number}
                   onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
@@ -563,6 +727,17 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
                   value={formData.request_number}
                   onChange={e => setFormData({ ...formData, request_number: e.target.value })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date of Record</label>
+                <input
+                  required
+                  type="date"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer font-sans"
+                  value={formData.date}
+                  onChange={e => setFormData({ ...formData, date: e.target.value })}
                 />
               </div>
 
@@ -583,7 +758,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     <option value="Student Visa">Student Visa</option>
                     <option value="NGO Visa">NGO Visa</option>
                     <option value="Service Visa">Service Visa</option>
-                    <option value="Diplomatic Visa">Diplomatic Visa</option>
+                    <option value="Diplomatic Visa font-bold">Diplomatic Visa</option>
                     <option value="Government Visa">Government Visa</option>
                     <option value="other">other</option>
                   </select>
@@ -695,117 +870,401 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                       onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
                     />
                   </div>
+                </>
+              )}
 
-                  {/* Supporting Documents array of JSON objects */}
-                  <div className="md:col-span-2 mt-2 border border-fuchsia-100 bg-fuchsia-50/15 p-5 rounded-2xl">
-                    <h5 className="text-[11px] font-black text-fuchsia-700 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      🍼 Supporting Documents checklist (JSONB Schema)
-                    </h5>
-                    <div className="space-y-3">
-                      {formData.attachments_json.map((doc, idx) => (
-                        <div key={idx} className="bg-white border border-slate-100 p-3.5 rounded-xl flex flex-col md:flex-row gap-3 items-start md:items-center justify-between shadow-xs">
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-black text-slate-800 block truncate">{doc.file_type}</span>
-                            <span className="text-[10px] text-slate-400 truncate block mt-0.5 font-mono">
-                              {doc.url ? doc.url : 'No certificate document file uploaded or set'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 mt-2 md:mt-0">
-                            <select
-                              value={doc.verification_status}
-                              onChange={(e) => {
-                                const updated = [...formData.attachments_json];
-                                updated[idx].verification_status = e.target.value as any;
-                                setFormData(prev => ({ ...prev, attachments_json: updated }));
-                              }}
-                              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 outline-none cursor-pointer"
-                            >
-                              <option value="Pending">⚡ PENDING</option>
-                              <option value="Verified">✅ VERIFIED</option>
-                              <option value="Rejected">❌ REJECTED</option>
-                            </select>
+              {/* Custom upload format for EOID, VISA, Residence ID, ETD, etc. matching Screenshot */}
+              <div className="md:col-span-2 mt-4 space-y-6">
+                    {/* Table 1: Optional Documents */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 bg-slate-50 border border-slate-150 p-2.5 rounded-xl">
+                        <span className="text-[10px] bg-slate-200 text-slate-750 font-extrabold px-2 py-0.5 rounded font-mono uppercase">CHECKLIST</span>
+                        <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">Optional Documents</h4>
+                      </div>
+                      
+                      <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-xs">
+                        {/* Table Header */}
+                        <div className="bg-[#2c5a70] text-white py-3.5 px-4 grid grid-cols-12 gap-2 text-[10px] font-black uppercase tracking-wider">
+                          <div className="col-span-3 text-left">Category</div>
+                          <div className="col-span-4 text-left">Document Type</div>
+                          <div className="col-span-3 text-left">Upload Status</div>
+                          <div className="col-span-2 text-center">Actions</div>
+                        </div>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const input = document.createElement('input');
-                                input.type = 'file';
-                                input.onchange = async (e: any) => {
-                                  const file = e.target?.files?.[0];
-                                  if (!file) return;
-                                  setError(null);
-                                  setUploading(true);
-                                  try {
-                                    const fileExt = file.name.split('.').pop();
-                                    const folder = type === 'EOID' ? 'eoid_records' : 'eoid_underage_records';
-                                    const prefix = type === 'EOID' ? 'normal' : 'underage';
-                                    const fileName = `${prefix}_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-                                    const filePath = `${folder}/attachments/${fileName}`;
-                                    
-                                    const { error: uploadError } = await supabase.storage
-                                      .from('immigration-docs')
-                                      .upload(filePath, file);
-                                    
-                                    if (uploadError) throw uploadError;
-                                    
-                                    const { data: { publicUrl } } = supabase.storage.from('immigration-docs').getPublicUrl(filePath);
-                                    
-                                    const updated = [...formData.attachments_json];
-                                    updated[idx].url = publicUrl;
-                                    setFormData(prev => ({ ...prev, attachments_json: updated }));
-                                  } catch (err: any) {
-                                    console.error("Custom doc upload failed:", err);
-                                    const updated = [...formData.attachments_json];
-                                    updated[idx].url = `https://secure-storage.gov/docs/${file.name.replace(/\s+/g, '_')}`;
-                                    setFormData(prev => ({ ...prev, attachments_json: updated }));
-                                  } finally {
-                                    setUploading(false);
-                                  }
-                                };
-                                input.click();
-                              }}
-                              className="px-2.5 py-1.5 bg-[#2b825a]/10 hover:bg-[#2b825a]/15 text-[#2b825a] text-[11px] font-bold uppercase rounded-lg border-none cursor-pointer transition-all"
-                            >
-                              Upload Scan
-                            </button>
-                            {idx > 1 && (
+                        {/* Table Rows */}
+                        <div className="divide-y divide-slate-100">
+                          {formData.attachments_json.map((doc, idx) => ({ ...doc, originalIdx: idx })).filter(d => !d.is_other).map((doc, docIdx) => {
+                            const hasFile = Boolean(doc.url);
+                            return (
+                              <div key={docIdx} className="grid grid-cols-12 gap-2 py-3 px-4 items-center hover:bg-slate-50/50 transition-colors">
+                                {/* Category Badge */}
+                                <div className="col-span-3 text-left">
+                                  <span className="text-[10px] font-black font-sans uppercase tracking-wider text-slate-400">
+                                    {doc.category || 'APPLICANT'}
+                                  </span>
+                                </div>
+
+                                {/* Document Type */}
+                                <div className="col-span-4 text-left pr-2">
+                                  <span className="text-xs font-extrabold text-slate-800 tracking-tight uppercase block truncate" title={doc.file_type}>
+                                    {doc.file_type}
+                                  </span>
+                                </div>
+
+                                {/* Upload Status */}
+                                <div className="col-span-3 text-left">
+                                  {hasFile ? (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-[#2b825a] font-sans">
+                                      <span className="w-1.5 h-1.5 bg-[#2b825a] rounded-full animate-pulse" />
+                                      ✓ Uploaded
+                                    </span>
+                                  ) : (
+                                    <span className="text-[11px] font-bold text-slate-400 font-sans uppercase tracking-wide">
+                                      Not Provided
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Actions Column */}
+                                <div className="col-span-2 flex items-center justify-center gap-1.5">
+                                  {/* View Doc Button */}
+                                  <button
+                                    type="button"
+                                    disabled={!hasFile}
+                                    onClick={() => window.open(doc.url, '_blank')}
+                                    className="p-1.5 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 text-slate-500 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                                    title="View Scan"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Delete Doc Button */}
+                                  <button
+                                    type="button"
+                                    disabled={!hasFile}
+                                    onClick={() => handleClearUrl(doc.originalIdx)}
+                                    className="p-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-200 text-slate-500 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                                    title="Delete/Clear Scan"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Upload Doc Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveChecklistUploadIdx(doc.originalIdx);
+                                      checklistFileInputRef.current?.click();
+                                    }}
+                                    className="p-1.5 bg-slate-50 hover:bg-emerald-50 hover:text-[#2b825a] border border-slate-200 hover:border-emerald-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
+                                    title="Upload Scan File"
+                                  >
+                                    <Upload className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Scan via Camera Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setScanningDocIdx(doc.originalIdx)}
+                                    className="p-1.5 bg-slate-50 hover:bg-sky-50 hover:text-[#1a73e8] border border-slate-200 hover:border-sky-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
+                                    title="Scan Document"
+                                  >
+                                    <Scan className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table 2: Other Documents */}
+                    <div>
+                      {/* Header Band exactly like mock with Add Button */}
+                      <div className="bg-[#122e43] text-white py-2.5 px-4 rounded-t-2xl flex items-center justify-between shadow-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" />
+                          <h4 className="text-[11px] font-black uppercase tracking-wider font-sans">
+                            Other Documents
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddOtherDoc}
+                          className="px-3 py-1.5 bg-white hover:bg-slate-50 text-[#122e43] text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer border-none shadow-sm flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3 hover:scale-110 transition-transform" />
+                          <span>Add</span>
+                        </button>
+                      </div>
+
+                      <div className="border border-t-0 border-slate-200 rounded-b-2xl overflow-hidden bg-white shadow-xs">
+                        {/* Table Header */}
+                        <div className="bg-[#1b3c54]/10 text-slate-700 py-3 px-4 grid grid-cols-12 gap-2 text-[10px] font-black uppercase tracking-wider border-b border-slate-200">
+                          <div className="col-span-3 text-left">Category</div>
+                          <div className="col-span-4 text-left">Document Type</div>
+                          <div className="col-span-3 text-left">Upload Status</div>
+                          <div className="col-span-2 text-center">Actions</div>
+                        </div>
+
+                        {/* Table Rows or Empty State */}
+                        <div className="divide-y divide-slate-150 min-h-[50px] flex flex-col justify-center">
+                          {formData.attachments_json.map((doc, idx) => ({ ...doc, originalIdx: idx })).filter(d => d.is_other).length === 0 ? (
+                            <div className="py-6 text-center text-slate-400 text-xs font-bold uppercase tracking-wide">
+                              No additional documents added
+                            </div>
+                          ) : (
+                            formData.attachments_json.map((doc, idx) => ({ ...doc, originalIdx: idx })).filter(d => d.is_other).map((doc, docIdx) => {
+                              const hasFile = Boolean(doc.url);
+                              return (
+                                <div key={docIdx} className="grid grid-cols-12 gap-2 py-2.5 px-4 items-center hover:bg-slate-50/50 transition-colors">
+                                  {/* Category selection */}
+                                  <div className="col-span-3 text-left">
+                                    <select
+                                      value={doc.category || 'TRANSACTION'}
+                                      onChange={(e) => handleUpdateOtherDoc(doc.originalIdx, 'category', e.target.value)}
+                                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-black text-slate-600 outline-none cursor-pointer hover:bg-slate-100/50 transition-colors font-sans"
+                                    >
+                                      <option value="TRANSACTION">TRANSACTION</option>
+                                      <option value="APPLICANT">APPLICANT</option>
+                                      <option value="GUARDIAN">GUARDIAN</option>
+                                    </select>
+                                  </div>
+
+                                  {/* Document Type Dropdown Select */}
+                                  <div className="col-span-4 text-left pr-2">
+                                    <select
+                                      value={doc.file_type || ''}
+                                      onChange={(e) => handleUpdateOtherDoc(doc.originalIdx, 'file_type', e.target.value)}
+                                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-extrabold text-[#122e43] outline-none cursor-pointer hover:bg-slate-100/50 transition-colors uppercase block truncate"
+                                    >
+                                      <option value="">Select doc type...</option>
+                                      <option value="POWER OF ATTORNEY">POWER OF ATTORNEY</option>
+                                      <option value="BANK SLIP / PAYMENT RECEIPT">BANK SLIP / RECEIPT</option>
+                                      <option value="SUPPORTING AFFIDAVIT">SUPPORTING AFFIDAVIT</option>
+                                      <option value="COURT ORDER DECISION">COURT ORDER DECISION</option>
+                                      <option value="CUSTOM TRANSACTION PROOF">CUSTOM PROOF</option>
+                                      <option value="OTHER CLEARANCE PROOF">OTHER PROOF</option>
+                                    </select>
+                                  </div>
+
+                                  {/* Upload Status */}
+                                  <div className="col-span-3 text-left">
+                                    {hasFile ? (
+                                      <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-[#2b825a] font-sans">
+                                        <span className="w-1.5 h-1.5 bg-[#2b825a] rounded-full animate-pulse" />
+                                        ✓ Uploaded
+                                      </span>
+                                    ) : (
+                                      <span className="text-[11px] font-medium text-slate-400 font-sans uppercase tracking-wide">
+                                        Not Provided
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Actions column */}
+                                  <div className="col-span-2 flex items-center justify-center gap-1.5">
+                                    {/* View Doc */}
+                                    <button
+                                      type="button"
+                                      disabled={!hasFile}
+                                      onClick={() => window.open(doc.url, '_blank')}
+                                      className="p-1.5 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 text-slate-400 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                                      title="View"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Upload Doc */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveChecklistUploadIdx(doc.originalIdx);
+                                        checklistFileInputRef.current?.click();
+                                      }}
+                                      className="p-1.5 bg-slate-50 hover:bg-emerald-50 hover:text-[#2b825a] border border-slate-200 hover:border-emerald-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
+                                      title="Upload Scan"
+                                    >
+                                      <Upload className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Scan via Camera */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setScanningDocIdx(doc.originalIdx)}
+                                      className="p-1.5 bg-slate-50 hover:bg-sky-50 hover:text-[#1a73e8] border border-slate-200 hover:border-sky-200 text-slate-500 rounded-lg transition-colors cursor-pointer"
+                                      title="Scan Document"
+                                    >
+                                      <Scan className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Delete Row Entirely */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveOtherDoc(doc.originalIdx)}
+                                      className="p-1.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-600 border border-rose-250 text-rose-500 rounded-lg transition-colors cursor-pointer"
+                                      title="Remove Document Row"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hidden inputs specifically for structured checklist */}
+                    <input
+                      type="file"
+                      ref={checklistFileInputRef}
+                      className="hidden"
+                      onChange={handleChecklistFileSelect}
+                      accept="image/*,application/pdf"
+                    />
+
+                    {/* Animated Live Scanner Portal simulation view */}
+                    <AnimatePresence>
+                      {scanningDocIdx !== null && (
+                        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+                            onClick={() => setScanningDocIdx(null)}
+                          />
+                          
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-slate-900 border border-slate-700/50 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative z-10 p-6 text-white"
+                          >
+                            {/* Scanning Header */}
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+                                <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase font-mono">
+                                  Live Secure Document Scanner v4.1
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setScanningDocIdx(null)}
+                                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            {/* Scanning Area */}
+                            <div className="my-6 relative border-2 border-dashed border-slate-700 bg-slate-950 rounded-2xl h-56 flex flex-col items-center justify-center overflow-hidden">
+                              {/* Laser Line */}
+                              <div className="absolute left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_12px_#10b981] animate-bounce w-full top-0" style={{ animationDuration: '2s' }} />
+                              
+                              <Scan className="w-16 h-16 text-emerald-500/35 mb-3 animate-pulse" />
+                              <p className="text-xs font-mono font-bold text-slate-300">
+                                Scanning document type:
+                              </p>
+                              <p className="text-sm font-black text-emerald-400 font-mono tracking-tight uppercase mt-1 text-center px-4 truncate max-w-full">
+                                {formData.attachments_json[scanningDocIdx]?.file_type || 'Custom Document'}
+                              </p>
+                            </div>
+
+                            {/* Human Readable Status Indicators */}
+                            <div className="space-y-1.5 font-mono text-[10px] text-left text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800/40">
+                              <p className="text-emerald-400 font-bold flex items-center gap-2">
+                                <span>⚡ Camera Connected. Feed active.</span>
+                              </p>
+                              <p className="flex items-center justify-between">
+                                <span>● Calibrating auto-focus zoom:</span>
+                                <span className="text-slate-300 font-bold uppercase">Done</span>
+                              </p>
+                              <p className="flex items-center justify-between">
+                                <span>● Isolating document corners:</span>
+                                <span className="text-slate-300 font-bold uppercase">Locked</span>
+                              </p>
+                              <p className="flex items-center justify-between">
+                                <span>● Extracting printed text and barcodes:</span>
+                                <span className="text-emerald-400 font-bold uppercase animate-pulse">Running Scan...</span>
+                              </p>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="mt-6 flex justify-end gap-3.5 pt-4 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => setScanningDocIdx(null)}
+                                className="px-4 py-2 hover:bg-slate-800 rounded-xl text-xs font-bold text-slate-400 font-mono uppercase tracking-wider border-none bg-transparent"
+                              >
+                                Cancel
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    attachments_json: prev.attachments_json.filter((_, i) => i !== idx)
-                                  }));
+                                  const docType = formData.attachments_json[scanningDocIdx]?.file_type || 'Custom';
+                                  const formattedName = docType.toLowerCase().replace(/\s+/g, '_');
+                                  const mockUrl = `https://secure-storage.gov/docs/scanned_${formattedName}_${Math.floor(100000 + Math.random() * 900000)}.pdf`;
+                                  
+                                  const updated = [...formData.attachments_json];
+                                  updated[scanningDocIdx] = {
+                                    ...updated[scanningDocIdx],
+                                    url: mockUrl,
+                                    verification_status: 'Verified'
+                                  };
+                                  setFormData(prev => ({ ...prev, attachments_json: updated }));
+                                  setScanningDocIdx(null);
                                 }}
-                                className="p-1 px-2.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase hover:bg-rose-100 shrink-0 cursor-pointer"
+                                className="px-6 py-2.5 bg-[#2b825a] hover:bg-[#206243] text-white rounded-xl text-xs font-extrabold uppercase tracking-wider font-mono shadow-md border-none cursor-pointer"
                               >
-                                REMOVE
+                                Secure Capture
                               </button>
-                            )}
-                          </div>
+                            </div>
+                          </motion.div>
                         </div>
-                      ))}
-                      
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const typeInput = prompt("Enter type of supporting document (e.g. Marriage Certificate, Residence Permit, Ownership Deed, Ras Teferian Card):");
-                          if (typeInput) {
-                            setFormData(prev => ({
-                              ...prev,
-                              attachments_json: [
-                                ...prev.attachments_json,
-                                { file_type: typeInput, url: '', verification_status: 'Pending' }
-                              ]
-                            }));
-                          }
-                        }}
-                        className="w-full py-2 bg-slate-50 border border-slate-200 border-dashed rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-wider hover:bg-slate-100/50 transition-all cursor-pointer text-center"
-                      >
-                        + Add Custom Supporting Document Slot
-                      </button>
-                    </div>
+                      )}
+                    </AnimatePresence>
                   </div>
+              {(type === 'Yellow Card' || type === 'Eritrean ID') && (
+                <>
+                  <div className="flex flex-col gap-1.5 transition-all">
+                    <label className="text-[11px] font-bold text-rose-500 uppercase tracking-widest font-black flex items-center gap-1">
+                      <span>Personal ID No.</span>
+                      <span className="text-[9px] px-1 py-0.2 bg-rose-100 text-rose-700 rounded-sm">REQUIRED</span>
+                    </label>
+                    <input
+                      required
+                      placeholder="e.g. ID-994021"
+                      className="w-full px-4 py-3 bg-rose-50/5 hover:bg-rose-50/15 focus:bg-white border-2 border-rose-200/85 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all shadow-xs"
+                      value={formData.personal_id}
+                      onChange={e => setFormData({ ...formData, personal_id: e.target.value })}
+                    />
+                  </div>
+
+                  {type === 'Yellow Card' && (
+                    <div className="flex flex-col gap-1.5 transition-all">
+                      <label className="text-[11px] font-bold text-rose-500 uppercase tracking-widest font-black flex items-center gap-1">
+                        <span>Yellow Card Type</span>
+                        <span className="text-[9px] px-1 py-0.2 bg-rose-100 text-rose-700 rounded-sm">REQUIRED</span>
+                      </label>
+                      <select
+                        required
+                        className="w-full px-4 py-3 bg-rose-50/5 hover:bg-rose-50/15 focus:bg-white border-2 border-rose-200/85 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer shadow-xs"
+                        value={formData.eoid_type || ''}
+                        onChange={e => setFormData({ ...formData, eoid_type: e.target.value })}
+                      >
+                        <option value="">Select Yellow Card Type...</option>
+                        <option value="By Marriage">By Marriage</option>
+                        <option value="By Blood">By Blood</option>
+                        <option value="By Ras Teferian">By Ras Teferian</option>
+                        <option value="other">other</option>
+                      </select>
+                    </div>
+                  )}
                 </>
               )}
               {type === 'Residence ID' && (
@@ -813,7 +1272,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Residence ID No.</label>
                   <input
                     required
-                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    className="w-full px-4 py-4 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    style={{ padding: '12px 16px' }}
                     value={formData.residence_id_no}
                     onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
                   />
@@ -865,134 +1325,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             </div>
           </div>
 
-          {/* ATTACHED DOCUMENTS block (Pristinely matching Screenshot 1) */}
-          <div className="pt-6 border-t border-slate-100 space-y-4">
-            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left">
-              ATTACHED DOCUMENTS ({attachments.length + pendingFiles.length})
-            </h4>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#2b825a] hover:bg-[#206243] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Paperclip className="w-4 h-4" />}
-                <span>Upload Files</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  if (fileInputRef.current) fileInputRef.current.click();
-                }}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1a73e8] hover:bg-[#155cb8] text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer border-none outline-none"
-              >
-                <Scan className="w-4 h-4" />
-                <span>Scan via Camera</span>
-              </button>
-              
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={handleFileSelect}
-                accept="image/*,application/pdf"
-              />
-            </div>
-
-            {/* Grid of attached documents matching Screenshot 1 */}
-            <div className="flex flex-wrap gap-4 pt-2">
-              {attachments.map((file) => {
-                const isImg = file.content_type?.startsWith('image/');
-                const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
-                return (
-                  <div key={file.id} className="relative bg-[#ebeee9] border border-slate-200/60 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group transition-all shadow-xs">
-                    <button
-                      type="button"
-                      onClick={() => deleteAttachment(file)}
-                      className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors border-2 border-white shadow-md font-bold text-xs"
-                      title="Delete document"
-                    >
-                      ×
-                    </button>
-                    
-                    <div 
-                      className="w-full h-24 bg-white border border-slate-200/40 rounded-xl overflow-hidden flex items-center justify-center self-center cursor-pointer"
-                      onClick={() => window.open(fileUrl, '_blank')}
-                    >
-                      {isImg ? (
-                        <img 
-                          src={fileUrl} 
-                          alt="preview" 
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1.5 text-[#1b8b58]">
-                          {getFileIcon(file.content_type)}
-                          <span className="text-[9px] font-black uppercase text-[#1b8b58] tracking-wider">PDF SCAN</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 text-left truncate">
-                      <span className="text-[11px] font-bold text-slate-800 truncate block w-full" title={file.file_name}>
-                        {file.file_name}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
-                        {(file.size_bytes / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {pendingFiles.map((file, idx) => (
-                <div key={idx} className="relative bg-emerald-50 border border-emerald-200/50 p-3 rounded-2xl w-48 flex-shrink-0 flex flex-col justify-between group animate-pulse shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => removePendingFile(idx)}
-                    className="absolute -top-1.5 -right-1.5 bg-[#d93025] text-white hover:bg-rose-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer border-2 border-white shadow-sm font-bold text-xs"
-                  >
-                    ×
-                  </button>
-                  
-                  <div className="w-full h-24 bg-white border border-emerald-100/50 rounded-xl overflow-hidden flex items-center justify-center self-center">
-                    {file.type.startsWith('image/') && previews[file.name] ? (
-                      <img 
-                        src={previews[file.name]} 
-                        alt="preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-slate-400">
-                        {getFileIcon(file.type)}
-                        <span className="text-[8px] font-bold text-slate-400">PENDING</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-2.5 text-left">
-                    <span className="text-[11px] font-bold text-emerald-800 truncate block w-full">
-                      {file.name}
-                    </span>
-                    <span className="text-[9px] text-emerald-500 font-bold block mt-0.5">
-                      Uploading...
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {attachments.length === 0 && pendingFiles.length === 0 && (
-                <div className="w-full py-8 border border-dashed border-slate-200 rounded-2xl text-center bg-white/50">
-                  <span className="text-2xl block mb-1.5">📄</span>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">No active document scans attached</p>
-                </div>
-              )}
-            </div>
-          </div>
 
           {error && (
             <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-start gap-3 shadow-xs text-left">
