@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS public.visa_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
@@ -157,6 +158,7 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
@@ -174,6 +176,7 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
@@ -191,6 +194,7 @@ CREATE TABLE IF NOT EXISTS public.alien_passport_records (
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
@@ -367,6 +371,7 @@ CREATE TABLE IF NOT EXISTS public.airport_records (
   document_type TEXT NOT NULL DEFAULT 'Scanned Letter',
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)

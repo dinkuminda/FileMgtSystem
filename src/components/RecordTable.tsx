@@ -909,10 +909,11 @@ function RecordDetailsModal({
 
           {/* Secure verifying checklist folders (JSONB attachments schema) */}
           {(record as any).attachments && Array.isArray((record as any).attachments) && (record as any).attachments.length > 0 && (
-            <div className="mt-2 border border-fuchsia-100 bg-fuchsia-50/5 p-4 rounded-2xl">
-              <h4 className="text-[10px] font-black text-fuchsia-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                {activeTab === 'EOID' ? '💼 Verified EOID attachments checklist (JSONB Schema)' : '🍼 Verified Minors attachments checklist (JSONB Schema)'}
-              </h4>
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-2 bg-slate-50 border border-slate-150 p-2.5 rounded-xl">
+                <Paperclip className="w-4 h-4 text-[#2a4e63]" />
+                <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">Attachment</h4>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(record as any).attachments.map((doc: any, docIdx: number) => {
                   const hasUrl = Boolean(doc.url);
@@ -1048,8 +1049,35 @@ function ExpandedDocExplorerRow({
           .eq('record_id', record.id)
           .eq('record_table', TABLE_MAP[activeTab]);
         
-        if (active && !error && data) {
-          setAttachments(data as RecordAttachment[]);
+        if (active) {
+          let merged: RecordAttachment[] = [];
+          if (!error && data) {
+            merged = [...data] as RecordAttachment[];
+          }
+
+          // Merge attachments stored in JSONB schema `attachments` column
+          if (record && (record as any).attachments && Array.isArray((record as any).attachments)) {
+            (record as any).attachments.forEach((doc: any, idx: number) => {
+              if (doc && doc.url) {
+                const isDup = merged.some(m => m.file_path === doc.url);
+                if (!isDup) {
+                  merged.push({
+                    id: `jsonb-${idx}`,
+                    record_id: record.id,
+                    record_table: TABLE_MAP[activeTab],
+                    file_name: doc.file_type || `Checklist File #${idx + 1}`,
+                    file_path: doc.url,
+                    content_type: doc.file_type?.toLowerCase().includes('pdf') ? 'application/pdf' : 'image/jpeg',
+                    size_bytes: 125 * 1024,
+                    created_at: record.created_at || new Date().toISOString(),
+                    created_by: record.created_by || ''
+                  });
+                }
+              }
+            });
+          }
+
+          setAttachments(merged);
         }
       } catch (err) {
         console.error('Error fetching attachments in inline explorer:', err);
@@ -1062,7 +1090,7 @@ function ExpandedDocExplorerRow({
     return () => {
       active = false;
     };
-  }, [record.id, activeTab]);
+  }, [record.id, activeTab, record.attachments]);
 
   const getFileIcon = (type: string) => {
     if (type?.startsWith('image/')) return <ImageIcon className="w-5 h-5 text-[#39b47c]" />;
@@ -1112,10 +1140,10 @@ function ExpandedDocExplorerRow({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-          {attachments.map((file) => {
-            const isImg = file.content_type?.startsWith('image/');
-            const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
-            return (
+           {attachments.map((file) => {
+             const isImg = file.content_type?.startsWith('image/');
+             const fileUrl = file.file_path.startsWith('http') ? file.file_path : supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+             return (
               <div 
                 key={file.id} 
                 className="bg-[#0c1522] border border-white/5 rounded-2xl overflow-hidden p-3 flex flex-col justify-between group hover:border-[#2b825a]/45 transition-all w-44 md:w-48 self-start"

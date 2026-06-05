@@ -152,6 +152,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
     { type: 'Yellow Card', icon: Shield, label: 'Yellow Card ' },
+    { type: 'AIRPORT', icon: Plane, label: 'Airport Gateway' },
     { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Management' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
@@ -506,7 +507,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   );
 
   const SidebarContent = () => {
-    const isAirportContext = false;
+    const isAirportContext = location.pathname.startsWith('/airport');
 
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
@@ -947,30 +948,28 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
                 <Route path="/airport/:subTab" element={
                   hasAccess('AIRPORT') ? (
-                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
-                    </div>
+                    <AirportView 
+                      userProfile={userProfile}
+                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDeleteRecord={handleDelete}
+                      searchQuery={searchQuery}
+                      canEdit={canEdit()}
+                      refreshCounter={refreshCounter}
+                    />
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/airport" element={
                   hasAccess('AIRPORT') ? (
-                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
-                    </div>
+                    <AirportView 
+                      userProfile={userProfile}
+                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                      onDeleteRecord={handleDelete}
+                      searchQuery={searchQuery}
+                      canEdit={canEdit()}
+                      refreshCounter={refreshCounter}
+                    />
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/yellow-card" element={

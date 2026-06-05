@@ -498,7 +498,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           const { created_by, ...updatePayload } = basePayload;
           let { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
           if (error) {
-            if (error.code === '42703' || error.message?.includes('does not exist')) {
+            if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
               // Sequentially clean optional columns list and retry
               const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
               let cleanPayload = { ...updatePayload };
@@ -522,7 +522,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         } else {
           let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
           if (error) {
-            if (error.code === '42703' || error.message?.includes('does not exist')) {
+            if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
               const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
               let cleanPayload = { ...basePayload };
               for (const f of optFields) {
@@ -878,8 +878,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     {/* Table 1: Optional Documents */}
                     <div>
                       <div className="flex items-center gap-2 mb-2 bg-slate-50 border border-slate-150 p-2.5 rounded-xl">
-                        <span className="text-[10px] bg-slate-200 text-slate-750 font-extrabold px-2 py-0.5 rounded font-mono uppercase">CHECKLIST</span>
-                        <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">Optional Documents</h4>
+                        <Paperclip className="w-4 h-4 text-[#2a4e63]" />
+                        <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">Attachment</h4>
                       </div>
                       
                       <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-xs">

@@ -156,6 +156,31 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
           allAttachments = [...allAttachments, ...data];
         }
       }
+
+      // Merge inline JSONB attachments from exactMatches
+      exactMatches.forEach(m => {
+        if ((m as any).attachments && Array.isArray((m as any).attachments)) {
+          (m as any).attachments.forEach((doc: any, idx: number) => {
+            if (doc && doc.url) {
+              const table = (m as any)._table || 'airport_records';
+              const isDup = allAttachments.some(attr => attr.file_path === doc.url && attr.record_id === m.id);
+              if (!isDup) {
+                allAttachments.push({
+                  id: `jsonb-${m.id}-${idx}`,
+                  record_id: m.id,
+                  record_table: table,
+                  file_name: doc.file_type || `Checklist File #${idx + 1}`,
+                  file_path: doc.url,
+                  content_type: doc.file_type?.toLowerCase().includes('pdf') ? 'application/pdf' : 'image/jpeg',
+                  size_bytes: 125 * 1024,
+                  created_at: m.created_at || new Date().toISOString(),
+                  created_by: m.created_by || ''
+                });
+              }
+            }
+          });
+        }
+      });
       
       const grouped = (allAttachments || []).reduce((acc: any, attr: any) => {
         if (!acc[attr.record_id]) acc[attr.record_id] = [];
@@ -565,7 +590,11 @@ function AirportRecordTable({
               const attachmentCount = attachments.length || (hasAttachment ? 1 : 0);
               const fileUrl = (record.attachment_url && record.attachment_url !== 'null') 
                 ? record.attachment_url 
-                : (attachments.length > 0 ? supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl : null);
+                : (attachments.length > 0 
+                    ? (attachments[0].file_path.startsWith('http') 
+                        ? attachments[0].file_path 
+                        : supabase.storage.from('immigration-docs').getPublicUrl(attachments[0].file_path).data.publicUrl) 
+                    : null);
 
               return (
                 <tr key={record.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/5 transition-colors group">
@@ -844,7 +873,7 @@ function AirportDetailsModal({
 
                 {/* DB record_attachments files */}
                 {attachments.map((file) => {
-                  const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                  const fileUrl = file.file_path.startsWith('http') ? file.file_path : supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
                   return (
                     <div key={file.id} className="border border-slate-100 dark:border-gray-800 p-3 rounded-2xl flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-gray-850 transition-all bg-white dark:bg-gray-900 shadow-xs">
                       <div className="flex items-center gap-3 truncate">

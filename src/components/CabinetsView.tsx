@@ -256,9 +256,34 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
             .select('*')
             .eq('record_id', viewingRecord.id)
             .eq('record_table', TABLE_MAP[rType]);
+          
+          let merged: RecordAttachment[] = [];
           if (!error && data) {
-            setViewingRecordAttachments(data as RecordAttachment[]);
+            merged = [...data] as RecordAttachment[];
           }
+
+          if (viewingRecord && (viewingRecord as any).attachments && Array.isArray((viewingRecord as any).attachments)) {
+            (viewingRecord as any).attachments.forEach((doc: any, idx: number) => {
+              if (doc && doc.url) {
+                const isDup = merged.some(m => m.file_path === doc.url);
+                if (!isDup) {
+                  merged.push({
+                    id: `jsonb-${idx}`,
+                    record_id: viewingRecord.id,
+                    record_table: TABLE_MAP[rType],
+                    file_name: doc.file_type || `Checklist File #${idx + 1}`,
+                    file_path: doc.url,
+                    content_type: doc.file_type?.toLowerCase().includes('pdf') ? 'application/pdf' : 'image/jpeg',
+                    size_bytes: 125 * 1024,
+                    created_at: viewingRecord.created_at || new Date().toISOString(),
+                    created_by: viewingRecord.created_by || ''
+                  });
+                }
+              }
+            });
+          }
+
+          setViewingRecordAttachments(merged);
         } catch (err) {
           console.error("Error loading viewing attachments:", err);
         } finally {
@@ -878,7 +903,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {viewingRecordAttachments.map((file) => {
-                        const fileUrl = supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
+                        const fileUrl = file.file_path.startsWith('http') ? file.file_path : supabase.storage.from('immigration-docs').getPublicUrl(file.file_path).data.publicUrl;
                         return (
                           <div key={file.id} className="border border-slate-100 p-3 rounded-2xl flex items-center justify-between hover:bg-slate-50 bg-white">
                             <div className="flex items-center gap-2.5 truncate">
