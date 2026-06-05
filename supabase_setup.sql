@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'airport_viewer')),
-  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport'],
+  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'],
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 DO $$ 
 BEGIN 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='modules') THEN
-    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport'];
+    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
   END IF;
 END $$;
 
@@ -226,7 +226,7 @@ BEGIN
       ELSE 'viewer'
     END,
     CASE
-      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT']
+      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Yellow Card', 'Eritrean ID', 'AUDIT']
       WHEN new.email = 'dinku_staff@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
       WHEN new.email LIKE '%weleba%' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
       WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
@@ -362,6 +362,10 @@ CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO au
 -- 7. Airport Records Table (Specialized for Bole Airport Letters/Docs)
 CREATE TABLE IF NOT EXISTS public.airport_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  box_number TEXT,
+  personal_file_no TEXT,
+  personal_id TEXT,
+  eoid_type TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -442,10 +446,10 @@ CREATE POLICY "Allow authenticated access" ON storage.objects
 -- 10. Admin Profile Boost
 -- Ensure the primary admin email always has admin role regardless of when they signed up
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT', 'Alien Passport']
+SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport']
 FROM auth.users
 WHERE email = 'dinkuh12@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT', 'Alien Passport'];
+ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport'];
 
 -- Boost for Ephrem (Airport Only)
 INSERT INTO public.profiles (id, email, role, full_name, modules)
@@ -494,8 +498,12 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
   ('ETD', ARRAY['admin'], ARRAY[]::text[], ARRAY[]::text[])
   ON CONFLICT (module) DO NOTHING;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
-  ('Yellow Card', ARRAY['admin', 'staff', 'airport_staff'], ARRAY[]::text[], ARRAY[]::text[])
-  ON CONFLICT (module) DO NOTHING;
+  ('Yellow Card', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])
+  ON CONFLICT (module) DO UPDATE SET view_roles = EXCLUDED.view_roles, create_roles = EXCLUDED.create_roles, update_roles = EXCLUDED.update_roles;
+
+INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
+  ('Eritrean ID', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])
+  ON CONFLICT (module) DO UPDATE SET view_roles = EXCLUDED.view_roles, create_roles = EXCLUDED.create_roles, update_roles = EXCLUDED.update_roles;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
   ('CABINETS', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY[]::text[])
   ON CONFLICT (module) DO NOTHING;
