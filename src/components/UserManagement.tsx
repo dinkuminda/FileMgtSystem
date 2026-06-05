@@ -643,6 +643,11 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
         }
       });
 
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`The backend API is not yet online or returned a non-JSON response (${res.status}). Please verify that backend environment variables (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are configured in Settings.`);
+      }
+
       const data = await res.json();
       if (res.ok && data.users) {
         setUsers(data.users);

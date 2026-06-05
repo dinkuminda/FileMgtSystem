@@ -28,14 +28,14 @@ if (geminiApiKey) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const supabaseUrl = process.env.SUPABASE_URL || "";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder-project.supabase.co";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
 // Initialize Supabase Admin client
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.error("CRITICAL ERROR: Supabase environment variables are missing!");
-  console.error("SUPABASE_URL:", supabaseUrl ? "Defined" : "MISSING");
-  console.error("SUPABASE_SERVICE_ROLE_KEY:", supabaseServiceKey ? "Defined" : "MISSING");
+  console.error("SUPABASE_URL:", process.env.SUPABASE_URL ? "Defined" : "MISSING");
+  console.error("SUPABASE_SERVICE_ROLE_KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "Defined" : "MISSING");
 }
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
