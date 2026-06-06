@@ -41,7 +41,8 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
     { id: 'audit', label: 'Audit', icon: Activity, module: 'AUDIT' },
   ].filter(tab => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
 
     // Direct check for weleba ephrem as an active authorized staff member
     const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
@@ -55,7 +56,7 @@ export default function AirportView({ userProfile, onAddRecord, onEditRecord, on
       return userProfile.modules.includes(tab.module);
     }
     // Fallback for staff
-    if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+    if (r === 'airport_staff' || r === 'airport_viewer' || r === 'staff' || r === 'supervisor') {
       return ['dashboard', 'view', 'add', 'edit'].includes(tab.id);
     }
     // Regular staff with no modules configuration can only view basic tabs

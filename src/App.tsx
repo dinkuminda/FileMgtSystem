@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { supabase, isSupabaseConfigured, type UserProfile, logger } from './lib/supabase';
+import { supabase, isSupabaseConfigured, type UserProfile, logger, mapDbRoleToFrontend } from './lib/supabase';
 import Auth from './components/Auth';
 import Home from './components/Home';
 import Dashboard from './components/Dashboard';
@@ -88,7 +88,10 @@ export default function App() {
       .single();
 
     if (!error && data) {
-      const profile = data as UserProfile;
+      const profile = {
+        ...data,
+        role: mapDbRoleToFrontend(data.role)
+      } as UserProfile;
       // Fail-safe check: guarantee weleba ephrem has airport modules correctly parsed and active
       if (profile.email?.toLowerCase().includes('weleba') || profile.full_name?.toLowerCase().includes('weleba')) {
         if (!profile.modules || !Array.isArray(profile.modules)) {
@@ -112,7 +115,7 @@ export default function App() {
         setUserProfile({
           id: user.id,
           email: user.email || '',
-          role: isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff',
+          role: mapDbRoleToFrontend(isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff'),
           full_name: user.user_metadata?.full_name || (isWeleba ? 'weleba ephrem' : undefined),
           modules: isWeleba ? ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'] : undefined
         });

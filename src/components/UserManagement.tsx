@@ -21,7 +21,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase, type UserProfile } from '../lib/supabase';
+import { supabase, type UserProfile, mapDbRoleToFrontend, mapFrontendRoleToDb } from '../lib/supabase';
 import { 
   getPermissionRules, 
   savePermissionRules, 
@@ -69,45 +69,35 @@ interface TeamDirectoryProps {
 
 function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDirectoryProps) {
   const getRoleLabel = (role: string) => {
-    const r = (role || '').toLowerCase();
-    switch (r) {
-      case 'super_admin':
-      case 'super admin':
+    const frontendRole = mapDbRoleToFrontend(role);
+    switch (frontendRole) {
+      case 'Super_admin':
         return 'Super Admin';
       case 'admin':
         return 'Admin';
-      case 'staff':
-      case 'supervisor':
+      case 'Supervisor':
         return 'Supervisor';
-      case 'editor':
+      case 'Editor':
         return 'Editor';
-      case 'viewer':
+      case 'Viewer':
         return 'Viewer';
-      case 'airport_staff':
-        return 'Bole Airport Staff';
-      case 'airport_viewer':
-        return 'Bole Airport Viewer';
       default:
-        return role;
+        return frontendRole;
     }
   };
 
   const getRoleStyle = (role: string) => {
-    const r = (role || '').toLowerCase();
-    switch (r) {
-      case 'super_admin':
-      case 'super admin':
-      case 'admin':
+    const frontendRole = mapDbRoleToFrontend(role);
+    switch (frontendRole) {
+      case 'Super_admin':
         return 'bg-[#FDF2F2] text-[#EF4444] border border-[#FEE2E2]'; // Light Red
-      case 'staff':
-      case 'supervisor':
-      case 'editor':
+      case 'admin':
+        return 'bg-[#FEF3C7] text-[#D97706] border border-[#FDE68A]'; // Amber
+      case 'Supervisor':
         return 'bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE]'; // Light Blue
-      case 'airport_staff':
-        return 'bg-[#FFFBEB] text-[#D97706] border border-[#FEF3C7]'; // Light Yellow/Amber
-      case 'airport_viewer':
-        return 'bg-[#ECFDF5] text-[#059669] border border-[#D1FAE5]'; // Light Emerald
-      case 'viewer':
+      case 'Editor':
+        return 'bg-[#ECFDF5] text-[#059669] border border-[#D1FAE5]'; // Emerald
+      case 'Viewer':
       default:
         return 'bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]'; // Light Gray
     }
@@ -150,9 +140,6 @@ function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDire
               {/* System Role Badge */}
               <td className="py-4 px-6">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border rounded-[4px] uppercase ${getRoleStyle(user.role)}`}>
-                  {user.role.toLowerCase() === 'airport_staff' && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] mr-1.5 inline-block" />
-                  )}
                   {getRoleLabel(user.role)}
                 </span>
               </td>
@@ -386,13 +373,7 @@ interface EditUserModalProps {
 
 function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
   const getInitialRole = (roleVal: string) => {
-    const r = (roleVal || '').toLowerCase();
-    if (r === 'super_admin' || r === 'super admin') return 'Super_Admin';
-    if (r === 'admin') return 'Admin';
-    if (r === 'staff' || r === 'supervisor') return 'Supervisor';
-    if (r === 'editor') return 'Editor';
-    if (r === 'viewer') return 'Viewer';
-    return roleVal;
+    return mapDbRoleToFrontend(roleVal);
   };
 
   const [role, setRole] = useState(getInitialRole(user.role));
@@ -516,8 +497,8 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
   onChange={(e) => setRole(e.target.value)}
   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all font-medium text-slate-800"
 >
-  <option value="Super_Admin">Super Admin (System Configuration)</option>
-  <option value="Admin">Admin (User & Folder Management)</option>
+  <option value="Super_admin">Super Admin (System Configuration)</option>
+  <option value="admin">Admin (User & Folder Management)</option>
   <option value="Supervisor">Supervisor (Approval & Team Management)</option>
   <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
   <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
@@ -660,7 +641,7 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
   const [createEmail, setCreateEmail] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [createFullName, setCreateFullName] = useState('');
-  const [createRole, setCreateRole] = useState('staff');
+  const [createRole, setCreateRole] = useState('Supervisor');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
@@ -688,8 +669,8 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
       // Fetch users from our custom admin server endpoint with self-healing retries during boots/restarts
       let res: Response | null = null;
       let lastError: Error | null = null;
-      const maxRetries = 4;
-      const retryDelayMs = 1200;
+      const maxRetries = 3;
+      const retryDelayMs = 1000;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -718,21 +699,62 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
         }
       }
 
-      if (!res) {
-        throw new Error(lastError?.message || "Secure endpoint could not be contacted.");
+      let fetchedUsers: any[] = [];
+      let success = false;
+
+      // 1. Attempt to parse Express API response if it responded with JSON
+      try {
+        if (res) {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            if (res.ok && data.users) {
+              fetchedUsers = data.users.map((u: any) => ({
+                ...u,
+                role: mapDbRoleToFrontend(u.role)
+              }));
+              success = true;
+            } else if (data.error) {
+              lastError = new Error(data.error);
+            }
+          }
+        }
+      } catch (backendErr: any) {
+        console.warn("[API FALLBACK] Backend parse error, trying direct profiles DB query:", backendErr.message);
+        lastError = backendErr;
       }
 
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error(`The backend API is not yet online or returned a non-JSON response (${res.status}). Please verify that backend environment variables (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are configured in Settings.`);
+      // 2. Clear-cut Fallback: If backend was offline, returned 404, or threw, query 'profiles' table directly.
+      if (!success) {
+        console.warn("[API FALLBACK] Backend API unavailable or unauthorized. Reverting to secure direct profiles query fallback...");
+        const { data: profiles, error: dbError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role, modules, updated_at');
+
+        if (dbError) {
+          console.error("[API FALLBACK] Direct profiles database query also failed:", dbError.message);
+          throw new Error(
+            lastError?.message || 
+            `Credential directory sync offline. Backend returned (${res?.status || 'Offline'}) and Supabase query failed: ${dbError.message}.`
+          );
+        }
+
+        if (profiles) {
+          fetchedUsers = profiles.map(p => ({
+            id: p.id,
+            email: p.email,
+            last_sign_in_at: new Date().toISOString(),
+            created_at: p.updated_at || new Date().toISOString(),
+            confirmed_at: p.updated_at || new Date().toISOString(),
+            full_name: p.full_name || p.email.split('@')[0],
+            role: mapDbRoleToFrontend(p.role || 'staff'),
+            modules: p.modules || []
+          }));
+          success = true;
+        }
       }
 
-      const data = await res.json();
-      if (res.ok && data.users) {
-        setUsers(data.users);
-      } else {
-        throw new Error(data.error || 'Unable to scan active credentials vault.');
-      }
+      setUsers(fetchedUsers);
 
       // Load permissions rules
       const rules = await getPermissionRules();
@@ -1078,11 +1100,11 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                     onChange={(e) => setCreateRole(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-800"
                   >
-                    <option value="Super_Admin">Super Admin (System Configuration)</option>
-  <option value="Admin">Admin (User & Folder Management)</option>
-  <option value="Supervisor">Supervisor (Approval & Team Management)</option>
-  <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
-  <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
+                    <option value="Super_admin">Super Admin (System Configuration)</option>
+                    <option value="admin">Admin (User & Folder Management)</option>
+                    <option value="Supervisor">Supervisor (Approval & Team Management)</option>
+                    <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
+                    <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
                   </select>
                 </div>
 

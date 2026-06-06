@@ -121,22 +121,25 @@ export async function savePermissionRules(rules: ModulePermissionRule[]): Promis
 
 // Standard Role checks
 export function hasViewAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
-  if (role === 'admin' || role === 'super_admin') return true; // Super admins bypass checks for viewing modules they configured
-  const rule = rules.find(r => r.module === moduleName);
+  const r = (role || '').toLowerCase();
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true; // Admins bypass checks for viewing modules they configured
+  const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return true; // default true if module configuration isn't declared
-  return rule.view_roles.includes(role);
+  return rule.view_roles.some(v => v.toLowerCase() === r);
 }
 
 export function hasCreateAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
-  if (role === 'admin' || role === 'super_admin') return true;
-  const rule = rules.find(r => r.module === moduleName);
+  const r = (role || '').toLowerCase();
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true;
+  const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return false;
-  return rule.create_roles.includes(role);
+  return rule.create_roles.some(c => c.toLowerCase() === r);
 }
 
 export function hasUpdateAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
-  if (role === 'admin' || role === 'super_admin') return true;
-  const rule = rules.find(r => r.module === moduleName);
+  const r = (role || '').toLowerCase();
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true;
+  const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return false;
-  return rule.update_roles.includes(role);
+  return rule.update_roles.some(u => u.toLowerCase() === r);
 }

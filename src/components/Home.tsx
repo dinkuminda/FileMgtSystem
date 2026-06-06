@@ -360,27 +360,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Quick Status / Metrics Band */}
-      <section className="border-y border-slate-200 bg-white py-8 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div className="space-y-1">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900">42,912+</p>
-            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Active Records</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl sm:text-3xl font-black text-[#10b981]">99.99%</p>
-            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Uptime SLA</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900">&lt; 150ms</p>
-            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Query Latency</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900">100%</p>
-            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Audit Traceability</p>
-          </div>
-        </div>
-      </section>
+
+
+
 
       {/* Core Modules Grid */}
       <section id="modules" className="max-w-6xl mx-auto px-6 py-24 space-y-16">

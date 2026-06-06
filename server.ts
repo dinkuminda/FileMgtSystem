@@ -67,6 +67,12 @@ async function startServer() {
     });
   });
 
+  // Helper helper to check if database role corresponds to an authorized Admin user
+  function isDbAdminRole(role: string): boolean {
+    const r = (role || '').toLowerCase();
+    return r === 'admin' || r === 'super_admin' || r === 'admin_grant' || r === 'airport_staff';
+  }
+
   // Admin: Reset Password
   app.post("/api/admin/reset-password", async (req, res) => {
     const authHeader = req.headers.authorization;
@@ -97,7 +103,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profileError || (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant')) {
+      if (profileError || !isDbAdminRole(profile?.role || '')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -138,7 +144,7 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (!isDbAdminRole(profile?.role || '')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -165,12 +171,17 @@ async function startServer() {
     const { userId, newRole } = req.body;
 
     // Symmetrically map the custom frontend roles into DB compatible checked roles
-    let dbRole = newRole;
-    if (newRole === 'Super_Admin' || newRole === 'Admin' || newRole === 'admin' || newRole === 'super_admin') {
+    let dbRole = 'viewer';
+    const r = (newRole || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant') {
       dbRole = 'admin';
-    } else if (newRole === 'Supervisor' || newRole === 'Editor' || newRole === 'staff') {
+    } else if (r === 'admin') {
+      dbRole = 'airport_staff';
+    } else if (r === 'supervisor' || r === 'staff') {
       dbRole = 'staff';
-    } else if (newRole === 'Viewer' || newRole === 'viewer') {
+    } else if (r === 'editor' || r === 'airport_viewer') {
+      dbRole = 'airport_viewer';
+    } else if (r === 'viewer') {
       dbRole = 'viewer';
     }
 
@@ -189,24 +200,18 @@ async function startServer() {
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (!isDbAdminRole(profile?.role || '')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
       // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (dbRole === 'admin') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
-      } else if (dbRole === 'staff') {
-        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+      if (dbRole === 'admin' || dbRole === 'airport_staff') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+      } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
+        defaultModules = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
-      } else if (dbRole === 'airport_staff') {
-        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (dbRole === 'airport_viewer' || dbRole === 'view_only') {
-        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
-      } else if (dbRole === 'add_records') {
-        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       const { error } = await supabaseAdmin
@@ -236,12 +241,17 @@ async function startServer() {
     }
 
     // Symmetrically map custom frontend roles to DB check-constraint approved roles
-    let dbRole = role;
-    if (role === 'Super_Admin' || role === 'Admin' || role === 'admin' || role === 'super_admin') {
+    let dbRole = 'viewer';
+    const r = (role || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant') {
       dbRole = 'admin';
-    } else if (role === 'Supervisor' || role === 'Editor' || role === 'staff') {
+    } else if (r === 'admin') {
+      dbRole = 'airport_staff';
+    } else if (r === 'supervisor' || r === 'staff') {
       dbRole = 'staff';
-    } else if (role === 'Viewer' || role === 'viewer') {
+    } else if (r === 'editor' || r === 'airport_viewer') {
+      dbRole = 'airport_viewer';
+    } else if (r === 'viewer') {
       dbRole = 'viewer';
     }
 
@@ -255,7 +265,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (!isDbAdminRole(profile?.role || '')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -272,18 +282,12 @@ async function startServer() {
 
       // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (dbRole === 'admin') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
-      } else if (dbRole === 'staff') {
-        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+      if (dbRole === 'admin' || dbRole === 'airport_staff') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+      } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
+        defaultModules = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
-      } else if (dbRole === 'airport_staff') {
-        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (dbRole === 'airport_viewer' || dbRole === 'view_only') {
-        defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
-      } else if (dbRole === 'add_records') {
-        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       // Profile is auto-created by trigger, but we want to ensure role and modules are correct
@@ -322,7 +326,7 @@ async function startServer() {
         .eq('id', requester.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
+      if (!isDbAdminRole(profile?.role || '')) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
 
@@ -358,44 +362,79 @@ async function startServer() {
     const token = authHeader.split(" ")[1];
 
     try {
-      // 1. Verify requester is admin
+      // 1. Verify requester is admin OR has USERS module clearance
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('role')
+        .select('role, modules')
         .eq('id', user.id)
         .single();
 
-      if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'admin_grant') {
-        return res.status(403).json({ error: "Forbidden" });
+      const isAuthorizedRole = isDbAdminRole(profile?.role || '');
+      const hasUsersClearance = profile?.modules?.includes('USERS');
+
+      if (!isAuthorizedRole && !hasUsersClearance) {
+        return res.status(403).json({ error: "Forbidden: You do not have compliance clearance for User Directory access." });
       }
 
-      // 2. Fetch all users from auth management
-      const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-      if (listError) throw listError;
+      // 2. Fetch all users from auth management (graceful fallback if listUsers is blocked or key is invalid)
+      let users: any[] = [];
+      try {
+        const { data: authData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        if (listError) {
+          console.warn("[API WARNING] Could not list auth users directly. Falling back to DB profiles list resolution. Reason:", listError.message);
+        } else if (authData && authData.users) {
+          users = authData.users;
+        }
+      } catch (listExc: any) {
+        console.warn("[API WARNING] Exception during auth.admin.listUsers. Falling back to DB profiles list resolution. Exception:", listExc.message);
+      }
 
       // 3. Fetch all profiles to join roles/names
-      const { data: profiles } = await supabaseAdmin.from('profiles').select('id, email, full_name, role, modules');
+      const { data: profiles, error: pErr } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, full_name, role, modules, updated_at');
+      
+      if (pErr) {
+        throw new Error(`Profile synchronization failed: ${pErr.message}`);
+      }
 
-      // 4. Merge data
-      const mergedUsers = users.map(u => {
-        const p = (profiles || []).find(prof => prof.id === u.id);
-        return {
-          id: u.id,
-          email: u.email,
-          last_sign_in_at: u.last_sign_in_at,
-          created_at: u.created_at,
-          confirmed_at: u.email_confirmed_at,
-          full_name: p?.full_name || u.user_metadata?.full_name,
-          role: p?.role || 'staff',
-          modules: p?.modules || []
-        };
-      });
+      // 4. Merge data (use profiles table as supreme fallback if admin auth list is closed)
+      let mergedUsers: any[] = [];
+
+      if (users && users.length > 0) {
+        mergedUsers = users.map(u => {
+          const p = (profiles || []).find(prof => prof.id === u.id);
+          return {
+            id: u.id,
+            email: u.email,
+            last_sign_in_at: u.last_sign_in_at,
+            created_at: u.created_at,
+            confirmed_at: u.email_confirmed_at,
+            full_name: p?.full_name || u.user_metadata?.full_name,
+            role: p?.role || 'staff',
+            modules: p?.modules || []
+          };
+        });
+      } else {
+        // Safe robust build from profiles database records
+        mergedUsers = (profiles || []).map(p => ({
+          id: p.id,
+          email: p.email,
+          last_sign_in_at: new Date().toISOString(),
+          created_at: p.updated_at || new Date().toISOString(),
+          confirmed_at: p.updated_at || new Date().toISOString(),
+          full_name: p.full_name || p.email.split('@')[0],
+          role: p.role || 'staff',
+          modules: p.modules || []
+        }));
+      }
 
       res.json({ users: mergedUsers });
     } catch (err: any) {
+      console.error("[API ERROR] Error in /api/admin/users handler:", err);
       res.status(500).json({ error: err.message });
     }
   });

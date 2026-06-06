@@ -173,7 +173,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (!userProfile) return false;
     
     // Admins should always see everything
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
 
     // Command Deck (Overview) is the baseline landing page for everyone
     if (tab.type === 'OVERVIEW') return true;
@@ -201,7 +202,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
     // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
     // However, if they are historic airport_staff/airport_viewer, let them view AIRPORT/Yellow Card.
-    if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+    if (r === 'airport_staff' || r === 'airport_viewer' || r === 'staff' || r === 'supervisor') {
       return tab.type === 'Yellow Card' || tab.type === 'AIRPORT';
     }
 
@@ -219,7 +220,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
   ].filter(at => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
     if (userProfile.modules && userProfile.modules.length > 0) {
       // If they have users/audit module, show them in airport too
       if (at.module === 'USERS') return userProfile.modules.includes('USERS');
@@ -365,7 +367,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const hasAccess = (tabType: typeof allTabs[number]['type']) => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
     return tabs.some(t => t.type === tabType);
   };
 
@@ -477,7 +480,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const canAdd = () => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
@@ -489,7 +493,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const canEdit = () => {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'admin_grant') return true;
+    const r = (userProfile.role as string || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
@@ -736,7 +741,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       </AnimatePresence>
 
       {/* FAB */}
-      {canAdd() && ['VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) && (
+      {canAdd() && ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT', 'Eritrean ID', 'Alien Passport'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
           className={`fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 ${currentTheme.primary} ${currentTheme.primaryHover} text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none`}
@@ -854,7 +859,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
                <div className="mb-8 md:mb-10">
-                {['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT'].includes(activeTab) ? (
+                {['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT', 'Eritrean ID', 'Alien Passport'].includes(activeTab) ? (
                   <div className="space-y-6">
                     {/* FSD Division style heading row */}
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
@@ -866,6 +871,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                            activeTab === 'Residence ID' ? 'Residence ID Division' : 
                            activeTab === 'ETD' ? 'ETD Structuring Division' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Division' : 
+                           activeTab === 'Eritrean ID' ? 'Eritrean ID Structuring Division' :
+                           activeTab === 'Alien Passport' ? 'Alien Passport Structuring Division' :
                            activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
@@ -874,6 +881,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                            activeTab === 'EOID Under_Age' ? 'SOURCE: - Verified Minors Database Registry' : 
                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
+                           activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
+                           activeTab === 'Alien Passport' ? 'SOURCE: - ALIEN PASSPORT RECEPTACLE DATA' :
                            activeTab === 'AIRPORT' ? 'SOURCE: - BOLE AIRPORT BORDER SECURITY CONTROL' :
                            'SOURCE: - DIASPORA REGISTRATION HUB'}
                         </p>

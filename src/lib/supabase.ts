@@ -17,7 +17,7 @@ export const supabase = createClient(
   finalAnonKey || 'placeholder'
 );
 
-export type UserRole = 'super_admin' | 'admin' | 'staff' | 'viewer' | 'airport_staff' | 'airport_viewer' | 'view_only' | 'add_records' | 'admin_grant';
+export type UserRole = 'Super_admin' | 'admin' | 'Supervisor' | 'Editor' | 'Viewer';
 
 export interface UserProfile {
   id: string;
@@ -26,6 +26,30 @@ export interface UserProfile {
   full_name?: string;
   modules?: string[];
   theme?: string;
+}
+
+export function mapDbRoleToFrontend(dbRole: string): UserRole {
+  const r = (dbRole || '').toLowerCase();
+  if (r === 'admin') return 'Super_admin';
+  if (r === 'airport_staff') return 'admin';
+  if (r === 'staff') return 'Supervisor';
+  if (r === 'airport_viewer') return 'Editor';
+  if (r === 'viewer') return 'Viewer';
+  // Fallbacks
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin') return 'Super_admin';
+  if (r === 'supervisor') return 'Supervisor';
+  if (r === 'editor') return 'Editor';
+  return 'Viewer';
+}
+
+export function mapFrontendRoleToDb(frontendRole: string): string {
+  const r = (frontendRole || '').toLowerCase();
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin') return 'admin';
+  if (r === 'admin') return 'airport_staff';
+  if (r === 'supervisor') return 'staff';
+  if (r === 'editor') return 'airport_viewer';
+  if (r === 'viewer') return 'viewer';
+  return 'viewer';
 }
 
 export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'AIRPORT' | 'EOID Under_Age' | 'Alien Passport' | 'Eritrean ID';

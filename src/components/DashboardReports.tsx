@@ -100,7 +100,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin' || userProfile?.role === 'admin_grant';
+      const userR = (userProfile?.role as string || '').toLowerCase();
+      const isAdmin = userR === 'admin' || userR === 'super_admin' || userR === 'admin_grant' || userR === 'airport_staff';
       const isUpdatingSelf = selectedUser.id === userProfile?.id;
 
       let success = false;
@@ -186,7 +187,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     return "VISA";
   };
 
-  const canEditOrDelete = !userProfile || userProfile.role === 'admin' || userProfile.role === 'super_admin' || userProfile.role === 'staff' || userProfile.role === 'airport_staff';
+  const profileR = (userProfile?.role as string || '').toLowerCase();
+  const canEditOrDelete = !userProfile || profileR === 'admin' || profileR === 'super_admin' || profileR === 'staff' || profileR === 'airport_staff' || profileR === 'supervisor';
 
   const getBoxDesc = (boxName: string) => {
     if (BOX_MODULE_DESC[boxName]) return BOX_MODULE_DESC[boxName];
@@ -305,19 +307,22 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       const results = await Promise.all(
         Object.entries(TABLE_MAP).map(async ([type, table]) => {
           let hasAccess = true;
-          if (userProfile && userProfile.role !== 'admin' && userProfile.role !== 'super_admin') {
-            if (userProfile.modules) {
-              if (type === 'Yellow Card') {
-                hasAccess = userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+          if (userProfile) {
+            const roleL = (userProfile.role as string || '').toLowerCase();
+            if (roleL !== 'admin' && roleL !== 'super_admin' && roleL !== 'super-admin' && roleL !== 'super admin') {
+              if (userProfile.modules) {
+                if (type === 'Yellow Card') {
+                  hasAccess = userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+                } else {
+                  hasAccess = userProfile.modules.includes(type);
+                }
               } else {
-                hasAccess = userProfile.modules.includes(type);
-              }
-            } else {
-              if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
-                hasAccess = type === 'Yellow Card' || type === 'AIRPORT';
-              } else {
-                // Regular staff with no configured modules array get no default division access
-                hasAccess = false;
+                if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
+                  hasAccess = type === 'Yellow Card' || type === 'AIRPORT';
+                } else {
+                  // Regular staff with no configured modules array get no default division access
+                  hasAccess = false;
+                }
               }
             }
           }
@@ -385,7 +390,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
       const isAllowedBox = (boxName: string, moduleType?: string) => {
         if (!userProfile) return true;
-        if (userProfile.role === 'admin' || userProfile.role === 'super_admin') return true;
+        const roleL = (userProfile.role as string || '').toLowerCase();
+        if (roleL === 'admin' || roleL === 'super_admin' || roleL === 'super-admin' || roleL === 'super admin') return true;
         const mType = moduleType || (
           boxName === 'Visa-000001' ? 'VISA' :
           boxName === 'Residence-000003' ? 'Residence ID' :
@@ -398,7 +404,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           }
           return userProfile.modules.includes(mType);
         } else {
-          if (userProfile.role === 'airport_staff' || userProfile.role === 'airport_viewer') {
+          if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
             return mType === 'Yellow Card' || mType === 'AIRPORT';
           }
           // Regular staff with no configured modules get no default cabinet access
@@ -459,7 +465,8 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         }
 
         // Apply strict modules filtration filter to logs based on permissions
-        if (userProfile && userProfile.role !== 'admin' && userProfile.role !== 'super_admin' && userProfile.role !== 'admin_grant') {
+        const uRole = (userProfile?.role as string || '').toLowerCase();
+        if (userProfile && uRole !== 'admin' && uRole !== 'super_admin' && uRole !== 'admin_grant' && uRole !== 'airport_staff') {
           fetchedLogs = fetchedLogs.filter((log: any) => {
             const moduleType = log.entity_type;
             if (userProfile.modules) {
@@ -870,358 +877,6 @@ WHERE role IN ('admin', 'super_admin');`;
         </div>
 
       </div>
-
-
-
-      {/* SECTION: MODULAR ACCESS CLEARANCE & SECURITY CONTROL PANEL */}
-      <section className="bg-white border border-slate-200 p-6 md:p-10 rounded-3xl shadow-sm space-y-8" id="clearance-panel">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
-          <div className="space-y-1.5 text-left">
-            <span className="inline-flex items-center gap-1.5 text-xs font-black text-rose-600 uppercase tracking-wider bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 border-none select-none">
-              <Shield className="w-3.5 h-3.5 animate-pulse" /> Access Control Gate
-            </span>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Modular Permission Access Board</h3>
-            <p className="text-xs text-slate-450 text-slate-400 font-bold uppercase tracking-widest">
-              Directly grant or adjust division module permissions for immigration officers on their dashboard
-            </p>
-          </div>
-          <div className="text-xs text-slate-400 font-bold bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-205 flex items-center gap-2 select-none">
-            <Info className="w-4 h-4 text-[#1b54ac]" />
-            <span>Modules bind instantly and update live navigation sidebars</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* USER SELECTION RAIL - PROFILE SELECTION CARDS */}
-          <div className="lg:col-span-4 bg-slate-50/60 border border-slate-200 p-5 rounded-2xl flex flex-col justify-start">
-            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest text-left mb-4 select-none">
-              Select Officer Profile
-            </h4>
-
-            {/* User Search Input */}
-            <div className="relative w-full mb-4">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search registered accounts..." 
-                value={userSearchText}
-                onChange={(e) => setUserSearchText(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#1b54ac] focus:ring-4 focus:ring-blue-500/5 transition-all"
-              />
-            </div>
-
-            {/* List of Users */}
-            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin">
-              {usersList.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 font-medium text-xs uppercase tracking-widest">
-                  Loading system accounts...
-                </div>
-              ) : (
-                usersList
-                  .filter(u => 
-                    u.email.toLowerCase().includes(userSearchText.toLowerCase()) || 
-                    (u.full_name && u.full_name.toLowerCase().includes(userSearchText.toLowerCase()))
-                  )
-                  .map((user) => {
-                    const isSelected = selectedUser?.id === user.id;
-                    const initials = (user.full_name?.[0] || user.email?.[0] || 'O').toUpperCase();
-                    return (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setSelectedUserModules(user.modules || []);
-                        }}
-                        className={`w-full text-left p-3.5 rounded-xl border flex items-center gap-3.5 transition-all outline-none cursor-pointer border-none bg-transparent ${
-                          isSelected 
-                            ? 'bg-blue-600 border-blue-750 text-white shadow-md shadow-blue-500/15' 
-                            : 'bg-white border-slate-200 hover:bg-slate-100/40 text-slate-850'
-                        }`}
-                      >
-                        {/* Avatar */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs shrink-0 select-none ${
-                          isSelected ? 'bg-white text-blue-600' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {initials}
-                        </div>
-
-                        {/* Text */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black truncate leading-tight">
-                            {user.full_name || 'System Operator'}
-                          </p>
-                          <p className={`text-[10px] break-all leading-normal mt-0.5 truncate ${
-                            isSelected ? 'text-blue-100/90' : 'text-slate-400'
-                          }`}>
-                            {user.email}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-sm ${
-                              isSelected ? 'bg-blue-900/40 text-blue-100' : 'bg-slate-100 text-slate-500 border border-slate-205'
-                            }`}>
-                              {user.role}
-                            </span>
-                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-sm ${
-                              isSelected ? 'bg-blue-900/40 text-blue-100' : 'bg-emerald-50 text-emerald-700'
-                            }`}>
-                              {(user.modules || []).length} Modules
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-              )}
-            </div>
-
-            {/* Selection Meta Info */}
-            {selectedUser && (
-              <div className="mt-5 pt-4 border-t border-slate-200 text-left">
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 select-none">Selected Subject</p>
-                <div className="mt-2 p-3.5 bg-white border border-slate-200 rounded-xl space-y-1 text-[11px] font-bold text-slate-705 text-slate-600 leading-normal">
-                  <p className="truncate"><span className="text-slate-400 uppercase tracking-wide text-[9px]">Account:</span> {selectedUser.email}</p>
-                  <p className="truncate"><span className="text-slate-400 uppercase tracking-wide text-[9px]">Core Role:</span> <span className="text-[#1b54ac] uppercase font-bold">{selectedUser.role}</span></p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* CHECKLIST WORKSPACE */}
-          <div className="lg:col-span-8 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div className="text-left">
-                  <h4 className="text-xs font-black text-slate-550 text-slate-500 uppercase tracking-widest select-none">
-                    Authorized Clearance Modules Registry
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5 font-bold select-none">
-                    Toggle active modules to immediately overwrite division access
-                  </p>
-                </div>
-
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUserModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'])}
-                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const pool = ['USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'];
-                      const randomCount = Math.floor(Math.random() * pool.length) + 1;
-                      const shuffled = [...pool].sort(() => 0.5 - Math.random());
-                      setSelectedUserModules(['OVERVIEW', ...shuffled.slice(0, randomCount)]);
-                    }}
-                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none"
-                  >
-                    Randomize
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUserModules([])}
-                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100/80 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none animate duration-300"
-                  >
-                    Clear All
-                  </button>
-                </div>
-              </div>
-
-              {selectedUser ? (
-                <div className="space-y-4 text-left">
-                  {selectedUser.id === userProfile?.id && userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin' && userProfile?.role !== 'admin_grant' && (
-                    <div className="bg-blue-50/50 border border-blue-200/40 rounded-2xl p-4.5 text-left flex items-start gap-3">
-                      <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="font-extrabold text-xs text-blue-800">Self-Service Sandbox State</p>
-                        <p className="text-[10px] text-blue-750 text-blue-600 font-bold leading-relaxed">
-                          You are configuring permissions for your active operator account. Toggling modules below and clicking "Save & Apply Permissions" will instantly rebuild your navigation layout live!
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Dynamic modules Checklist Bento Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {[
-                      { id: 'OVERVIEW', label: 'Command Deck (Stats)', icon: LayoutDashboard },
-                      { id: 'USERS', label: 'Access Control Deck', icon: Users },
-                      { id: 'REPORTS', label: 'Intelligence Reports', icon: BarChart3 },
-                      { id: 'VISA', label: 'VISA Desk Portal', icon: FileText },
-                      { id: 'Alien Passport', label: 'Alien Passport Desk', icon: Globe },
-                      { id: 'EOID', label: 'EOID Portals Deck', icon: Fingerprint },
-                      { id: 'Residence ID', label: 'Residence ID Unit', icon: CreditCard },
-                      { id: 'ETD', label: 'Emergency Travel Docs', icon: MapPin },
-                      { id: 'CABINETS', label: 'Physical Cabinets', icon: Archive },
-                      { id: 'AIRPORT', label: 'Bole Airport Gateway', icon: Plane },
-                      { id: 'Yellow Card', label: 'Yellow Card Division', icon: Shield },
-                      { id: 'Eritrean ID', label: 'Eritrean ID Desk', icon: Folder },
-                      { id: 'AUDIT', label: 'Immutable Security Logs', icon: Activity }
-                    ].map((mod) => {
-                      const isActive = selectedUserModules.includes(mod.id);
-                      return (
-                        <button
-                          key={mod.id}
-                          type="button"
-                          onClick={() => handleToggleModule(mod.id)}
-                          className={`p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer border-none bg-transparent ${
-                            isActive 
-                              ? 'border-blue-500 bg-blue-50/20 ring-2 ring-blue-500/5' 
-                              : 'border-slate-200 bg-white hover:bg-slate-50/40'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
-                            <div className={`p-2 rounded-lg shrink-0 ${
-                              isActive ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/10' : 'bg-slate-100 text-slate-400'
-                            }`}>
-                              <mod.icon className="w-4 h-4" />
-                            </div>
-                            <span className={`text-[11px] font-black truncate ${isActive ? 'text-slate-800' : 'text-slate-500'}`}>
-                              {mod.label}
-                            </span>
-                          </div>
-
-                          {/* Status circle indicator */}
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            isActive ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'
-                          }`}>
-                            {isActive && <CheckCircle className="w-3.5 h-3.5 stroke-[3] text-white" />}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center select-none">
-                  <Users className="w-8 h-8 text-slate-300 mb-2" />
-                  <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wide">No profiles loaded yet</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Select an officer account on the left rail roster to toggle modules</p>
-                </div>
-              )}
-            </div>
-
-            {/* Save Buttons Row */}
-            {selectedUser && (
-              <div className="mt-8 pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="text-left select-none">
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block">Clearance Summary</span>
-                  <p className="text-[11px] font-black text-indigo-650 text-indigo-600 mt-0.5 truncate max-w-xs md:max-w-md">
-                    Authorized modules list: <strong className="font-mono bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700">{selectedUserModules.length > 0 ? selectedUserModules.join(', ') : 'None (Revoked)'}</strong>
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={savingPermissions}
-                  onClick={handleUpdateUserPermissions}
-                  className="px-6 py-3 bg-blue-650 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider border-none cursor-pointer transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2"
-                >
-                  {savingPermissions ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Applying clearance...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="w-4 h-4 stroke-[2.5]" />
-                      <span>Save & Apply Permissions</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* DYNAMIC SQL GENERATOR CODE helper */}
-            {selectedUser && (
-              <div className="mt-8 pt-6 border-t border-slate-150 space-y-4 text-left">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 hover:bg-slate-50 p-4.5 rounded-2xl border border-slate-200 transition-all">
-                  <div className="space-y-1">
-                    <h5 className="text-[11px] font-black text-[#1b54ac] uppercase tracking-widest flex items-center gap-1.5 select-none">
-                      <Database className="w-3.5 h-3.5" /> Supabase SQL Grant Console
-                    </h5>
-                    <p className="text-[10px] text-slate-500 font-bold select-none leading-normal">
-                      Copy Postgres update scripts configured instantly to update DB permissions
-                    </p>
-                  </div>
-
-                  {/* Tab switches */}
-                  <div className="flex bg-slate-100/80 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider shrink-0 select-none">
-                    <button
-                      type="button"
-                      onClick={() => setSqlActiveTab('update_user')}
-                      className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all border-none font-sans ${
-                        sqlActiveTab === 'update_user' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-850'
-                      }`}
-                    >
-                      Overwrite User Modules
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSqlActiveTab('append_module')}
-                      className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all border-none font-sans ${
-                        sqlActiveTab === 'append_module' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-850'
-                      }`}
-                    >
-                      Safe Append AIRPORT
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSqlActiveTab('full_bootstrap')}
-                      className={`px-3 py-1.5 rounded-lg cursor-pointer transition-all border-none font-sans ${
-                        sqlActiveTab === 'full_bootstrap' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-850'
-                      }`}
-                    >
-                      Audit / Schema Helper
-                    </button>
-                  </div>
-                </div>
-
-                {/* SQL Code Block Panel */}
-                <div className="relative mt-2 rounded-2xl bg-slate-950 border border-slate-900 p-4.5 font-mono text-xs text-green-400 overflow-hidden shadow-inner group">
-                  <div className="absolute right-4 top-4 select-none opacity-80 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={handleCopySql}
-                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-slate-850 cursor-pointer shadow-lg hover:border-slate-700 transition-all font-sans"
-                    >
-                      {copiedSql ? (
-                        <>
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                          <span className="text-emerald-400">Copied SQL!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Copy script</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Title Bar Accent */}
-                  <div className="flex items-center gap-1.5 text-[9px] text-slate-500 uppercase font-black tracking-widest pb-3 border-b border-slate-900 mb-3 select-none">
-                    <Terminal className="w-3.5 h-3.5 text-blue-500" />
-                    <span>postgresql-grant-query-builder.sql</span>
-                  </div>
-
-                  {/* Actual code display area */}
-                  <pre className="whitespace-pre-wrap break-all leading-relaxed text-[10.5px] text-emerald-400 max-h-[160px] overflow-y-auto scrollbar-thin select-all font-mono">
-                    {current_sql_code}
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-
-
-      {/* Physical Archive Box Explorer starts here directly */}
 
       {/* Advanced Section: Physical Archive Box Explorer */}
       <section className="bg-white border border-slate-200 p-6 md:p-10 rounded-3xl shadow-sm space-y-8" id="explorer">
