@@ -52,8 +52,7 @@ const ALL_MODULES = [
   { id: 'EOID Under_Age', name: 'EOID Minor Registries' },
   { id: 'Residence ID', name: 'Residence ID Cards' },
   { id: 'ETD', name: 'Emergency Travels' },
-  { id: 'AIRPORT', name: 'Bole Airport Letters' },
-  { id: 'Yellow Card', name: 'Yellow Cards' },
+   { id: 'Yellow Card', name: 'Yellow Cards' },
   { id: 'Alien Passport', name: 'Alien Passport' },
   { id: 'Eritrean ID', name: 'Eritrean IDs' }
 ];
@@ -219,13 +218,13 @@ function PermissionsMatrix({ rules, onSave, loading }: PermissionsMatrixProps) {
     setDirty(false);
   }, [rules]);
 
-  const ROLES = [
-    { id: 'admin', label: 'Admin' },
-    { id: 'staff', label: 'Staff' },
-    { id: 'viewer', label: 'Viewer' },
-    { id: 'airport_staff', label: 'Airport Staff' },
-    { id: 'airport_viewer', label: 'Airport Viewer' }
-  ];
+ const ROLES = [
+  { id: 'Super_Admin', label: 'Super Admin' },
+  { id: 'Admin', label: 'Admin' },
+  { id: 'Supervisor', label: 'Supervisor' },
+  { id: 'Editor', label: 'Editor' },
+  { id: 'Viewer', label: 'Viewer' }
+];
 
   const toggleVal = (moduleKey: string, roleId: string, type: 'view' | 'create' | 'update') => {
     const next = localRules.map(r => {
@@ -492,17 +491,17 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
               <Shield className="w-3.5 h-3.5 text-slate-400" />
               System Clearance Role
             </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all font-medium text-slate-800"
-            >
-              <option value="admin">System Administrator (Full Clearance)</option>
-              <option value="staff">Supervisor / Operations Officer</option>
-              <option value="viewer">Executive Viewer (Read Only)</option>
-              <option value="airport_staff">Bole Airport Operations Staff</option>
-              <option value="airport_viewer">Bole Airport Terminal Inspector</option>
-            </select>
+    <select
+  value={role}
+  onChange={(e) => setRole(e.target.value)}
+  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all font-medium text-slate-800"
+>
+  <option value="Super_Admin">Super Admin (System Configuration)</option>
+  <option value="Admin">Admin (User & Folder Management)</option>
+  <option value="Supervisor">Supervisor (Approval & Team Management)</option>
+  <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
+  <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
+</select>
           </div>
 
           {/* Module Clearances checklist */}
@@ -1029,11 +1028,11 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                     onChange={(e) => setCreateRole(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-800"
                   >
-                    <option value="admin">System Administrator (Full Settings Control)</option>
-                    <option value="staff">Supervisor / Operations Officer</option>
-                    <option value="viewer">Executive Viewer (Read-only System)</option>
-                    <option value="airport_staff">Bole Airport Staff Representative</option>
-                    <option value="airport_viewer">Bole Airport Checker Viewer</option>
+                    <option value="Super_Admin">Super Admin (System Configuration)</option>
+  <option value="Admin">Admin (User & Folder Management)</option>
+  <option value="Supervisor">Supervisor (Approval & Team Management)</option>
+  <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
+  <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
                   </select>
                 </div>
 
