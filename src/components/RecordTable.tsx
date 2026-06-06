@@ -714,6 +714,11 @@ function RecordDetailsModal({
 }) {
   const [attachments, setAttachments] = useState<RecordAttachment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [docAttachments, setDocAttachments] = useState<any[]>(
+    Array.isArray((record as any).attachments) ? (record as any).attachments : []
+  );
+  const [currentUserProfile, setCurrentUserProfile] = useState<any | null>(null);
+  const [updatingIdx, setUpdatingIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -738,6 +743,57 @@ function RecordDetailsModal({
     fetchAttachments();
   }, [record.id, activeTab]);
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          if (data) {
+            setCurrentUserProfile(data);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading user profile:", err);
+      }
+    };
+    fetchUserProfile();
+  }, []);
+
+  const updateAttachmentStatus = async (docIndex: number, newStatus: 'Verified' | 'Rejected' | 'Pending') => {
+    setUpdatingIdx(docIndex);
+    try {
+      const updatedAttachments = docAttachments.map((doc, idx) => {
+        if (idx === docIndex) {
+          return {
+            ...doc,
+            verification_status: newStatus
+          };
+        }
+        return doc;
+      });
+
+      const tableName = TABLE_MAP[activeTab];
+      const { error } = await supabase
+        .from(tableName)
+        .update({ attachments: updatedAttachments })
+        .eq('id', record.id);
+
+      if (error) throw error;
+
+      setDocAttachments(updatedAttachments);
+      (record as any).attachments = updatedAttachments; // keep local ref in sync
+    } catch (err) {
+      console.error("Error updating attachment status:", err);
+    } finally {
+      setUpdatingIdx(null);
+    }
+  };
+
   const getFileIcon = (type: string) => {
     if (type?.startsWith('image/')) return <ImageIcon className="w-4 h-4 text-emerald-500" />;
     if (type === 'application/pdf') return <FileTextIcon className="w-4 h-4 text-rose-500" />;
@@ -745,6 +801,7 @@ function RecordDetailsModal({
   };
 
   const isVisa = activeTab === 'VISA';
+  const isSupervisorOrAdmin = currentUserProfile?.role === 'staff' || currentUserProfile?.role === 'admin';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
@@ -908,35 +965,86 @@ function RecordDetailsModal({
           )}
 
           {/* Secure verifying checklist folders (JSONB attachments schema) */}
-          {(record as any).attachments && Array.isArray((record as any).attachments) && (record as any).attachments.length > 0 && (
+          {docAttachments && Array.isArray(docAttachments) && docAttachments.length > 0 && (
             <div className="mt-3">
-              <div className="flex items-center gap-2 mb-2 bg-slate-50 border border-slate-150 p-2.5 rounded-xl">
-                <Paperclip className="w-4 h-4 text-[#2a4e63]" />
-                <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">Attachment</h4>
+              <div className="flex items-center justify-between mb-2 bg-slate-50 border border-slate-150 p-2.5 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-[#2a4e63]" />
+                  <h4 className="text-sm font-extrabold text-[#2a4e63] tracking-tight">System Secure Document Verification</h4>
+                </div>
+                {isSupervisorOrAdmin && (
+                  <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full tracking-wider animate-pulse flex items-center gap-1">
+                    🛡️ Admin/Supervisor mode active
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(record as any).attachments.map((doc: any, docIdx: number) => {
+                {docAttachments.map((doc: any, docIdx: number) => {
                   const hasUrl = Boolean(doc.url);
+                  const isUpdating = updatingIdx === docIdx;
                   return (
-                    <div key={docIdx} className="border border-slate-100 p-3 rounded-xl bg-white shadow-xs flex flex-col justify-between">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-black text-slate-800 truncate">{doc.file_type}</span>
-                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
-                          doc.verification_status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                          doc.verification_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
-                          'bg-amber-55 bg-amber-50 text-amber-700 border border-amber-100'
-                        }`}>
-                          {doc.verification_status || 'Pending'}
-                        </span>
+                    <div key={docIdx} className="border border-slate-100 p-3.5 rounded-xl bg-white shadow-xs flex flex-col justify-between min-h-[110px]">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-50 pb-1.5">
+                          <span className="text-xs font-black text-slate-800 truncate" title={doc.file_type}>{doc.file_type}</span>
+                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
+                            doc.verification_status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                            doc.verification_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                            'bg-amber-50 text-amber-700 border border-amber-100'
+                          }`}>
+                            {doc.verification_status || 'Pending'}
+                          </span>
+                        </div>
+                        {hasUrl ? (
+                          <p className="text-[9.5px] font-mono text-[#2b825a] hover:underline mt-2.5 truncate">
+                            <a href={doc.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-bold">
+                              📂 VIEW SECURE FILE SCAN LINK
+                            </a>
+                          </p>
+                        ) : (
+                          <p className="text-[10px] font-bold text-slate-400 mt-2.5 italic">No digitized scan uploaded</p>
+                        )}
                       </div>
-                      {hasUrl ? (
-                        <p className="text-[9px] font-mono text-[#2b825a] hover:underline mt-1.5 truncate">
-                          <a href={doc.url} target="_blank" rel="noreferrer" className="flex items-center gap-1">
-                            📂 open secure document link
-                          </a>
-                        </p>
-                      ) : (
-                        <p className="text-[9px] font-medium text-slate-400 mt-1.5 italic">No scan uploaded</p>
+
+                      {isSupervisorOrAdmin && (
+                        <div className="mt-3.5 pt-2 border-t border-slate-50 flex items-center justify-end gap-1.5">
+                          <span className="text-[8px] font-black uppercase text-slate-400 mr-auto">Verify:</span>
+                          <button
+                            type="button"
+                            onClick={() => updateAttachmentStatus(docIdx, 'Verified')}
+                            disabled={isUpdating || doc.verification_status === 'Verified'}
+                            className={`px-2 py-1 rounded text-[9px] font-extrabold uppercase transition cursor-pointer border ${
+                              doc.verification_status === 'Verified' 
+                                ? 'bg-emerald-50 border-emerald-100 text-emerald-600 cursor-not-allowed opacity-60' 
+                                : 'bg-[#EFFDF4] hover:bg-emerald-150 border-emerald-100 text-[#166534]'
+                            }`}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateAttachmentStatus(docIdx, 'Rejected')}
+                            disabled={isUpdating || doc.verification_status === 'Rejected'}
+                            className={`px-2 py-1 rounded text-[9px] font-extrabold uppercase transition cursor-pointer border ${
+                              doc.verification_status === 'Rejected' 
+                                ? 'bg-rose-50 border-rose-100 text-rose-600 cursor-not-allowed opacity-60' 
+                                : 'bg-[#FFF5F5] hover:bg-rose-150 border-[#FEE2E2] text-rose-700'
+                            }`}
+                          >
+                            Reject
+                          </button>
+                          {doc.verification_status && doc.verification_status !== 'Pending' && (
+                            <button
+                              type="button"
+                              onClick={() => updateAttachmentStatus(docIdx, 'Pending')}
+                              disabled={isUpdating}
+                              className="px-1.5 py-1 rounded text-[9px] font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 transition cursor-pointer"
+                              title="Reset status back to Pending"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

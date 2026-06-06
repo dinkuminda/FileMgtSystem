@@ -69,14 +69,20 @@ interface TeamDirectoryProps {
 
 function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDirectoryProps) {
   const getRoleLabel = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
+    const r = (role || '').toLowerCase();
+    switch (r) {
       case 'super_admin':
+      case 'super admin':
+        return 'Super Admin';
+      case 'admin':
         return 'Admin';
       case 'staff':
-        return 'Officer / Supervisor';
+      case 'supervisor':
+        return 'Supervisor';
+      case 'editor':
+        return 'Editor';
       case 'viewer':
-        return 'Viewer Account';
+        return 'Viewer';
       case 'airport_staff':
         return 'Bole Airport Staff';
       case 'airport_viewer':
@@ -87,11 +93,15 @@ function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDire
   };
 
   const getRoleStyle = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
+    const r = (role || '').toLowerCase();
+    switch (r) {
       case 'super_admin':
+      case 'super admin':
+      case 'admin':
         return 'bg-[#FDF2F2] text-[#EF4444] border border-[#FEE2E2]'; // Light Red
       case 'staff':
+      case 'supervisor':
+      case 'editor':
         return 'bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE]'; // Light Blue
       case 'airport_staff':
         return 'bg-[#FFFBEB] text-[#D97706] border border-[#FEF3C7]'; // Light Yellow/Amber
@@ -375,7 +385,17 @@ interface EditUserModalProps {
 }
 
 function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
-  const [role, setRole] = useState(user.role);
+  const getInitialRole = (roleVal: string) => {
+    const r = (roleVal || '').toLowerCase();
+    if (r === 'super_admin' || r === 'super admin') return 'Super_Admin';
+    if (r === 'admin') return 'Admin';
+    if (r === 'staff' || r === 'supervisor') return 'Supervisor';
+    if (r === 'editor') return 'Editor';
+    if (r === 'viewer') return 'Viewer';
+    return roleVal;
+  };
+
+  const [role, setRole] = useState(getInitialRole(user.role));
   const [modules, setModules] = useState<string[]>(user.modules || []);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -506,10 +526,40 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
 
           {/* Module Clearances checklist */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-750 uppercase tracking-wide flex items-center gap-1.5 text-slate-700">
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              Active System Module Clearance
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-750 uppercase tracking-wide flex items-center gap-1.5 text-slate-700">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                Active System Module Clearance
+              </label>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'])}
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-[6px] text-[9px] font-bold uppercase transition cursor-pointer"
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pool = ['USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'];
+                    const randomCount = Math.floor(Math.random() * pool.length) + 1;
+                    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+                    setModules(['OVERVIEW', ...shuffled.slice(0, randomCount)]);
+                  }}
+                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-[6px] text-[9px] font-bold uppercase transition cursor-pointer"
+                >
+                  Random
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModules([])}
+                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-[6px] text-[9px] font-bold uppercase transition cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 border border-slate-100 rounded-xl bg-slate-50/40">
               {ALL_MODULES.map((mod) => {
                 const checked = modules.includes(mod.id);

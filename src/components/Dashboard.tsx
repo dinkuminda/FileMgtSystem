@@ -1055,6 +1055,34 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
+                <Route path="/eritrean-id" element={
+                  hasAccess('Eritrean ID') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
+                } />
+                <Route path="/alien-passport" element={
+                  hasAccess('Alien Passport') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </motion.div>

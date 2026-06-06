@@ -164,8 +164,18 @@ async function startServer() {
     const token = authHeader.split(" ")[1];
     const { userId, newRole } = req.body;
 
+    // Symmetrically map the custom frontend roles into DB compatible checked roles
+    let dbRole = newRole;
+    if (newRole === 'Super_Admin' || newRole === 'Admin' || newRole === 'admin' || newRole === 'super_admin') {
+      dbRole = 'admin';
+    } else if (newRole === 'Supervisor' || newRole === 'Editor' || newRole === 'staff') {
+      dbRole = 'staff';
+    } else if (newRole === 'Viewer' || newRole === 'viewer') {
+      dbRole = 'viewer';
+    }
+
     const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'super_admin', 'add_records', 'view_only', 'admin_grant'];
-    if (!userId || !newRole || !validRoles.includes(newRole)) {
+    if (!userId || !newRole || !validRoles.includes(dbRole)) {
       return res.status(400).json({ error: "Missing required fields or invalid role" });
     }
 
@@ -185,19 +195,23 @@ async function startServer() {
 
       // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (newRole === 'admin' || newRole === 'super_admin' || newRole === 'admin_grant') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'AUDIT'];
-      } else if (newRole === 'airport_staff') {
+      if (dbRole === 'admin') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
+      } else if (dbRole === 'staff') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+      } else if (dbRole === 'viewer') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
+      } else if (dbRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (newRole === 'airport_viewer' || newRole === 'view_only') {
+      } else if (dbRole === 'airport_viewer' || dbRole === 'view_only') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
-      } else if (newRole === 'add_records') {
+      } else if (dbRole === 'add_records') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       const { error } = await supabaseAdmin
         .from('profiles')
-        .update({ role: newRole, modules: defaultModules })
+        .update({ role: dbRole, modules: defaultModules })
         .eq('id', userId);
 
       if (error) throw error;
@@ -219,6 +233,16 @@ async function startServer() {
 
     if (!email || !password || !role) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Symmetrically map custom frontend roles to DB check-constraint approved roles
+    let dbRole = role;
+    if (role === 'Super_Admin' || role === 'Admin' || role === 'admin' || role === 'super_admin') {
+      dbRole = 'admin';
+    } else if (role === 'Supervisor' || role === 'Editor' || role === 'staff') {
+      dbRole = 'staff';
+    } else if (role === 'Viewer' || role === 'viewer') {
+      dbRole = 'viewer';
     }
 
     try {
@@ -248,20 +272,24 @@ async function startServer() {
 
       // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (role === 'admin' || role === 'super_admin' || role === 'admin_grant') {
+      if (dbRole === 'admin') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AUDIT'];
-      } else if (role === 'airport_staff') {
+      } else if (dbRole === 'staff') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+      } else if (dbRole === 'viewer') {
+        defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
+      } else if (dbRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-      } else if (role === 'airport_viewer' || role === 'view_only') {
+      } else if (dbRole === 'airport_viewer' || dbRole === 'view_only') {
         defaultModules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
-      } else if (role === 'add_records') {
+      } else if (dbRole === 'add_records') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card', 'AIRPORT', 'CABINETS', 'AIRPORT_ADD'];
       }
 
       // Profile is auto-created by trigger, but we want to ensure role and modules are correct
       await supabaseAdmin
         .from('profiles')
-        .update({ role, full_name: fullName, modules: defaultModules })
+        .update({ role: dbRole, full_name: fullName, modules: defaultModules })
         .eq('id', newUser.id);
 
       res.json({ message: "User created successfully", user: newUser });

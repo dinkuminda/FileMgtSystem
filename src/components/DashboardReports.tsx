@@ -1010,6 +1010,18 @@ WHERE role IN ('admin', 'super_admin');`;
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      const pool = ['USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'];
+                      const randomCount = Math.floor(Math.random() * pool.length) + 1;
+                      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+                      setSelectedUserModules(['OVERVIEW', ...shuffled.slice(0, randomCount)]);
+                    }}
+                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none"
+                  >
+                    Randomize
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSelectedUserModules([])}
                     className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100/80 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-wider cursor-pointer border-none animate duration-300"
                   >
