@@ -31,6 +31,22 @@ import {
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
+// Defensive helper to parse response body as JSON without crashing if it returns HTML or text
+const safeParseJson = async (response: Response): Promise<any> => {
+  try {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    }
+    const text = await response.text();
+    const cleanText = text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const snippet = cleanText.length > 120 ? cleanText.slice(0, 120) + '...' : cleanText;
+    return { error: snippet || `HTTP Error ${response.status}: ${response.statusText || 'Unreadable response'}` };
+  } catch (err) {
+    return { error: `Network issue: failed to decode response (Status ${response.status})` };
+  }
+};
+
 interface AdminUser {
   id: string;
   email: string;
@@ -411,7 +427,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
           body: JSON.stringify({ userId: user.id, newRole: role })
         });
         if (!res.ok) {
-          const d = await res.json();
+          const d = await safeParseJson(res);
           throw new Error(d.error || "Failed to update role descriptor.");
         }
       }
@@ -426,7 +442,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
         body: JSON.stringify({ userId: user.id, modules })
       });
       if (!resMod.ok) {
-        const d = await resMod.json();
+        const d = await safeParseJson(resMod);
         throw new Error(d.error || "Failed to update custom module list.");
       }
       
@@ -444,7 +460,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
           body: JSON.stringify({ userId: user.id, newPassword: password })
         });
         if (!resPass.ok) {
-          const d = await resPass.json();
+          const d = await safeParseJson(resPass);
           throw new Error(d.error || "Failed to update password credentials.");
         }
       }
@@ -806,7 +822,7 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
         })
       });
 
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.error || "Server could not allocate new profile record.");
       }
@@ -847,7 +863,7 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
         body: JSON.stringify({ userId: deletingUser.id })
       });
 
-      const d = await res.json();
+      const d = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(d.error || "Failed to finalize account termination.");
       }

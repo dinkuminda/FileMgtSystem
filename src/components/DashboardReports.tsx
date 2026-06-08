@@ -24,6 +24,22 @@ export const BOX_MODULE_DESC: Record<string, string> = {
   'EOID-Underage-000006': 'EOID Under Age Logs'
 };
 
+// Defensive helper to parse response body as JSON without crashing if it returns HTML or text
+const safeParseJson = async (response: Response): Promise<any> => {
+  try {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    }
+    const text = await response.text();
+    const cleanText = text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const snippet = cleanText.length > 120 ? cleanText.slice(0, 120) + '...' : cleanText;
+    return { error: snippet || `HTTP Error ${response.status}: ${response.statusText || 'Unreadable response'}` };
+  } catch (err) {
+    return { error: `Network issue: failed to decode response (Status ${response.status})` };
+  }
+};
+
 interface DashboardReportsProps {
   userProfile?: UserProfile | null;
 }
@@ -121,7 +137,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         if (response.ok) {
           success = true;
         } else {
-          const resJson = await response.json();
+          const resJson = await safeParseJson(response);
           errorMsg = resJson.error || 'Server rejected permission configuration';
         }
       } else if (isUpdatingSelf) {
