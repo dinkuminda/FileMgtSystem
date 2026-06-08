@@ -125,18 +125,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     }
   }, [userProfile]);
 
-  const updateTheme = async (newTheme: ThemeAccent) => {
-    setThemeAccent(newTheme);
-    if (userProfile?.id) {
-      localStorage.setItem(`ics_theme_${userProfile.id}`, newTheme);
-      try {
-        await supabase.from('profiles').update({ theme: newTheme }).eq('id', userProfile.id);
-      } catch (e) {
-        console.warn("Could not persist theme column on database backend", e);
-      }
-    }
-  };
-
   const currentTheme = THEMES[themeAccent] || THEMES.emerald;
 
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
@@ -813,31 +801,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              {/* Dynamic Theme Chooser for the User */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 rounded-[10px] p-1 px-1.5 mr-1">
-                {(['emerald', 'blue', 'amber', 'slate'] as const).map((tName) => (
-                  <button
-                    key={tName}
-                    onClick={() => updateTheme(tName)}
-                    title={`Switch system theme to ${tName}`}
-                    className={`w-3.5 h-3.5 rounded-full border cursor-pointer transition-all ${
-                      tName === 'emerald' ? 'bg-[#2b825a]' :
-                      tName === 'blue' ? 'bg-[#1b54ac]' :
-                      tName === 'amber' ? 'bg-[#d97706]' : 'bg-[#475569]'
-                    } ${
-                      themeAccent === tName 
-                        ? 'scale-110 ring-2 ring-white border-slate-700 shadow-sm opacity-100' 
-                        : 'opacity-40 hover:opacity-100 border-transparent hover:scale-105'
-                    }`}
-                  />
-                ))}
-              </div>
 
-              {/* Active IP Status capsule styled with active theme */}
-              <div className={`flex items-center gap-2 ${currentTheme.bgLight} rounded-[10px] px-4 py-1.5 text-[10px] font-mono font-bold ${currentTheme.primaryText} border ${currentTheme.border} opacity-90`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.pulse} animate-pulse`} />
-                <span>10.40.20.125 / SECURE</span>
-              </div>
 
               {/* Notification bell with red feedback dot */}
               <div className="relative p-2 text-slate-400 hover:text-slate-600 cursor-pointer rounded-lg hover:bg-slate-50 transition-colors">

@@ -93,6 +93,7 @@ export const PermissionsMatrix: React.FC<PermissionsMatrixProps> = ({
               { id: 'EOID', label: '[🔑] Origin ID / EOID', desc: 'Electronic Origin ID status certificates & digital validation' },
               { id: 'EOID Under_Age', label: '[🍼] EOID Under_Age', desc: 'Electronic Origin ID status check & logs for minors & under age entries' },
               { id: 'ETD', label: '[✈️] ETD Division', desc: 'Emergency Travel Document verification, check, & registers' },
+              { id: 'USERS', label: '[👥] User Management', desc: 'Administrative user directories, credentials modification, & divisional access controls' },
               { id: 'AUDIT', label: '[🔍] System Audit Logs', desc: 'Federal system immutable audit logs & database operation events' }
             ].map((m) => {
               const isAdminBypass = managedUser.role === 'admin' || managedUser.role === 'super_admin';

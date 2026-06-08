@@ -209,7 +209,7 @@ async function startServer() {
       if (dbRole === 'admin' || dbRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
-        defaultModules = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
       }
@@ -285,7 +285,7 @@ async function startServer() {
       if (dbRole === 'admin' || dbRole === 'airport_staff') {
         defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
-        defaultModules = ['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID'];
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
       }

@@ -56,6 +56,18 @@ export const DEFAULT_PERMISSION_RULES: ModulePermissionRule[] = [
     view_roles: ['admin', 'staff', 'airport_staff', 'airport_viewer'],
     create_roles: ['admin', 'staff', 'airport_staff'],
     update_roles: []
+  },
+  {
+    module: 'USERS',
+    view_roles: ['admin', 'staff'],
+    create_roles: ['admin'],
+    update_roles: ['admin']
+  },
+  {
+    module: 'AUDIT',
+    view_roles: ['admin', 'staff'],
+    create_roles: [],
+    update_roles: []
   }
 ];
 
