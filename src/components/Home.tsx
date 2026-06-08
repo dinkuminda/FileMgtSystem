@@ -69,7 +69,8 @@ export default function Home() {
             </h2>
             
             <p className="text-[#4a5568] text-sm sm:text-[15px] md:text-[16px] leading-relaxed max-w-lg font-medium">
-              Welcome to the official portal of the Ethiopian Immigration and Citizenship Service. Securely organize, search, and verify core archives, track physical cabinet drawer mapping and access permissions, and manage dual biometric citizenship records efficiently.
+             Welcome to the Ethiopian Immigration and Citizenship Service Digital Archive Portal.
+Securely organize, search, and verify core archives while tracking physical cabinet mappings and access permissions. Efficiently manage dual biometric citizenship records within a single, secure environment.
             </p>
 
             <div className="pt-2">
