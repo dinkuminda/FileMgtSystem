@@ -15,6 +15,9 @@ import {
   type ModulePermissionRule 
 } from '../lib/permissions';
 
+// Constant path to the generated image in the src assets directory
+const fileVaultBanner = "/src/assets/images/file_vault_banner_1780902756713.png";
+
 interface CabinetsViewProps {
   userProfile?: UserProfile | null;
 }
@@ -511,43 +514,59 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     <div className="space-y-8 md:space-y-12 animate-in fade-in duration-500">
       
       {/* Visual Vault Controls & Dashboard Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-950 text-white rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 to-slate-950 text-white rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden text-left">
         {/* Abstract structural grid overlay */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
         
-        <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 z-10">
-          <div className="space-y-2 text-left">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 tracking-widest bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> High-Security Hardware Mapped
-            </span>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">Physical Cabinet Vault Matrix</h2>
-            <p className="text-xs text-slate-450 text-slate-450 text-slate-400 font-semibold max-w-xl">
-              Each distinct digital module aligns directly with a registered physical container. Keep your secure hardware boxes systematically locked or browse manual file folders.
-            </p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
-            {canEditOrDelete && (
+        <div className="relative flex flex-col lg:flex-row justify-between items-stretch gap-6 z-10">
+          <div className="space-y-4 text-left flex-1 flex flex-col justify-between">
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 tracking-widest bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> High-Security Hardware Mapped
+              </span>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">Physical Cabinet Vault Matrix</h2>
+              <p className="text-xs text-slate-400 font-semibold max-w-xl leading-relaxed">
+                Each distinct digital module aligns directly with a registered physical container. Keep your secure hardware boxes systematically locked or browse manual file folders.
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {canEditOrDelete && (
+                <button
+                  onClick={() => {
+                    setNewCabName('');
+                    setNewCabDesc('');
+                    setNewCabModule('VISA');
+                    setNewCabColor('from-indigo-600 to-indigo-800');
+                    setIsAddCabinetOpen(true);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 cursor-pointer border-none shadow-sm shadow-blue-500/10"
+                >
+                  <Plus className="w-4 h-4" /> Add Physical Box
+                </button>
+              )}
               <button
-                onClick={() => {
-                  setNewCabName('');
-                  setNewCabDesc('');
-                  setNewCabModule('VISA');
-                  setNewCabColor('from-indigo-600 to-indigo-800');
-                  setIsAddCabinetOpen(true);
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 cursor-pointer border-none shadow-sm shadow-blue-500/10"
+                onClick={handleClimateRefresh}
+                disabled={refreshingClimate}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 border border-slate-700/60 cursor-pointer"
               >
-                <Plus className="w-4 h-4" /> Add Physical Box
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshingClimate ? 'animate-spin' : ''}`} /> Scan Environment Sensors
               </button>
-            )}
-            <button
-              onClick={handleClimateRefresh}
-              disabled={refreshingClimate}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 border border-slate-700/60 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshingClimate ? 'animate-spin' : ''}`} /> Scan Environment Sensors
-            </button>
+            </div>
+          </div>
+
+          {/* Visual Showcase crop */}
+          <div className="hidden lg:block w-72 shrink-0 rounded-2xl overflow-hidden border border-slate-800/50 relative group select-none">
+            <img 
+              src={fileVaultBanner} 
+              alt="File Management System"
+              className="w-full h-full object-cover max-h-36 brightness-95 contrast-105 transition-transform duration-500 group-hover:scale-105"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+            <span className="absolute bottom-2.5 left-3 text-[9px] font-black tracking-widest text-[#10b981] bg-slate-900/90 border border-emerald-800/60 px-2 py-0.5 rounded uppercase font-mono">
+              FILE ARCHIVE SYSTEM
+            </span>
           </div>
         </div>
       </div>
