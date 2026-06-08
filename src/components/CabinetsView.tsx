@@ -16,7 +16,7 @@ import {
 } from '../lib/permissions';
 
 // Constant path to the generated image in the src assets directory
-const fileVaultBanner = "/assets/images/file_vault_banner_1780902756713.png";
+const fileVaultBanner = "/assets/images/fms.png";
 
 interface CabinetsViewProps {
   userProfile?: UserProfile | null;

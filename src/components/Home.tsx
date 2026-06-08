@@ -6,10 +6,6 @@ import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 // Import our beautifully generated images
 const fileVaultBanner = "/assets/images/file_vault_banner_1780902756713.png";
-const biometricFolder = "/assets/images/biometric_document_folder_1780902775494.png";
-const staffConsultation = "/assets/images/ics_staff_consultation_1780903157041.png";
-const passportHandover = "/assets/images/ethiopian_passport_handover_1780903171194.png";
-const checkpointAssist = "/assets/images/airport_checkpoint_immigration_1780903187170.png";
 
 export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -68,8 +64,8 @@ export default function Home() {
           {/* LEFT COLUMN: System Welcome Typography & Dynamic Button */}
           <div className="flex-1 text-left space-y-6 relative z-10" id="hero-text-content">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#072146] tracking-tight leading-[1.12]">
-              Physical and digital <br />
-              file management Hub
+              Digital <br />
+              File Management Archive
             </h2>
             
             <p className="text-[#4a5568] text-sm sm:text-[15px] md:text-[16px] leading-relaxed max-w-lg font-medium">
@@ -87,55 +83,56 @@ export default function Home() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Asymmetric Floating Image Collage as request */}
+          {/* RIGHT COLUMN: Interactive High-Aesthetic Single-Image Terminal Showcase */}
           <div className="flex-1 w-full lg:w-auto flex items-center justify-center lg:justify-end relative z-10" id="hero-image-collage">
             
-            {/* The collage frame wrapper */}
-            <div className="flex items-center gap-4 sm:gap-6 w-full max-w-[550px] justify-center" id="collage-flex-layout">
-              
-              {/* Image Group A (Left/Center vertical block) */}
-              <div className="shrink-0 scale-95 md:scale-100" id="collage-col-left">
-                <div className="relative group rounded-3xl overflow-hidden border border-white/50 shadow-md">
+            <div className="w-full max-w-[480px]" id="single-spotlight-layout">
+              <motion.div 
+                whileHover={{ y: -6, scale: 1.015 }}
+                transition={{ duration: 0.4 }}
+                className="group relative rounded-3xl overflow-hidden border-2 border-slate-200/80 bg-[#091527] shadow-xl shadow-blue-500/5"
+              >
+                {/* Decorative Terminal Header */}
+                <div className="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+                    <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+                    <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+                  </div>
+                  <span className="text-[9px] font-bold tracking-widest text-[#0b57d0] bg-blue-500/10 px-2.5 py-0.5 rounded-full uppercase font-mono border border-blue-500/15">
+                    Live Archive Status
+                  </span>
+                </div>
+
+                <div className="aspect-[16/10] sm:aspect-[4/3] relative overflow-hidden">
                   <img 
                     src={fileVaultBanner} 
-                    alt="Physical Security Cabinets" 
-                    className="w-[180px] sm:w-[220px] h-[240px] sm:h-[300px] object-cover transition-transform duration-500 group-hover:scale-104 select-none"
+                    alt="Physical Security Locker Cabinets Vault" 
+                    className="w-full h-full object-cover select-none brightness-95 group-hover:brightness-100 transition-transform duration-700 group-hover:scale-104"
                     referrerPolicy="no-referrer"
-                    id="collage-img-consultation"
+                    id="collage-img-vault-spotlight"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent" />
-                </div>
-              </div>
-
-              {/* Image Group B (Right column stacked block) */}
-              <div className="flex flex-col gap-4 sm:gap-6 shrink-0" id="collage-col-right">
-                
-                {/* Biometric Secure Folder */}
-                <div className="relative group rounded-3xl overflow-hidden border border-white/50 shadow-md">
-                  <img 
-                    src={biometricFolder} 
-                    alt="Biometric Secure Folder" 
-                    className="w-[180px] sm:w-[220px] h-[160px] sm:h-[220px] object-cover transition-transform duration-500 group-hover:scale-104 select-none"
-                    referrerPolicy="no-referrer"
-                    id="collage-img-handover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent pointer-events-none" />
+                  
+                  {/* secure lock telemetry label overlays */}
+                  <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
+                    <span className="text-[9px] font-black tracking-widest text-emerald-400 bg-slate-950/95 px-3 py-1.5 rounded-lg border border-emerald-500/30 uppercase font-mono shadow-md backdrop-blur-xs flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      SECURE FILE VAULT
+                    </span>
+                    <span className="text-[9px] font-bold tracking-wider text-white/80 bg-slate-950/80 px-2.5 py-1 rounded-lg">
+                      Sector 07-A Compliant
+                    </span>
+                  </div>
                 </div>
 
-                {/* Friendly Staff consultation */}
-                <div className="relative group rounded-3xl overflow-hidden border border-white/50 shadow-md">
-                  <img 
-                    src={staffConsultation} 
-                    alt="ICS Staff Assisting Citizen" 
-                    className="w-[200px] sm:w-[260px] h-[130px] sm:h-[180px] object-cover transition-transform duration-500 group-hover:scale-104 select-none"
-                    referrerPolicy="no-referrer"
-                    id="collage-img-checkpoint"
-                  />
-                  <div className="absolute inset-0 bg-[#072146]/10 to-transparent" />
+                <div className="p-5 text-left bg-slate-950 border-t border-slate-900">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Mechanical Physical Drawers</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Digital drawer lock integration for absolute real-time record synchronization.
+                  </p>
                 </div>
-
-              </div>
-
+              </motion.div>
             </div>
 
           </div>
@@ -145,73 +142,21 @@ export default function Home() {
       </main>
 
       {/* 3. SYSTEM FEATURES INFORMATION LOGS GRID */}
-      <section className="bg-white border-t border-gray-100 py-16" id="portal-key-features">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto space-y-3 mb-12">
-            <span className="text-[10px] font-black text-[#0b57d0] tracking-widest uppercase bg-blue-50 px-3 py-1 rounded-full">
-              CORE PORTAL HUB
-            </span>
-            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 uppercase tracking-tight">
-              Administrative Capabilities
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-              Authorized personnel access standard system sub-modules for document management, biometrics, residency checks, and physical cabinets mapping.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="features-box-grid">
-            
-            {/* Visas */}
-            <div className="p-6 bg-[#fafbfc] rounded-2xl border border-slate-100 shadow-xs text-left space-y-3">
-              <div className="bg-blue-50 text-[#0b57d0] p-3 rounded-xl w-10 h-10 flex items-center justify-center border border-blue-100/50">
-                <FileText className="w-5 h-5" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Visa Management</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Approve, create, and track transit, tourist, work, and diplomatic visas in high confidence.
-              </p>
-            </div>
-
-            {/* Biometrics */}
-            <div className="p-6 bg-[#fafbfc] rounded-2xl border border-slate-100 shadow-xs text-left space-y-3">
-              <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl w-10 h-10 flex items-center justify-center border border-emerald-100/50">
-                <Fingerprint className="w-5 h-5" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Identity Records</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Manage fingerprint checks, unique electronic IDs, and minor's registration logs mapping.
-              </p>
-            </div>
-
-            {/* Residency */}
-            <div className="p-6 bg-[#fafbfc] rounded-2xl border border-slate-100 shadow-xs text-left space-y-3">
-              <div className="bg-amber-50 text-amber-600 p-3 rounded-xl w-10 h-10 flex items-center justify-center border border-amber-100/50">
-                <Landmark className="w-5 h-5" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Residence & Origin</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Oversee temporary, permanent residence permits and secure Origin Identity Card statuses.
-              </p>
-            </div>
-
-            {/* Cabinet integration */}
-            <div className="p-6 bg-[#fafbfc] rounded-2xl border border-slate-100 shadow-xs text-left space-y-3">
-              <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl w-10 h-10 flex items-center justify-center border border-indigo-100/50">
-                <Globe className="w-5 h-5" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Hardware cabinets</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Direct mechanical drawer lockers integrations for absolute document-to-container synchronization.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
+      
 
       {/* 4. FOOTER */}
-      <footer className="bg-[#f8fafc] border-t border-slate-200/50 py-12 px-6 sm:px-8 mt-auto" id="portal-system-footer">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-8 h-fit select-none">
+      <footer className="relative overflow-hidden bg-[#f8fafc] border-t border-slate-200/50 py-12 px-6 sm:px-8 mt-auto" id="portal-system-footer">
+        
+        {/* Large Aesthetic Watermark Brand Seal */}
+        <div className="absolute right-[-5%] bottom-[-15%] pointer-events-none select-none opacity-[0.035] w-96 md:w-[480px] lg:w-[600px] h-auto z-0" id="footer-logo-watermark">
+          <img 
+            src="/assets/images/ics-logo.png" 
+            alt="Ethiopian Citizenship Service Watermark Seal" 
+            className="w-full h-auto object-contain grayscale"
+          />
+        </div>
+
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-8 h-fit select-none relative z-10">
           
           {/* Footer Logo & Information */}
           <div className="space-y-4 text-left max-w-sm">
@@ -225,7 +170,7 @@ export default function Home() {
           <div className="flex gap-16 text-left shrink-0">
             <div className="space-y-3">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Legal</h4>
-              <ul className="space-y-1.5 text-[11px] text-slate-505 text-slate-500 font-bold uppercase tracking-wider">
+              <ul className="space-y-1.5 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Proclamation 754/2512</span></li>
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Privacy Guidelines</span></li>
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Compliance Audit</span></li>
@@ -234,7 +179,7 @@ export default function Home() {
 
             <div className="space-y-3">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</h4>
-              <ul className="space-y-1.5 text-[11px] text-slate-505 text-slate-500 font-bold uppercase tracking-wider">
+              <ul className="space-y-1.5 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Support Center</span></li>
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Addis Ababa Headquarters</span></li>
                 <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Secure Hot-Line</span></li>
@@ -245,7 +190,7 @@ export default function Home() {
         </div>
 
         {/* Legal Signatures */}
-        <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-slate-250 border-slate-200/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-slate-450 text-slate-400 font-black uppercase tracking-widest">
+        <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-slate-200/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-slate-400 font-black uppercase tracking-widest relative z-10">
           <p>© {new Date().getFullYear()} Federal Government of Ethiopia (ICS). All rights reserved.</p>
           <p className="flex items-center gap-1.5 text-[#0b57d0]">
             <Shield className="w-3.5 h-3.5" /> PROCLAMATION COMPLIANT PORTAL
