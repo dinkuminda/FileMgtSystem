@@ -416,9 +416,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       await supabase.storage.from('immigration-docs').remove([attachment.file_path]);
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
       
-      // Clear attachment_url if this was the last one and it's a Yellow Card record
-      if (type === 'Yellow Card' && record && attachments.length === 1) {
-        await supabase.from('airport_records').update({ attachment_url: null }).eq('id', record.id);
+      // Clear attachment_url if this was the last one and it's Yellow Card or Eritrean ID record
+      if ((type === 'Yellow Card' || type === 'Eritrean ID') && record && attachments.length === 1) {
+        await supabase.from(TABLE_MAP[type]).update({ attachment_url: null }).eq('id', record.id);
       }
       
       setAttachments(attachments.filter(a => a.id !== attachment.id));
@@ -579,7 +579,13 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
       onSuccess(savedRecord);
     } catch (err: any) {
-      setError(err.message);
+      const msg = err.message || String(err);
+      const expectedTable = TABLE_MAP[type];
+      if ((msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist'))) {
+        setError(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in your active Supabase database. Please copy and run Section #7 or #12 of the SQL script ("supabase_setup.sql") in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to enable Yellow Card/Eritrean ID records.`);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
       setUploading(false);

@@ -62,7 +62,7 @@ export const TABLE_MAP: Record<RecordType, string> = {
   'Yellow Card': 'airport_records',
   'EOID Under_Age': 'eoid_underage_records',
   'Alien Passport': 'alien_passport_records',
-  'Eritrean ID': 'airport_records'
+  'Eritrean ID': 'eritrean_id_records'
 };
 
 export const REVERSE_TABLE_MAP: Record<string, RecordType> = Object.entries(TABLE_MAP).reduce((acc, [key, value]) => {

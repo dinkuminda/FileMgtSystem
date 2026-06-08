@@ -128,6 +128,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
@@ -286,11 +287,18 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
       if (!error && data) {
         setRecords(data as ImmigrationRecord[]);
+        setSchemaError(null);
       } else {
         throw error || new Error("Failed to load");
       }
     } catch (e: any) {
       console.warn(`Error or missing table on fetching ${activeTab} records, applying fallback:`, e?.message || e);
+      const msg = e?.message || String(e);
+      if (msg.includes('schema cache') || msg.includes('does not exist')) {
+        setSchemaError(`Database schema out of sync: The table "${tableName}" for "${activeTab}" is missing/uncached in Supabase. Please copy/run Section #7 / #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`);
+      } else {
+        setSchemaError(null);
+      }
       if (activeTab === 'EOID Under_Age') {
         const stored = localStorage.getItem('local_records_eoid_under_age');
         if (stored) {
@@ -389,7 +397,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     reader.onload = async (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         if (!worksheet) {
@@ -401,13 +409,48 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
+        const getValidColumnsForTab = (tab: string): string[] => {
+          const common = [
+            'box_number', 'full_name', 'sex', 'citizenship', 
+            'passport_number', 'request_number', 'date', 
+            'service_provided', 'created_by', 'attachment_url'
+          ];
+          
+          if (tab === 'VISA') {
+            return [...common, 'personal_file_no'];
+          }
+          if (tab === 'EOID') {
+            return [...common, 'eoid_number', 'personal_file_no', 'personal_id', 'eoid_type', 'under_age'];
+          }
+          if (tab === 'EOID Under_Age') {
+            return [...common, 'eoid_number', 'personal_file_no', 'personal_id', 'eoid_type', 'dob', 'under_age'];
+          }
+          if (tab === 'Alien Passport') {
+            return [...common, 'personal_file_no'];
+          }
+          if (tab === 'Yellow Card' || tab === 'Eritrean ID') {
+            return [...common, 'personal_file_no', 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
+          }
+          if (tab === 'Residence ID') {
+            return [...common, 'residence_id_no'];
+          }
+          if (tab === 'ETD') {
+            return [...common, 'etd'];
+          }
+          return common;
+        };
+
         const normalizeKey = (key: string): string => {
-          const normalized = key.toLowerCase().trim().replace(/[\s_-]+/g, '_');
-          // Map common fields
-          if (['fullname', 'full_name', 'name', 'applicant_name', 'applicant', 'full_name_english', 'full_name_amharic'].includes(normalized) || normalized.includes('name')) {
+          const normalized = key.toLowerCase().trim()
+            .replace(/[^a-z0-9_]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_+|_+$/g, '');
+
+          // Map common fields to exact schema field names
+          if (['fullname', 'full_name', 'name', 'applicant_name', 'applicant', 'full_name_english', 'full_name_amharic'].some(k => normalized.includes(k))) {
             return 'full_name';
           }
-          if (['box_number', 'boxnumber', 'box_no', 'boxno', 'box', 'drawer', 'locker', 'box_#', 'box_num'].includes(normalized)) {
+          if (['box_number', 'boxnumber', 'box_no', 'boxno', 'box', 'drawer', 'locker', 'box_num'].includes(normalized)) {
             return 'box_number';
           }
           if (['sex', 'gender'].includes(normalized)) {
@@ -434,21 +477,70 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (['personal_file_no', 'personal_file_number', 'personal_file', 'fileno', 'file_no'].includes(normalized)) {
             return 'personal_file_no';
           }
-          if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number'].includes(normalized)) {
+          if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number', 'id_no', 'idno'].includes(normalized)) {
             return 'personal_id';
           }
           if (['date', 'registered_date', 'creation_date', 'registration_date'].includes(normalized)) {
             return 'date';
           }
+          if (['letter_number', 'letter_no', 'letternumber', 'letterno', 'yell_no', 'yellow_card_id'].includes(normalized)) {
+            return 'letter_number';
+          }
+          if (['document_type', 'documenttype', 'doc_type', 'doctype'].includes(normalized)) {
+            return 'document_type';
+          }
+          if (['etd', 'etd_no', 'etd_number'].includes(normalized)) {
+            return 'etd';
+          }
           return normalized;
+        };
+
+        const validColumns = getValidColumnsForTab(activeTab);
+
+        const parseExcelDate = (val: any): string => {
+          if (!val) {
+            return new Date().toISOString().split('T')[0];
+          }
+          if (val instanceof Date) {
+            if (!isNaN(val.getTime())) {
+              return val.toISOString().split('T')[0];
+            }
+          }
+          const num = typeof val === 'number' ? val : parseFloat(val);
+          if (!isNaN(num) && num > 10000 && num < 100000) {
+            try {
+              const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+              if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+              }
+            } catch (err) {
+              console.error("Failed to parse Excel date serial number:", val, err);
+            }
+          }
+          if (typeof val === 'string') {
+            const trimmed = val.trim();
+            if (trimmed) {
+              const parsed = Date.parse(trimmed);
+              if (!isNaN(parsed)) {
+                return new Date(parsed).toISOString().split('T')[0];
+              }
+            }
+          }
+          return new Date().toISOString().split('T')[0];
         };
 
         const processedData = json.map((row: any) => {
           const cleanRow: any = {};
-          // Normalize keys of individual row
+          // Normalize and filter key values of individual row
           Object.entries(row).forEach(([key, val]) => {
             const normKey = normalizeKey(key);
-            cleanRow[normKey] = val;
+            if (validColumns.includes(normKey)) {
+              if (normKey === 'date' || normKey === 'dob') {
+                cleanRow[normKey] = parseExcelDate(val);
+              } else {
+                cleanRow[normKey] = val;
+              }
+            }
           });
 
           // Discard internal system fields to avoid writing stale ids
@@ -474,7 +566,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         addToast(`Successfully imported ${processedData.length} document entries into ${activeTab}!`, 'success');
         fetchRecords();
       } catch (err: any) {
-        addToast('Error importing Excel file: ' + err.message, 'error');
+        const msg = err.message || String(err);
+        const expectedTable = TABLE_MAP[activeTab as RecordType];
+        if ((msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist'))) {
+          addToast(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`, 'error');
+        } else {
+          addToast('Error importing Excel file: ' + msg, 'error');
+        }
       } finally {
         setLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -885,6 +983,20 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                   ) : null
                 )}
               </div>
+
+              {schemaError && (
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl text-red-800 text-xs md:text-sm shadow-sm flex items-start gap-4">
+                  <div className="p-2 bg-red-100 rounded-full text-red-600 shrink-0">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-bold block mb-1">Database Schema Warning</span>
+                    <span className="font-medium leading-relaxed">{schemaError}</span>
+                  </div>
+                </div>
+              )}
 
               <Routes>
                 <Route path="/" element={<DashboardReports userProfile={userProfile} />} />

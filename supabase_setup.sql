@@ -523,5 +523,62 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
   ('Alien Passport', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY['admin'])
   ON CONFLICT (module) DO NOTHING;
 
+-- 12. Eritrean ID Records Table
+CREATE TABLE IF NOT EXISTS public.eritrean_id_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  box_number TEXT NOT NULL,
+  personal_file_no TEXT,
+  personal_id TEXT, -- Personal ID No.
+  eoid_type TEXT, -- Yellow Card Type / Eritrean Card Type
+  full_name TEXT NOT NULL,
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
+  citizenship TEXT NOT NULL,
+  passport_number TEXT NOT NULL, -- Displays as "Id No." in the frontend
+  request_number TEXT NOT NULL,
+  letter_number TEXT,
+  document_type TEXT NOT NULL DEFAULT 'Scanned Letter',
+  date DATE NOT NULL,
+  service_provided TEXT NOT NULL,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.eritrean_id_records ENABLE ROW LEVEL SECURITY;
+
+-- Policies for Eritrean ID Records Table
+DROP POLICY IF EXISTS "eritrean_select" ON public.eritrean_id_records;
+DROP POLICY IF EXISTS "eritrean_insert" ON public.eritrean_id_records;
+DROP POLICY IF EXISTS "eritrean_update" ON public.eritrean_id_records;
+DROP POLICY IF EXISTS "eritrean_delete" ON public.eritrean_id_records;
+
+-- Select logic: Admin always, Deme blocked, others ok if authorized
+CREATE POLICY "eritrean_select" ON public.eritrean_id_records FOR SELECT TO authenticated 
+  USING (
+    public.is_admin() OR (
+      public.is_authorized() AND 
+      (SELECT email FROM public.profiles WHERE id = auth.uid()) != 'demebirhanu@gmail.com'
+    )
+  );
+
+CREATE POLICY "eritrean_insert" ON public.eritrean_id_records FOR INSERT TO authenticated 
+  WITH CHECK (
+    public.is_admin() OR 
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+  );
+
+CREATE POLICY "eritrean_update" ON public.eritrean_id_records FOR UPDATE TO authenticated 
+  USING (
+    public.is_admin() OR 
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+  );
+
+CREATE POLICY "eritrean_delete" ON public.eritrean_id_records FOR DELETE TO authenticated 
+  USING (public.is_admin() OR auth.uid() = created_by);
+
+-- Performance Index
+CREATE INDEX IF NOT EXISTS idx_records_eritrean_name ON public.eritrean_id_records(full_name);
+
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';
