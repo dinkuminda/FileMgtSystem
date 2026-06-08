@@ -5,7 +5,7 @@ import Auth from './Auth';
 import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 // Import our beautifully generated images
-const fileVaultBanner = "/assets/images/fms.png";
+const fileVaultBanner = "/assets/images/fms1.png";
 
 export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
