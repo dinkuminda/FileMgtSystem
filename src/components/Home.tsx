@@ -145,14 +145,14 @@ export default function Home() {
       
 
       {/* 4. FOOTER */}
-      <footer className="relative overflow-hidden bg-[#f8fafc] border-t border-slate-200/50 py-12 px-6 sm:px-8 mt-auto" id="portal-system-footer">
+      <footer className="relative overflow-hidden bg-[#072146] border-t border-[#0d346b] py-16 px-6 sm:px-8 mt-auto text-white/90" id="portal-system-footer">
         
         {/* Large Aesthetic Watermark Brand Seal */}
-        <div className="absolute right-[-5%] bottom-[-15%] pointer-events-none select-none opacity-[0.035] w-96 md:w-[480px] lg:w-[600px] h-auto z-0" id="footer-logo-watermark">
+        <div className="absolute right-[-5%] bottom-[-15%] pointer-events-none select-none opacity-[0.045] w-96 md:w-[480px] lg:w-[600px] h-auto z-0" id="footer-logo-watermark">
           <img 
             src="/assets/images/ics-logo.png" 
             alt="Ethiopian Citizenship Service Watermark Seal" 
-            className="w-full h-auto object-contain grayscale"
+            className="w-full h-auto object-contain brightness-0 invert"
           />
         </div>
 
@@ -160,8 +160,11 @@ export default function Home() {
           
           {/* Footer Logo & Information */}
           <div className="space-y-4 text-left max-w-sm">
-            <EthiopianImmigrationLogo size="sm" className="h-10 opacity-90 filter grayscale hover:grayscale-0 transition-all" />
-            <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+            <div className="flex items-center gap-2">
+              <EthiopianImmigrationLogo size="sm" className="h-10 brightness-0 invert" />
+              <span className="font-semibold tracking-wider text-xs text-blue-200">FEDERAL ARCHIVE</span>
+            </div>
+            <p className="text-[11px] text-blue-100/70 leading-relaxed font-semibold">
               The central authority in the Federal Democratic Republic of Ethiopia responsible for maintaining civil records security, boundary controls, passport verifications, and high-security file locker compliance.
             </p>
           </div>
@@ -169,20 +172,20 @@ export default function Home() {
           {/* Quick Footer Links */}
           <div className="flex gap-16 text-left shrink-0">
             <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Legal</h4>
-              <ul className="space-y-1.5 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Proclamation 754/2512</span></li>
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Privacy Guidelines</span></li>
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Compliance Audit</span></li>
+              <h4 className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Legal</h4>
+              <ul className="space-y-1.5 text-[11px] text-blue-100/60 font-bold uppercase tracking-wider">
+                <li><span className="hover:text-white transition-colors cursor-pointer">Proclamation 754/2512</span></li>
+                <li><span className="hover:text-white transition-colors cursor-pointer">Privacy Guidelines</span></li>
+                <li><span className="hover:text-white transition-colors cursor-pointer">Compliance Audit</span></li>
               </ul>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</h4>
-              <ul className="space-y-1.5 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Support Center</span></li>
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Addis Ababa Headquarters</span></li>
-                <li><span className="hover:text-slate-800 transition-colors cursor-pointer">Secure Hot-Line</span></li>
+              <h4 className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Contact</h4>
+              <ul className="space-y-1.5 text-[11px] text-blue-100/60 font-bold uppercase tracking-wider">
+                <li><span className="hover:text-white transition-colors cursor-pointer">Support Center</span></li>
+                <li><span className="hover:text-white transition-colors cursor-pointer">Addis Ababa Headquarters</span></li>
+                <li><span className="hover:text-white transition-colors cursor-pointer">Secure Hot-Line</span></li>
               </ul>
             </div>
           </div>
@@ -190,9 +193,9 @@ export default function Home() {
         </div>
 
         {/* Legal Signatures */}
-        <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-slate-200/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-slate-400 font-black uppercase tracking-widest relative z-10">
+        <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-blue-900/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-blue-200/50 font-black uppercase tracking-widest relative z-10">
           <p>© {new Date().getFullYear()} Federal Government of Ethiopia (ICS). All rights reserved.</p>
-          <p className="flex items-center gap-1.5 text-[#0b57d0]">
+          <p className="flex items-center gap-1.5 text-[#3b82f6]">
             <Shield className="w-3.5 h-3.5" /> PROCLAMATION COMPLIANT PORTAL
           </p>
         </div>
