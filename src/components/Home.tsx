@@ -5,11 +5,11 @@ import Auth from './Auth';
 import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 
 // Import our beautifully generated images
-const fileVaultBanner = "/src/assets/images/file_vault_banner_1780902756713.png";
-const biometricFolder = "/src/assets/images/biometric_document_folder_1780902775494.png";
-const staffConsultation = "/src/assets/images/ics_staff_consultation_1780903157041.png";
-const passportHandover = "/src/assets/images/ethiopian_passport_handover_1780903171194.png";
-const checkpointAssist = "/src/assets/images/airport_checkpoint_immigration_1780903187170.png";
+const fileVaultBanner = "/assets/images/file_vault_banner_1780902756713.png";
+const biometricFolder = "/assets/images/biometric_document_folder_1780902775494.png";
+const staffConsultation = "/assets/images/ics_staff_consultation_1780903157041.png";
+const passportHandover = "/assets/images/ethiopian_passport_handover_1780903171194.png";
+const checkpointAssist = "/assets/images/airport_checkpoint_immigration_1780903187170.png";
 
 export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
