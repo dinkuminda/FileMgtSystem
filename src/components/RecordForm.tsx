@@ -10,7 +10,6 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'Residence ID': 'Residence-000003',
   'ETD': 'ETD-000004',
   'Yellow Card': 'Yellow-000005',
-  'AIRPORT': 'Bole-000005',
   'EOID Under_Age': 'EOID-Underage-000006',
   'Alien Passport': 'Alien-000007',
   'Eritrean ID': 'Eritrean-000008'
@@ -200,12 +199,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         { category: 'APPLICANT', file_type: 'ERITREAN ID CARD (EXPIRED/PREVIOUS)', url: '', verification_status: 'Pending' },
         { category: 'GUARDIAN', file_type: 'GUARANTOR NATIONAL ID', url: '', verification_status: 'Pending' },
         { category: 'APPLICANT', file_type: 'SIGNED REGISTRATION FORM', url: '', verification_status: 'Pending' }
-      ];
-    } else if (recordType === 'AIRPORT') {
-      return [
-        { category: 'APPLICANT', file_type: 'AIRLINE BOARDING PASS SCAN', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'VISA / STAMP VERIFICATION', url: '', verification_status: 'Pending' },
-        { category: 'TRANSACTION', file_type: 'GATEWAY DECLARATION SHEET', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Alien Passport') {
       return [
@@ -423,8 +416,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       await supabase.storage.from('immigration-docs').remove([attachment.file_path]);
       await supabase.from('record_attachments').delete().eq('id', attachment.id);
       
-      // Clear attachment_url if this was the last one and it's an Yellow Card record
-      if ((type === 'Yellow Card' || type === 'AIRPORT') && record && attachments.length === 1) {
+      // Clear attachment_url if this was the last one and it's a Yellow Card record
+      if (type === 'Yellow Card' && record && attachments.length === 1) {
         await supabase.from('airport_records').update({ attachment_url: null }).eq('id', record.id);
       }
       
@@ -485,7 +478,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       }
       if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
       if (type === 'ETD') basePayload.etd = formData.etd;
-      if (type === 'Yellow Card' || type === 'AIRPORT' || type === 'Eritrean ID') {
+      if (type === 'Yellow Card' || type === 'Eritrean ID') {
         basePayload.letter_number = formData.letter_number;
         basePayload.document_type = formData.document_type;
       }
@@ -1290,18 +1283,18 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   />
                 </div>
               )}
-              {(type === 'Yellow Card' || type === 'AIRPORT') && (
+              {type === 'Yellow Card' && (
                 <>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      {type === 'AIRPORT' ? 'Terminal Registration ID / Yellow Card ID' : 'Yellow Card Registration ID'}
+                      Yellow Card Registration ID
                     </label>
                     <input
                       required
                       className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
                       value={formData.letter_number}
                       onChange={e => setFormData({ ...formData, letter_number: e.target.value })}
-                      placeholder={type === 'AIRPORT' ? 'ETH-YC-XXXXX / ADD-BOLE-XXXXX' : 'ETH-YC-XXXXX'}
+                      placeholder="ETH-YC-XXXXX"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -1315,7 +1308,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                       <option value="Origin ID Card">Origin ID Card</option>
                       <option value="Diaspora Clearance Certificate">Diaspora Clearance Certificate</option>
                       <option value="Temporary Diaspora Permit">Temporary Diaspora Permit</option>
-                      <option value="Bole Terminal Scan">Bole Terminal Scan</option>
                     </select>
                   </div>
                 </>

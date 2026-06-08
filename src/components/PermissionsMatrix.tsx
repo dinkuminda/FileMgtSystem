@@ -85,7 +85,6 @@ export const PermissionsMatrix: React.FC<PermissionsMatrixProps> = ({
           <tbody className="divide-y divide-slate-100">
             {[
               { id: 'OVERVIEW', label: '[📊] Dashboard', desc: 'Global system overview, telemetry indicators, & alerts stream' },
-              { id: 'AIRPORT', label: '[✈️] Bole Airport', desc: 'Terminal arrivals, passport validation protocols, & checkpoints' },
               { id: 'VISA', label: '[📄] VISA Division', desc: 'Entry visas permissions, application queues, & processing' },
               { id: 'Residence ID', label: '[🪪] Residence ID', desc: 'National residence registry, local ID cards, & cards generation' },
               { id: 'Yellow Card', label: '[🟡] Yellow Card Div.', desc: 'Health clearances, yellow cards registry, & tracking records' },

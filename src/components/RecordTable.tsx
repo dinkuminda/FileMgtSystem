@@ -821,7 +821,7 @@ function RecordDetailsModal({
               <h3 className="text-lg font-black text-slate-900">
                 {isVisa 
                   ? 'Official Personal VISA Record Specimen' 
-                  : `${activeTab === 'AIRPORT' ? 'Bole Airport' : activeTab} Record Information`}
+                  : `${activeTab} Record Information`}
               </h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">National Registration & Border Control Registry</p>
             </div>

@@ -1042,7 +1042,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   <input
                     required
                     type="text"
-                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT, Alien Passport"
+                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, Alien Passport"
                     value={newCabModule}
                     onChange={(e) => setNewCabModule(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"
@@ -1153,7 +1153,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                   <input
                     required
                     type="text"
-                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, AIRPORT, Alien Passport"
+                    placeholder="e.g. VISA, EOID, Residence ID, ETD, Yellow Card, Alien Passport"
                     value={editCabModule}
                     onChange={(e) => setEditCabModule(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all font-sans"

@@ -98,7 +98,6 @@ export const TeamDirectory: React.FC<TeamDirectoryProps> = ({
                   .filter(m => !m.includes(':')) // exclude granular suffixes
                   .map(m => {
                     if (m === 'OVERVIEW') return 'Dashboard';
-                    if (m === 'AIRPORT') return 'Bole Airport';
                     if (m === 'Yellow Card') return 'Yellow Card Div.';
                     if (m === 'CABINETS') return 'File Cabinets';
                     if (m === 'AUDIT') return 'System Audit';

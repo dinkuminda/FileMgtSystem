@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 export interface ModulePermissionRule {
-  module: string;                  // e.g. 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT', 'CABINETS'
+  module: string;                  // e.g. 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'CABINETS'
   view_roles: string[];           // roles allowed to view/read
   create_roles: string[];         // roles allowed to add/create
   update_roles: string[];         // roles allowed to edit/update
@@ -49,12 +49,6 @@ export const DEFAULT_PERMISSION_RULES: ModulePermissionRule[] = [
     module: 'CABINETS',
     view_roles: ['admin', 'staff'],
     create_roles: ['admin', 'staff'],
-    update_roles: []
-  },
-  {
-    module: 'AIRPORT',
-    view_roles: ['admin', 'staff', 'airport_staff', 'airport_viewer'],
-    create_roles: ['admin', 'staff', 'airport_staff'],
     update_roles: []
   },
   {

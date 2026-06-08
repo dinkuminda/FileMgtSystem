@@ -92,12 +92,10 @@ export default function App() {
         ...data,
         role: mapDbRoleToFrontend(data.role)
       } as UserProfile;
-      // Fail-safe check: guarantee weleba ephrem has airport modules correctly parsed and active
+      // Fail-safe check: guarantee weleba ephrem has base modules active
       if (profile.email?.toLowerCase().includes('weleba') || profile.full_name?.toLowerCase().includes('weleba')) {
         if (!profile.modules || !Array.isArray(profile.modules)) {
-          profile.modules = ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'];
-        } else if (!profile.modules.includes('AIRPORT')) {
-          profile.modules.push('AIRPORT');
+          profile.modules = ['OVERVIEW', 'VISA'];
         }
       }
       setUserProfile(profile);
@@ -110,14 +108,14 @@ export default function App() {
         const isAdminByEmail = user.email === adminEmail; 
         const isWeleba = user.email?.toLowerCase().includes('weleba') || user.user_metadata?.full_name?.toLowerCase().includes('weleba');
         
-        console.log("Fallback determined role:", isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff', "for email:", user.email);
+        console.log("Fallback determined role:", isAdminByEmail ? 'admin' : isWeleba ? 'staff' : 'staff', "for email:", user.email);
         
         setUserProfile({
           id: user.id,
           email: user.email || '',
-          role: mapDbRoleToFrontend(isAdminByEmail ? 'admin' : isWeleba ? 'airport_staff' : 'staff'),
+          role: mapDbRoleToFrontend(isAdminByEmail ? 'admin' : isWeleba ? 'staff' : 'staff'),
           full_name: user.user_metadata?.full_name || (isWeleba ? 'weleba ephrem' : undefined),
-          modules: isWeleba ? ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT'] : undefined
+          modules: isWeleba ? ['OVERVIEW', 'VISA'] : undefined
         });
       }
     }

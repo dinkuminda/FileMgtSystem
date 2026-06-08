@@ -52,7 +52,7 @@ export function mapFrontendRoleToDb(frontendRole: string): string {
   return 'viewer';
 }
 
-export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'AIRPORT' | 'EOID Under_Age' | 'Alien Passport' | 'Eritrean ID';
+export type RecordType = 'VISA' | 'EOID' | 'Residence ID' | 'ETD' | 'Yellow Card' | 'EOID Under_Age' | 'Alien Passport' | 'Eritrean ID';
 
 export const TABLE_MAP: Record<RecordType, string> = {
   'VISA': 'visa_records',
@@ -60,7 +60,6 @@ export const TABLE_MAP: Record<RecordType, string> = {
   'Residence ID': 'residence_id_records',
   'ETD': 'etd_records',
   'Yellow Card': 'airport_records',
-  'AIRPORT': 'airport_records',
   'EOID Under_Age': 'eoid_underage_records',
   'Alien Passport': 'alien_passport_records',
   'Eritrean ID': 'airport_records'

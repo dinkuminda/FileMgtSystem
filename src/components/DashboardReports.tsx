@@ -328,13 +328,13 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
             if (roleL !== 'admin' && roleL !== 'super_admin' && roleL !== 'super-admin' && roleL !== 'super admin') {
               if (userProfile.modules) {
                 if (type === 'Yellow Card') {
-                  hasAccess = userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+                  hasAccess = userProfile.modules.includes('Yellow Card');
                 } else {
                   hasAccess = userProfile.modules.includes(type);
                 }
               } else {
                 if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
-                  hasAccess = type === 'Yellow Card' || type === 'AIRPORT';
+                  hasAccess = type === 'Yellow Card';
                 } else {
                   // Regular staff with no configured modules array get no default division access
                   hasAccess = false;
@@ -416,12 +416,12 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         );
         if (userProfile.modules) {
           if (mType === 'Yellow Card') {
-            return userProfile.modules.includes('Yellow Card') || userProfile.modules.includes('AIRPORT');
+            return userProfile.modules.includes('Yellow Card');
           }
           return userProfile.modules.includes(mType);
         } else {
           if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
-            return mType === 'Yellow Card' || mType === 'AIRPORT';
+            return mType === 'Yellow Card';
           }
           // Regular staff with no configured modules get no default cabinet access
           return false;
@@ -474,7 +474,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           // Stable fallback activities with exact styling avatars mimicking the dashboard
           fetchedLogs = [
             { id: '1', user_email: 'ronald.bradley@immigration.gov.et', action: 'CREATE', entity_type: 'VISA', details: 'Added entry clearance registry validation', created_at: new Date(Date.now() - 600000 * 3).toISOString() },
-            { id: '2', user_email: 'russell.gibson@bole.gov.et', action: 'UPDATE', entity_type: 'AIRPORT', details: 'Configured physical box correlation alignment', created_at: new Date(Date.now() - 3600000).toISOString() },
+            { id: '2', user_email: 'russell.gibson@bole.gov.et', action: 'UPDATE', entity_type: 'Yellow Card', details: 'Configured physical box correlation alignment', created_at: new Date(Date.now() - 3600000).toISOString() },
             { id: '3', user_email: 'beverly.armstrong@immigration.gov.et', action: 'EXPORT', entity_type: 'Residence ID', details: 'Archived digitized credentials index to local backup', created_at: new Date(Date.now() - 3600000 * 2.5).toISOString() },
             { id: '4', user_email: 'dinkuh12@gmail.com', action: 'LOGIN', entity_type: 'User', details: 'Administrative control session activated from gateway', created_at: new Date(Date.now() - 3600000 * 6.2).toISOString() }
           ];
@@ -492,7 +492,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
               if (moduleType === 'Eritrean ID' || moduleType === 'Eritrean ID Logs') {
                 return userProfile.modules.includes('Eritrean ID');
               }
-              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
+              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
               if (moduleKeys.includes(moduleType)) {
                 return userProfile.modules.includes(moduleType);
               }
@@ -563,10 +563,10 @@ WHERE id = '${sql_user_id}'::uuid;`;
 
 UPDATE public.profiles 
 SET 
-  modules = array_append(modules, 'AIRPORT'),
+  modules = array_append(modules, 'VISA'),
   updated_at = now()
 WHERE id = '${sql_user_id}'::uuid 
-  AND NOT ('AIRPORT' = ANY(modules));
+  AND NOT ('VISA' = ANY(modules));
 
 -- Verify addition
 SELECT id, email, modules FROM public.profiles WHERE id = '${sql_user_id}'::uuid;`;
@@ -580,7 +580,7 @@ SELECT id, email, role, modules FROM public.profiles ORDER BY email ASC;
 
 -- 3. Batch grant all modules to multiple admins
 UPDATE public.profiles 
-SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID']::text[]
+SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID']::text[]
 WHERE role IN ('admin', 'super_admin');`;
   }
 

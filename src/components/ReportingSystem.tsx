@@ -9,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#06b6d4'];
 
@@ -97,12 +97,11 @@ export default function ReportingSystem() {
 
   const exportFilteredData = () => {
     if (filteredData.length === 0) return;
-    const csv = Papa.unparse(filteredData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `immigration_report_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Immigration Report");
+    const filename = `immigration_report_${new Date().toISOString().split('T')[0]}.xls`;
+    XLSX.writeFile(workbook, filename);
   };
 
   if (loading) {
@@ -209,7 +208,7 @@ export default function ReportingSystem() {
               onClick={exportFilteredData}
               disabled={filteredData.length === 0}
               className="p-4 bg-[var(--m3-surface-container)] text-[var(--m3-on-surface)] rounded-2xl border border-[var(--m3-outline)]/10 hover:bg-[var(--m3-primary-container)] hover:text-[var(--m3-on-primary-container)] transition-all active:scale-95 disabled:opacity-50 shadow-sm"
-              title="Download results as CSV"
+              title="Download results as Excel (.xls)"
             >
               <Download className="w-5 h-5" />
             </button>

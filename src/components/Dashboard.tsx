@@ -15,7 +15,6 @@ import RecordForm from './RecordForm';
 import DashboardReports from './DashboardReports';
 import AuditLogView from './AuditLogView';
 import ReportingSystem from './ReportingSystem';
-import AirportView from './AirportView';
 import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
 import CabinetsView from './CabinetsView';
@@ -29,7 +28,7 @@ import {
   DEFAULT_PERMISSION_RULES, 
   type ModulePermissionRule 
 } from '../lib/permissions';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 interface DashboardProps {
   userProfile: UserProfile | null;
@@ -130,7 +129,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const [records, setRecords] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'AIRPORT'; icon: any; label: string }[] = [
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
@@ -149,7 +148,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   // Map path to tab type
   const pathParts = location.pathname.split('/').filter(p => p);
   const currentPath = pathParts[0]?.toLowerCase() || '';
-  const airportSubPath = pathParts[1]?.toLowerCase() || 'dashboard';
 
   const matchingTab = allTabs.find(tab => {
     const slug = tab.type === 'OVERVIEW' ? '' : tab.type.toLowerCase().replace(' ', '-');
@@ -169,17 +167,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
     // Direct check for weleba ephrem as an active authorized staff member
     const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
-    if (isWeleba) {
-      if (tab.type === 'AIRPORT') return true;
-    }
 
     // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
       if (tab.type === 'Yellow Card') {
         return userProfile.modules.includes('Yellow Card') || 
-               userProfile.modules.includes('AIRPORT') ||
-               userProfile.modules.includes('Yellow Card:read') ||
-               userProfile.modules.includes('AIRPORT:read');
+               userProfile.modules.includes('Yellow Card:read');
       }
       return userProfile.modules.includes(tab.type) || 
              userProfile.modules.includes(`${tab.type}:read`) ||
@@ -189,52 +182,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
     // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
     // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
-    // However, if they are historic airport_staff/airport_viewer, let them view AIRPORT/Yellow Card.
     if (r === 'airport_staff' || r === 'airport_viewer' || r === 'staff' || r === 'supervisor') {
-      return tab.type === 'Yellow Card' || tab.type === 'AIRPORT';
+      return tab.type === 'Yellow Card';
     }
 
     // Regular staff (or other roles) with no configured modules array get ONLY the Overview baseline.
     return false;
-  });
-
-  // Calculate Airport Sub Tabs based on permissions
-  const airportTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid, module: 'AIRPORT_VIEW' },
-    { id: 'add', label: 'Add Document', icon: Plus, module: 'AIRPORT_ADD' },
-    { id: 'view', label: 'View Document', icon: Search, module: 'AIRPORT_VIEW' },
-    { id: 'edit', label: 'Edit Document', icon: List, module: 'AIRPORT_EDIT' },
-    { id: 'users', label: 'User Management', icon: Users, module: 'USERS' },
-    { id: 'audit', label: 'System Audit', icon: Clock, module: 'AUDIT' }
-  ].filter(at => {
-    if (!userProfile) return false;
-    const r = (userProfile.role as string || '').toLowerCase();
-    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
-    if (userProfile.modules && userProfile.modules.length > 0) {
-      // If they have users/audit module, show them in airport too
-      if (at.module === 'USERS') return userProfile.modules.includes('USERS');
-      if (at.module === 'AUDIT') return userProfile.modules.includes('AUDIT');
-      
-      // Map general AIRPORT clearance to specific sub-clearance keys
-      if (at.module === 'AIRPORT_VIEW') {
-        return userProfile.modules.includes('AIRPORT') || 
-               userProfile.modules.includes('AIRPORT:read') || 
-               userProfile.modules.includes('AIRPORT_VIEW');
-      }
-      if (at.module === 'AIRPORT_ADD') {
-        return userProfile.modules.includes('AIRPORT:write') || 
-               userProfile.modules.includes('AIRPORT_ADD');
-      }
-      if (at.module === 'AIRPORT_EDIT') {
-        return userProfile.modules.includes('AIRPORT:approve') || 
-               userProfile.modules.includes('AIRPORT:write') || 
-               userProfile.modules.includes('AIRPORT_EDIT');
-      }
-      return userProfile.modules.includes(at.module);
-    }
-    // Fallback
-    if (at.id === 'users' || at.id === 'audit') return false;
-    return true;
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -412,58 +365,126 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     }
   };
 
-  const exportToCSV = async () => {
+  const exportToExcel = async () => {
     if (records.length === 0) return;
-    await logger.log('EXPORT', activeTab, `Exported ${records.length} records to CSV`);
-    const csv = Papa.unparse(records);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${activeTab.toLowerCase().replace(' ', '_')}_records_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast(`Successfully exported ${records.length} records to CSV file.`, 'success');
+    await logger.log('EXPORT', activeTab, `Exported ${records.length} records to Excel`);
+    
+    // Convert JSON records to an Excel Worksheet
+    const worksheet = XLSX.utils.json_to_sheet(records);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.substring(0, 31)); // sheet names must be <= 31 chars
+
+    // Write file using modern xls format
+    const filename = `${activeTab.toLowerCase().replace(' ', '_')}_records_${new Date().toISOString().split('T')[0]}.xls`;
+    XLSX.writeFile(workbook, filename);
+    addToast(`Successfully exported ${records.length} records to Excel .xls file.`, 'success');
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setLoading(true);
-    Papa.parse(file, {
-      header: true,
-      complete: async (results) => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('Not authenticated');
-
-          const processedData = results.data.map((row: any) => {
-            const { id, created_at, ...cleanRow } = row;
-            return {
-              ...cleanRow,
-              created_by: user.id
-            };
-          }).filter((row: any) => row.full_name);
-
-          const tableName = TABLE_MAP[activeTab as RecordType];
-          const { error } = await supabase.from(tableName).insert(processedData);
-          
-          if (error) throw error;
-          
-          await logger.log('IMPORT', activeTab, `Imported ${processedData.length} records via CSV`);
-          addToast(`Successfully imported ${processedData.length} document entries into ${activeTab}!`, 'success');
-          fetchRecords();
-        } catch (err: any) {
-          addToast('Error importing CSV: ' + err.message, 'error');
-        } finally {
-          setLoading(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        if (!worksheet) {
+          throw new Error('Workbook sheet is empty or invalid.');
         }
+        
+        const json = XLSX.utils.sheet_to_json(worksheet);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const normalizeKey = (key: string): string => {
+          const normalized = key.toLowerCase().trim().replace(/[\s_-]+/g, '_');
+          // Map common fields
+          if (['fullname', 'full_name', 'name', 'applicant_name', 'applicant', 'full_name_english', 'full_name_amharic'].includes(normalized) || normalized.includes('name')) {
+            return 'full_name';
+          }
+          if (['box_number', 'boxnumber', 'box_no', 'boxno', 'box', 'drawer', 'locker', 'box_#', 'box_num'].includes(normalized)) {
+            return 'box_number';
+          }
+          if (['sex', 'gender'].includes(normalized)) {
+            return 'sex';
+          }
+          if (['citizenship', 'citizen', 'nationality', 'origin'].includes(normalized)) {
+            return 'citizenship';
+          }
+          if (['passport_number', 'passport_no', 'passportnumber', 'passportno', 'passport'].includes(normalized)) {
+            return 'passport_number';
+          }
+          if (['request_number', 'request_no', 'requestnumber', 'requestno', 'request', 'req_no'].includes(normalized)) {
+            return 'request_number';
+          }
+          if (['service_provided', 'serviceprovided', 'service', 'services', 'action'].includes(normalized)) {
+            return 'service_provided';
+          }
+          if (['eoid_number', 'eoid_no', 'eoidnumber', 'eoidno', 'origin_id'].includes(normalized)) {
+            return 'eoid_number';
+          }
+          if (['residence_id_no', 'residence_id_number', 'residence_id', 'residence_no', 'residenceid'].includes(normalized)) {
+            return 'residence_id_no';
+          }
+          if (['personal_file_no', 'personal_file_number', 'personal_file', 'fileno', 'file_no'].includes(normalized)) {
+            return 'personal_file_no';
+          }
+          if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number'].includes(normalized)) {
+            return 'personal_id';
+          }
+          if (['date', 'registered_date', 'creation_date', 'registration_date'].includes(normalized)) {
+            return 'date';
+          }
+          return normalized;
+        };
+
+        const processedData = json.map((row: any) => {
+          const cleanRow: any = {};
+          // Normalize keys of individual row
+          Object.entries(row).forEach(([key, val]) => {
+            const normKey = normalizeKey(key);
+            cleanRow[normKey] = val;
+          });
+
+          // Discard internal system fields to avoid writing stale ids
+          delete cleanRow.id;
+          delete cleanRow.created_at;
+
+          return {
+            ...cleanRow,
+            created_by: user.id
+          };
+        }).filter((row: any) => row.full_name);
+
+        if (processedData.length === 0) {
+          throw new Error('No valid rows containing a "full_name" (or equivalent name column) were found.');
+        }
+
+        const tableName = TABLE_MAP[activeTab as RecordType];
+        const { error } = await supabase.from(tableName).insert(processedData);
+        
+        if (error) throw error;
+        
+        await logger.log('IMPORT', activeTab, `Imported ${processedData.length} records via Excel`);
+        addToast(`Successfully imported ${processedData.length} document entries into ${activeTab}!`, 'success');
+        fetchRecords();
+      } catch (err: any) {
+        addToast('Error importing Excel file: ' + err.message, 'error');
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-    });
+    };
+    reader.onerror = (err) => {
+      addToast('Error reading file: ' + err, 'error');
+      setLoading(false);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const canAdd = () => {
@@ -499,8 +520,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   );
 
   const SidebarContent = () => {
-    const isAirportContext = location.pathname.startsWith('/airport');
-
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
         {/* Branding Area */}
@@ -511,157 +530,116 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         {/* Navigation */}
         <nav className="flex-1 px-3 space-y-1.5 py-4 overflow-y-auto scrollbar-hide min-h-0 text-left">
           <AnimatePresence mode="wait">
-            {isAirportContext ? (
-              <motion.div
-                key="airport-sidebar"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-1.5"
-              >
-                <Link
-                  to="/"
-                  className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-black text-blue-600 hover:bg-blue-50/60 pb-3 border-b border-slate-100 mb-2 transition-all cursor-pointer ${
-                    isSidebarCollapsed ? 'justify-center' : 'justify-start'
-                  }`}
-                >
-                  <ArrowLeft className="w-4.5 h-4.5 text-blue-500 flex-shrink-0" />
-                  {!isSidebarCollapsed && <span>Back to Main Menu</span>}
-                </Link>
-                {airportTabs.map((at) => {
-                  const isActive = airportSubPath === at.id;
-                  const Icon = at.icon;
-                  return (
-                    <Link
-                      key={at.id}
-                      to={`/airport/${at.id}`}
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                        isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
-                      } ${
-                        isActive 
-                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs border-l-4 ${currentTheme.border}` 
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                      }`}
-                    >
-                      <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                      {!isSidebarCollapsed && <span className="flex-1">{at.label}</span>}
-                    </Link>
-                  );
-                })}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="main-sidebar"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-1.5"
-              >
-                {(() => {
-                  const renderedItems: React.ReactNode[] = [];
-                  let hasRenderedEoidGroup = false;
+            <motion.div
+              key="main-sidebar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-1.5"
+            >
+              {(() => {
+                const renderedItems: React.ReactNode[] = [];
+                let hasRenderedEoidGroup = false;
 
-                  tabs.forEach((tab) => {
-                    const isGroupItem = tab.type === 'EOID' || tab.type === 'EOID Under_Age';
+                tabs.forEach((tab) => {
+                  const isGroupItem = tab.type === 'EOID' || tab.type === 'EOID Under_Age';
 
-                    if (isGroupItem) {
-                      if (!hasRenderedEoidGroup) {
-                        hasRenderedEoidGroup = true;
-                        
-                        const innerGroupTabs = tabs.filter(t => t.type === 'EOID' || t.type === 'EOID Under_Age');
-                        const isAnyChildActive = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
-                        
-                        renderedItems.push(
-                          <div key="eoid-group" className="space-y-1.5 mt-2.5">
-                            {/* Group Header */}
-                            {!isSidebarCollapsed ? (
-                              <button
-                                type="button"
-                                onClick={() => setIsEoidGroupOpen(!isEoidGroupOpen)}
-                                className={`w-full flex items-center justify-between px-4 py-2 text-[10px] font-black tracking-widest uppercase transition-all rounded-lg outline-none border-none cursor-pointer ${
-                                  isAnyChildActive
-                                    ? 'text-[#8c1d1d] font-extrabold bg-red-50/20'
-                                    : 'text-slate-400 hover:text-slate-655 hover:text-slate-600'
-                                }`}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <Fingerprint className={`w-3.5 h-3.5 ${isAnyChildActive ? 'text-[#8c1d1d]' : 'text-slate-400'}`} />
-                                  <span>Ethiopian Origin ID</span>
-                                </span>
-                                <div>
-                                  {isEoidGroupOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                </div>
-                              </button>
-                            ) : (
-                              <div className="border-t border-slate-100 my-2" />
-                            )}
-
-                            {/* Sub items */}
-                            <AnimatePresence initial={false}>
-                              {(isEoidGroupOpen || isSidebarCollapsed) && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className={`space-y-1 overflow-hidden ${!isSidebarCollapsed ? 'pl-3 border-l border-slate-100 ml-5' : ''}`}
-                                >
-                                  {innerGroupTabs.map((subTab) => {
-                                    const isSubActive = activeTab === subTab.type;
-                                    const path = `/${subTab.type.toLowerCase().replace(' ', '-')}`;
-                                    return (
-                                      <Link
-                                        key={subTab.type}
-                                        to={path}
-                                        onClick={() => setIsSidebarOpen(false)}
-                                        className={`flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                                          isSidebarCollapsed ? 'justify-center' : 'justify-start'
-                                        } ${
-                                          isSubActive 
-                                            ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs` 
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                                        }`}
-                                      >
-                                        <subTab.icon className={`w-4 h-4 flex-shrink-0 ${isSubActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                                        {!isSidebarCollapsed && <span className="flex-1 truncate">{subTab.label}</span>}
-                                      </Link>
-                                    );
-                                  })}
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      }
-                    } else {
-                      // Normal non-grouped tab link
-                      const isActive = activeTab === tab.type;
-                      const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+                  if (isGroupItem) {
+                    if (!hasRenderedEoidGroup) {
+                      hasRenderedEoidGroup = true;
+                      
+                      const innerGroupTabs = tabs.filter(t => t.type === 'EOID' || t.type === 'EOID Under_Age');
+                      const isAnyChildActive = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
+                      
                       renderedItems.push(
-                        <Link
-                          key={tab.type}
-                          to={path}
-                          onClick={() => setIsSidebarOpen(false)}
-                          className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                            isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
-                          } ${
-                            isActive 
-                              ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                          }`}
-                        >
-                          <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                          {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
-                        </Link>
+                        <div key="eoid-group" className="space-y-1.5 mt-2.5">
+                          {/* Group Header */}
+                          {!isSidebarCollapsed ? (
+                            <button
+                              type="button"
+                              onClick={() => setIsEoidGroupOpen(!isEoidGroupOpen)}
+                              className={`w-full flex items-center justify-between px-4 py-2 text-[10px] font-black tracking-widest uppercase transition-all rounded-lg outline-none border-none cursor-pointer ${
+                                isAnyChildActive
+                                  ? 'text-[#8c1d1d] font-extrabold bg-red-50/20'
+                                  : 'text-slate-400 hover:text-slate-655 hover:text-slate-600'
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Fingerprint className={`w-3.5 h-3.5 ${isAnyChildActive ? 'text-[#8c1d1d]' : 'text-slate-400'}`} />
+                                <span>Ethiopian Origin ID</span>
+                              </span>
+                              <div>
+                                {isEoidGroupOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="border-t border-slate-100 my-2" />
+                          )}
+
+                          {/* Sub items */}
+                          <AnimatePresence initial={false}>
+                            {(isEoidGroupOpen || isSidebarCollapsed) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className={`space-y-1 overflow-hidden ${!isSidebarCollapsed ? 'pl-3 border-l border-slate-100 ml-5' : ''}`}
+                              >
+                                {innerGroupTabs.map((subTab) => {
+                                  const isSubActive = activeTab === subTab.type;
+                                  const path = `/${subTab.type.toLowerCase().replace(' ', '-')}`;
+                                  return (
+                                    <Link
+                                      key={subTab.type}
+                                      to={path}
+                                      onClick={() => setIsSidebarOpen(false)}
+                                      className={`flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                                        isSidebarCollapsed ? 'justify-center' : 'justify-start'
+                                      } ${
+                                        isSubActive 
+                                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs` 
+                                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                                      }`}
+                                    >
+                                      <subTab.icon className={`w-4 h-4 flex-shrink-0 ${isSubActive ? currentTheme.primaryText : 'text-slate-400'}`} />
+                                      {!isSidebarCollapsed && <span className="flex-1 truncate">{subTab.label}</span>}
+                                    </Link>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       );
                     }
-                  });
+                  } else {
+                    // Normal non-grouped tab link
+                    const isActive = activeTab === tab.type;
+                    const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+                    renderedItems.push(
+                      <Link
+                        key={tab.type}
+                        to={path}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                          isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
+                        } ${
+                          isActive 
+                            ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                        }`}
+                      >
+                        <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
+                        {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
+                      </Link>
+                    );
+                  }
+                });
 
-                  return renderedItems;
-                })()}
-              </motion.div>
-            )}
+                return renderedItems;
+              })()}
+            </motion.div>
           </AnimatePresence>
         </nav>
 
@@ -709,10 +687,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     <div className="flex min-h-screen bg-slate-50 transition-colors duration-300 font-sans">
       <input 
         type="file" 
-        accept=".csv" 
+        accept=".xls,.xlsx" 
         ref={fileInputRef} 
         className="hidden" 
-        onChange={handleImportCSV} 
+        onChange={handleImportExcel} 
       />
 
       {/* Mobile Sidebar Overlay */}
@@ -729,7 +707,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       </AnimatePresence>
 
       {/* FAB */}
-      {canAdd() && ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT', 'Eritrean ID', 'Alien Passport'].includes(activeTab) && (
+      {canAdd() && ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Eritrean ID', 'Alien Passport'].includes(activeTab) && (
         <button 
           onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
           className={`fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 ${currentTheme.primary} ${currentTheme.primaryHover} text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none`}
@@ -816,14 +794,14 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         <div className="p-5 md:p-8 max-w-7xl">
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeTab + airportSubPath}
+              key={activeTab}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
                <div className="mb-8 md:mb-10">
-                {['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'AIRPORT', 'Eritrean ID', 'Alien Passport'].includes(activeTab) ? (
+                {['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Eritrean ID', 'Alien Passport'].includes(activeTab) ? (
                   <div className="space-y-6">
                     {/* FSD Division style heading row */}
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
@@ -836,8 +814,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                            activeTab === 'ETD' ? 'ETD Records' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
                            activeTab === 'Eritrean ID' ? 'Eritrean ID Records' :
-                           activeTab === 'Alien Passport' ? 'Alien Passport Records' :
-                           activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
+                           activeTab === 'Alien Passport' ? 'Alien Passport Records' : activeTab}
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
@@ -847,7 +824,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
                            activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
                            activeTab === 'Alien Passport' ? 'SOURCE: - ALIEN PASSPORT RECEPTACLE DATA' :
-                           activeTab === 'AIRPORT' ? 'SOURCE: - BOLE AIRPORT BORDER SECURITY CONTROL' :
                            'SOURCE: - DIASPORA REGISTRATION HUB'}
                         </p>
                       </div>
@@ -864,12 +840,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                           </button>
                         )}
                         <button 
-                          onClick={exportToCSV}
+                          onClick={exportToExcel}
                           disabled={records.length === 0}
                           className="flex items-center gap-2 px-4.5 py-2.5 bg-[#f4f7f5] hover:bg-[#e2ede6] text-slate-600 disabled:opacity-50 border border-slate-200/50 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
                         >
                           <FileOutput className="w-4 h-4 text-slate-400" />
-                          <span>Export CSV</span>
+                          <span>Export Excel</span>
                         </button>
                         {canAdd() && (
                           <button 
@@ -877,7 +853,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                             className="flex items-center gap-2 px-4.5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
                           >
                             <FileInput className="w-4 h-4 text-slate-400" />
-                            <span>Import CSV</span>
+                            <span>Import Excel</span>
                           </button>
                         )}
                       </div>
@@ -899,12 +875,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                   activeTab !== 'CABINETS' ? (
                     <div className="text-left">
                       <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                        {activeTab === 'OVERVIEW' ? 'Overview' : 
-                         activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
+                        {activeTab === 'OVERVIEW' ? 'Overview' : activeTab}
                       </h1>
                       <p className="text-slate-500 text-sm md:text-base font-medium">
                         {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
-                         activeTab === 'AIRPORT' ? 'Localized Bole operations, passenger tracking, and border registry controls.' : 
                          `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
                       </p>
                     </div>
@@ -918,32 +892,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
-                <Route path="/airport/:subTab" element={
-                  hasAccess('AIRPORT') ? (
-                    <AirportView 
-                      userProfile={userProfile}
-                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDeleteRecord={handleDelete}
-                      searchQuery={searchQuery}
-                      canEdit={canEdit()}
-                      refreshCounter={refreshCounter}
-                    />
-                  ) : <Navigate to="/" replace />
-                } />
-                <Route path="/airport" element={
-                  hasAccess('AIRPORT') ? (
-                    <AirportView 
-                      userProfile={userProfile}
-                      onAddRecord={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                      onEditRecord={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                      onDeleteRecord={handleDelete}
-                      searchQuery={searchQuery}
-                      canEdit={canEdit()}
-                      refreshCounter={refreshCounter}
-                    />
-                  ) : <Navigate to="/" replace />
-                } />
                 <Route path="/yellow-card" element={
                   hasAccess('Yellow Card') ? (
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
@@ -1076,7 +1024,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             onSuccess={(record) => {
               setIsFormOpen(false);
               setRefreshCounter(prev => prev + 1);
-              if ((activeTab === 'Yellow Card' || activeTab === 'AIRPORT') && record.passport_number) {
+              if (activeTab === 'Yellow Card' && record.passport_number) {
                 setSearchQuery(record.request_number || record.passport_number);
               }
               addToast(`Record for ${record.full_name} was successfully saved!`, 'success');
