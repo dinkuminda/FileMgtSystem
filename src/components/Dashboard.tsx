@@ -829,14 +829,14 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
                         <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight">
-                          {activeTab === 'VISA' ? 'VISA Structuring Division' : 
+                          {activeTab === 'VISA' ? 'VISA Records' : 
                            activeTab === 'EOID' ? 'Ethiopian Origin ID - Normal Registrations' : 
                            activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID - Under-Age Applications' : 
-                           activeTab === 'Residence ID' ? 'Residence ID Division' : 
-                           activeTab === 'ETD' ? 'ETD Structuring Division' : 
-                           activeTab === 'Yellow Card' ? 'Yellow Card Division' : 
-                           activeTab === 'Eritrean ID' ? 'Eritrean ID Structuring Division' :
-                           activeTab === 'Alien Passport' ? 'Alien Passport Structuring Division' :
+                           activeTab === 'Residence ID' ? 'Residence ID Records' : 
+                           activeTab === 'ETD' ? 'ETD Records' : 
+                           activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
+                           activeTab === 'Eritrean ID' ? 'Eritrean ID Records' :
+                           activeTab === 'Alien Passport' ? 'Alien Passport Records' :
                            activeTab === 'AIRPORT' ? 'Bole Airport Division' : activeTab}
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
