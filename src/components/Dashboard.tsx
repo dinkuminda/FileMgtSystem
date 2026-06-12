@@ -707,7 +707,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     return (
       <div className="flex flex-col h-full w-full bg-white border-r border-slate-100 transition-all duration-300 font-sans">
         {/* Branding Area */}
-        <div className="pt-8 pb-5 px-6 flex items-center justify-center flex-shrink-0">
+        <div className={`pt-8 pb-5 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'px-3' : 'px-6'}`}>
           <EthiopianImmigrationLogo size={isSidebarCollapsed ? "sm" : "lg"} />
         </div>
 

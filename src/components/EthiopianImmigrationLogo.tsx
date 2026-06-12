@@ -11,19 +11,19 @@ export default function EthiopianImmigrationLogo({ className = '', size = 'md' }
   const logoHeightClass = {
     sm: 'h-8',
     md: 'h-10 md:h-12',
-    lg: 'h-12 md:h-16',
-    xl: 'h-16 md:h-24',
+    lg: 'h-11 md:h-14',
+    xl: 'h-14 md:h-20',
   }[size];
 
   return (
     <div 
-      className={`flex items-center text-left shrink-0 select-none ${className}`} 
+      className={`flex items-center justify-center w-full max-w-full shrink select-none ${className}`} 
       id="ethiopian-immigration-logo"
     >
       <img 
         src="/assets/images/ics-logo.png" // Replace with your actual public asset path or import variable
         alt="Immigration and Citizenship Services Logo"
-        className={`${logoHeightClass} w-auto object-contain`} 
+        className={`${logoHeightClass} w-auto max-w-full object-contain`} 
       />
     </div>
   );
