@@ -313,6 +313,41 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         under_age: (type === 'EOID Under_Age'),
         attachments_json: getDefaultAttachments(type),
       }));
+
+      // Auto-generate realistic Personal File No. sequential-looking indices
+      const table = TABLE_MAP[type];
+      if (table) {
+        const fetchCount = async () => {
+          try {
+            const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true });
+            if (error) throw error;
+            const nextNum = (count || 0) + 1;
+            const padded = String(nextNum).padStart(5, '0');
+            const prefix = type === 'VISA' ? 'VPF' :
+                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
+                           type === 'Alien Passport' ? 'APF' :
+                           type === 'Yellow Card' ? 'YPF' :
+                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+            
+            setFormData(prev => ({
+              ...prev,
+              personal_file_no: prev.personal_file_no || `${prefix}-${padded}`
+            }));
+          } catch (err) {
+            const rand = Math.floor(1001 + Math.random() * 8999);
+            const prefix = type === 'VISA' ? 'VPF' :
+                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
+                           type === 'Alien Passport' ? 'APF' :
+                           type === 'Yellow Card' ? 'YPF' :
+                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+            setFormData(prev => ({
+              ...prev,
+              personal_file_no: prev.personal_file_no || `${prefix}-${rand}`
+            }));
+          }
+        };
+        fetchCount();
+      }
     }
   }, [record, type, defaultBoxNumber]);
 
@@ -651,13 +686,47 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID') ? (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal File No.</label>
-                  <input
-                    required
-                    placeholder="e.g. PF-88301"
-                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                    value={formData.personal_file_no}
-                    onChange={e => setFormData({ ...formData, personal_file_no: e.target.value })}
-                  />
+                  <div className="relative">
+                    <input
+                      required
+                      placeholder="e.g. VPF-00001"
+                      className="w-full pl-4 pr-16 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                      value={formData.personal_file_no}
+                      onChange={e => setFormData({ ...formData, personal_file_no: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const table = TABLE_MAP[type];
+                        if (table) {
+                          try {
+                            const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true });
+                            if (error) throw error;
+                            const nextNum = (count || 0) + 1;
+                            const padded = String(nextNum).padStart(5, '0');
+                            const prefix = type === 'VISA' ? 'VPF' :
+                                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
+                                           type === 'Alien Passport' ? 'APF' :
+                                           type === 'Yellow Card' ? 'YPF' :
+                                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+                            setFormData(prev => ({ ...prev, personal_file_no: `${prefix}-${padded}` }));
+                          } catch (err) {
+                            const rand = Math.floor(1001 + Math.random() * 8999);
+                            const prefix = type === 'VISA' ? 'VPF' :
+                                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
+                                           type === 'Alien Passport' ? 'APF' :
+                                           type === 'Yellow Card' ? 'YPF' :
+                                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+                            setFormData(prev => ({ ...prev, personal_file_no: `${prefix}-${rand}` }));
+                          }
+                        }
+                      }}
+                      className="absolute right-2 top-[5px] px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#1b8b58] text-[9.5px] font-black uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                      title="Auto-Generate File Number"
+                    >
+                      Auto
+                    </button>
+                  </div>
                 </div>
               ) : (
                 null

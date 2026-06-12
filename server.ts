@@ -459,7 +459,7 @@ const PORT = 3000;
         supabaseAdmin.from("eoid_underage_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("residence_id_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("etd_records").select("citizenship, service_provided, box_number"),
-        supabaseAdmin.from("airport_records").select("citizenship, service_provided, box_number")
+        supabaseAdmin.from("yellow_card_records").select("citizenship, service_provided, box_number")
       ]);
 
       const visaData = vRes.data || [];
@@ -563,7 +563,7 @@ Our secure physical and digital filing cabinets host a secure distribution of **
         supabaseAdmin.from("eoid_underage_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, personal_id, dob, under_age, personal_file_no").limit(15),
         supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, residence_id_no").limit(15),
         supabaseAdmin.from("etd_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, etd").limit(15),
-        supabaseAdmin.from("airport_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
+        supabaseAdmin.from("yellow_card_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
       ]);
 
       const recordsContext = [
@@ -572,7 +572,7 @@ Our secure physical and digital filing cabinets host a secure distribution of **
         ...(euaRes.data || []).map(r => ({ division: "EOID Under_Age", ...r })),
         ...(rRes.data || []).map(r => ({ division: "Residence ID", ...r })),
         ...(etRes.data || []).map(r => ({ division: "ETD", ...r })),
-        ...(aRes.data || []).map(r => ({ division: "Bole Airport", ...r }))
+        ...(aRes.data || []).map(r => ({ division: "Yellow Card", ...r }))
       ];
 
       const topRecords = recordsContext.map(r => 

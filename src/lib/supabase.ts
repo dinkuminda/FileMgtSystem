@@ -59,7 +59,7 @@ export const TABLE_MAP: Record<RecordType, string> = {
   'EOID': 'eoid_records',
   'Residence ID': 'residence_id_records',
   'ETD': 'etd_records',
-  'Yellow Card': 'airport_records',
+  'Yellow Card': 'yellow_card_records',
   'EOID Under_Age': 'eoid_underage_records',
   'Alien Passport': 'alien_passport_records',
   'Eritrean ID': 'eritrean_id_records'

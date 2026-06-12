@@ -367,8 +367,10 @@ CREATE POLICY "attachments_select" ON public.record_attachments FOR SELECT TO au
 CREATE POLICY "attachments_insert" ON public.record_attachments FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR public.is_auth_staff());
 CREATE POLICY "attachments_delete" ON public.record_attachments FOR DELETE TO authenticated USING (auth.uid() = created_by OR public.is_admin());
 
--- 7. Airport Records Table (Specialized for Bole Airport Letters/Docs)
-CREATE TABLE IF NOT EXISTS public.airport_records (
+-- 7. Yellow Card Records Table (Specialized for Yellow Card Checkpoint Letters/Docs)
+DROP TABLE IF EXISTS public.airport_records CASCADE;
+
+CREATE TABLE IF NOT EXISTS public.yellow_card_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   box_number TEXT,
   personal_file_no TEXT,
@@ -389,16 +391,16 @@ CREATE TABLE IF NOT EXISTS public.airport_records (
   created_by UUID DEFAULT auth.uid() REFERENCES auth.users(id)
 );
 
-ALTER TABLE public.airport_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.yellow_card_records ENABLE ROW LEVEL SECURITY;
 
--- 7. Policies for Airport Records
-DROP POLICY IF EXISTS "airport_select" ON public.airport_records;
-DROP POLICY IF EXISTS "airport_insert" ON public.airport_records;
-DROP POLICY IF EXISTS "airport_update" ON public.airport_records;
-DROP POLICY IF EXISTS "airport_delete" ON public.airport_records;
+-- 7. Policies for Yellow Card Records
+DROP POLICY IF EXISTS "yellow_card_select" ON public.yellow_card_records;
+DROP POLICY IF EXISTS "yellow_card_insert" ON public.yellow_card_records;
+DROP POLICY IF EXISTS "yellow_card_update" ON public.yellow_card_records;
+DROP POLICY IF EXISTS "yellow_card_delete" ON public.yellow_card_records;
 
 -- Select logic: Admin always, Deme blocked, Dinku (airport user) ok, others ok if not deme.
-CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authenticated 
+CREATE POLICY "yellow_card_select" ON public.yellow_card_records FOR SELECT TO authenticated 
   USING (
     public.is_admin() OR (
       public.is_authorized() AND 
@@ -406,19 +408,19 @@ CREATE POLICY "airport_select" ON public.airport_records FOR SELECT TO authentic
     )
   );
 
-CREATE POLICY "airport_insert" ON public.airport_records FOR INSERT TO authenticated 
+CREATE POLICY "yellow_card_insert" ON public.yellow_card_records FOR INSERT TO authenticated 
   WITH CHECK (
     public.is_admin() OR 
     (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
   );
 
-CREATE POLICY "airport_update" ON public.airport_records FOR UPDATE TO authenticated 
+CREATE POLICY "yellow_card_update" ON public.yellow_card_records FOR UPDATE TO authenticated 
   USING (
     public.is_admin() OR 
     (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
   );
 
-CREATE POLICY "airport_delete" ON public.airport_records FOR DELETE TO authenticated 
+CREATE POLICY "yellow_card_delete" ON public.yellow_card_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
 -- 8. Indexes
@@ -428,7 +430,7 @@ CREATE INDEX IF NOT EXISTS idx_records_eoid_underage_name ON public.eoid_underag
 CREATE INDEX IF NOT EXISTS idx_records_residence_name ON public.residence_id_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_etd_name ON public.etd_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_records_alien_passport_name ON public.alien_passport_records(full_name);
-CREATE INDEX IF NOT EXISTS idx_records_airport_name ON public.airport_records(full_name);
+CREATE INDEX IF NOT EXISTS idx_records_yellow_card_name ON public.yellow_card_records(full_name);
 CREATE INDEX IF NOT EXISTS idx_attachments_record ON public.record_attachments(record_id);
 
 -- 9. Storage Setup (immigration-docs bucket)
