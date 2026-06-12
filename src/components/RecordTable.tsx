@@ -16,6 +16,55 @@ interface RecordTableProps {
   onDelete: (id: string) => void;
 }
 
+function ScansStatusCell({ 
+  record, 
+  activeTab, 
+  attachmentCounts, 
+  loadingCounts 
+}: { 
+  record: ImmigrationRecord; 
+  activeTab: RecordType;
+  attachmentCounts: Record<string, number>;
+  loadingCounts: boolean;
+}) {
+  const count = attachmentCounts[record.id];
+
+  if (loadingCounts && count === undefined) {
+    return (
+      <div className="flex items-center gap-1.5 text-slate-400">
+        <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+        <span className="text-[11px] font-semibold whitespace-nowrap">Checking...</span>
+      </div>
+    );
+  }
+
+  const finalCount = count || 0;
+
+  if (finalCount === 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="w-4.5 h-4.5 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 text-[10px] font-black leading-none shrink-0">
+          !
+        </span>
+        <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 border border-rose-100 rounded-md uppercase tracking-wider">
+          Missing
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black leading-none shrink-0">
+        ✓
+      </span>
+      <span className="text-[10px] font-black text-[#1b8b58] bg-[#f0fdf4] border border-[#bbf7d0] rounded-md px-2 py-0.5 uppercase tracking-wide">
+        {finalCount} {finalCount === 1 ? 'Scan' : 'Scans'}
+      </span>
+    </div>
+  );
+}
+
 export default function RecordTable({ 
   loading, 
   records, 
@@ -27,6 +76,72 @@ export default function RecordTable({
   const [viewingRecord, setViewingRecord] = useState<ImmigrationRecord | null>(null);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [showReferenceGuide, setShowReferenceGuide] = useState(false);
+  const [attachmentCounts, setAttachmentCounts] = useState<Record<string, number>>({});
+  const [loadingCounts, setLoadingCounts] = useState(false);
+
+  useEffect(() => {
+    if (!records || records.length === 0) {
+      setAttachmentCounts({});
+      return;
+    }
+
+    let active = true;
+    const fetchAttachmentCounts = async () => {
+      setLoadingCounts(true);
+      try {
+        const recordIds = records.map(r => r.id);
+        
+        const { data, error } = await supabase
+          .from('record_attachments')
+          .select('record_id')
+          .in('record_id', recordIds)
+          .eq('record_table', TABLE_MAP[activeTab]);
+          
+        if (!active) return;
+
+        if (!error && data) {
+          const dbCounts: Record<string, number> = {};
+          data.forEach((att: any) => {
+            if (att.record_id) {
+              dbCounts[att.record_id] = (dbCounts[att.record_id] || 0) + 1;
+            }
+          });
+          
+          const finalCounts: Record<string, number> = {};
+          records.forEach(record => {
+            let jsonbCount = 0;
+            if (record && record.attachments && Array.isArray(record.attachments)) {
+              jsonbCount = record.attachments.filter((doc: any) => doc && doc.url).length;
+            }
+            const dbCount = dbCounts[record.id] || 0;
+            finalCounts[record.id] = jsonbCount + dbCount;
+          });
+          
+          setAttachmentCounts(finalCounts);
+        } else {
+          // Fallback to JSONB only
+          const fallbackCounts: Record<string, number> = {};
+          records.forEach(record => {
+            let jsonbCount = 0;
+            if (record && record.attachments && Array.isArray(record.attachments)) {
+              jsonbCount = record.attachments.filter((doc: any) => doc && doc.url).length;
+            }
+            fallbackCounts[record.id] = jsonbCount;
+          });
+          setAttachmentCounts(fallbackCounts);
+        }
+      } catch (err) {
+        console.error("Error fetching bulk attachment counts:", err);
+      } finally {
+        if (active) setLoadingCounts(false);
+      }
+    };
+
+    fetchAttachmentCounts();
+    return () => {
+      active = false;
+    };
+  }, [records, activeTab]);
   const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Yellow Card' ? 13 : activeTab === 'Eritrean ID' ? 12 : activeTab === 'Alien Passport' ? 11 : (activeTab === 'VISA' ? 10 : 9);
 
   return (
@@ -171,12 +286,12 @@ export default function RecordTable({
                             {record.service_provided || 'ALIEN PASSPORT ISSUANCE'}
                           </td>
                           <td className="px-3 py-5">
-                            <div className="flex items-center gap-1.5 text-slate-500">
-                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                                ✓
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                            </div>
+                            <ScansStatusCell 
+                              record={record} 
+                              activeTab={activeTab} 
+                              attachmentCounts={attachmentCounts} 
+                              loadingCounts={loadingCounts} 
+                            />
                           </td>
                         </>
                       ) : activeTab === 'EOID' ? (
@@ -217,12 +332,12 @@ export default function RecordTable({
                             {record.service_provided?.toUpperCase() || 'EOID ISSUANCE'}
                           </td>
                           <td className="px-3 py-5">
-                            <div className="flex items-center gap-1 text-slate-500">
-                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                                ✓
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                            </div>
+                            <ScansStatusCell 
+                              record={record} 
+                              activeTab={activeTab} 
+                              attachmentCounts={attachmentCounts} 
+                              loadingCounts={loadingCounts} 
+                            />
                           </td>
                         </>
                       ) : activeTab === 'Yellow Card' ? (
@@ -263,12 +378,12 @@ export default function RecordTable({
                             {record.service_provided || 'YELLOW CARD ISSUANCE'}
                           </td>
                           <td className="px-3 py-5">
-                            <div className="flex items-center gap-1.5 text-slate-500">
-                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                                ✓
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                            </div>
+                            <ScansStatusCell 
+                              record={record} 
+                              activeTab={activeTab} 
+                              attachmentCounts={attachmentCounts} 
+                              loadingCounts={loadingCounts} 
+                            />
                           </td>
                         </>
                       ) : activeTab === 'Eritrean ID' ? (
@@ -304,12 +419,12 @@ export default function RecordTable({
                             {record.service_provided || 'ERITREAN ID REGISTRATION'}
                           </td>
                           <td className="px-3 py-5">
-                            <div className="flex items-center gap-1.5 text-slate-500">
-                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                                ✓
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                            </div>
+                            <ScansStatusCell 
+                              record={record} 
+                              activeTab={activeTab} 
+                              attachmentCounts={attachmentCounts} 
+                              loadingCounts={loadingCounts} 
+                            />
                           </td>
                         </>
                       ) : (
@@ -365,12 +480,12 @@ export default function RecordTable({
                             </td>
                           )}
                           <td className="px-5 py-5">
-                            <div className="flex items-center gap-1.5 text-slate-500">
-                              <span className="w-4.5 h-4.5 rounded-full bg-emerald-50 border border-[#d2eedf] flex items-center justify-center text-[#1b8b58] text-[10px] font-black">
-                                ✓
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#1b8b58] whitespace-nowrap">File Active</span>
-                            </div>
+                            <ScansStatusCell 
+                              record={record} 
+                              activeTab={activeTab} 
+                              attachmentCounts={attachmentCounts} 
+                              loadingCounts={loadingCounts} 
+                            />
                           </td>
                         </>
                       )}
@@ -476,6 +591,15 @@ export default function RecordTable({
                       </span>
                     </div>
                   )}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">Scans</p>
+                    <ScansStatusCell 
+                      record={record} 
+                      activeTab={activeTab} 
+                      attachmentCounts={attachmentCounts} 
+                      loadingCounts={loadingCounts} 
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-50">
