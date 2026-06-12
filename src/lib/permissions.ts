@@ -126,12 +126,41 @@ export async function savePermissionRules(rules: ModulePermissionRule[]): Promis
 }
 
 // Standard Role checks
+function getEquivalentRoles(role: string): string[] {
+  const r = (role || '').toLowerCase();
+  const equivalents = new Set<string>([r]);
+  
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') {
+    equivalents.add('super_admin');
+    equivalents.add('super-admin');
+    equivalents.add('super admin');
+    equivalents.add('admin');
+  }
+  if (r === 'admin' || r === 'airport_staff') {
+    equivalents.add('admin');
+    equivalents.add('airport_staff');
+  }
+  if (r === 'supervisor' || r === 'staff') {
+    equivalents.add('supervisor');
+    equivalents.add('staff');
+  }
+  if (r === 'editor' || r === 'airport_viewer') {
+    equivalents.add('editor');
+    equivalents.add('airport_viewer');
+  }
+  if (r === 'viewer') {
+    equivalents.add('viewer');
+  }
+  return Array.from(equivalents);
+}
+
 export function hasViewAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
   const r = (role || '').toLowerCase();
   if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true; // Admins bypass checks for viewing modules they configured
   const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return true; // default true if module configuration isn't declared
-  return rule.view_roles.some(v => v.toLowerCase() === r);
+  const equivalents = getEquivalentRoles(role);
+  return rule.view_roles.some(v => equivalents.includes(v.toLowerCase()));
 }
 
 export function hasCreateAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
@@ -139,7 +168,8 @@ export function hasCreateAccess(role: string, moduleName: string, rules: ModuleP
   if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true;
   const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return false;
-  return rule.create_roles.some(c => c.toLowerCase() === r);
+  const equivalents = getEquivalentRoles(role);
+  return rule.create_roles.some(c => equivalents.includes(c.toLowerCase()));
 }
 
 export function hasUpdateAccess(role: string, moduleName: string, rules: ModulePermissionRule[] = DEFAULT_PERMISSION_RULES): boolean {
@@ -147,5 +177,6 @@ export function hasUpdateAccess(role: string, moduleName: string, rules: ModuleP
   if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin') return true;
   const rule = rules.find(ruleObj => ruleObj.module === moduleName);
   if (!rule) return false;
-  return rule.update_roles.some(u => u.toLowerCase() === r);
+  const equivalents = getEquivalentRoles(role);
+  return rule.update_roles.some(u => equivalents.includes(u.toLowerCase()));
 }

@@ -232,11 +232,11 @@ function PermissionsMatrix({ rules, onSave, loading }: PermissionsMatrixProps) {
   }, [rules]);
 
  const ROLES = [
-  { id: 'Super_Admin', label: 'Super Admin' },
-  { id: 'Admin', label: 'Admin' },
-  { id: 'Supervisor', label: 'Supervisor' },
-  { id: 'Editor', label: 'Editor' },
-  { id: 'Viewer', label: 'Viewer' }
+  { id: 'admin', label: 'Super Admin' },
+  { id: 'airport_staff', label: 'Admin' },
+  { id: 'staff', label: 'Supervisor' },
+  { id: 'airport_viewer', label: 'Editor' },
+  { id: 'viewer', label: 'Viewer' }
 ];
 
   const toggleVal = (moduleKey: string, roleId: string, type: 'view' | 'create' | 'update') => {
