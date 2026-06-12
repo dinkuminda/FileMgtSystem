@@ -558,12 +558,87 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         }
 
         const tableName = TABLE_MAP[activeTab as RecordType];
-        const { error } = await supabase.from(tableName).insert(processedData);
+
+        // Fetch existing records for duplicate check checking passport_number and request_number
+        const existingPassports = new Set<string>();
+        const existingRequests = new Set<string>();
+        try {
+          const { data: dbRecords, error: dbErr } = await supabase
+            .from(tableName)
+            .select('passport_number, request_number');
+          
+          if (!dbErr && dbRecords) {
+            dbRecords.forEach((r: any) => {
+              if (r.passport_number) {
+                existingPassports.add(r.passport_number.toString().trim().toLowerCase());
+              }
+              if (r.request_number) {
+                existingRequests.add(r.request_number.toString().trim().toLowerCase());
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Could not load existing records for duplicate checks, using file-level checks:', e);
+        }
+
+        const uniqueProcessed: any[] = [];
+        let duplicateInDbCount = 0;
+        let duplicateInFileCount = 0;
+        const filePassports = new Set<string>();
+        const fileRequests = new Set<string>();
+
+        processedData.forEach((row: any) => {
+          const pass = row.passport_number ? row.passport_number.toString().trim() : '';
+          const req = row.request_number ? row.request_number.toString().trim() : '';
+          
+          const passLower = pass.toLowerCase();
+          const reqLower = req.toLowerCase();
+
+          // 1. Check if it exists in the active DB
+          if (pass && existingPassports.has(passLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (req && existingRequests.has(reqLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+
+          // 2. Check if it duplicates a row earlier in the same excel file
+          if (pass && filePassports.has(passLower)) {
+            duplicateInFileCount++;
+            return;
+          }
+          if (req && fileRequests.has(reqLower)) {
+            duplicateInFileCount++;
+            return;
+          }
+
+          // Add to tracked sets
+          if (pass) filePassports.add(passLower);
+          if (req) fileRequests.add(reqLower);
+
+          uniqueProcessed.push(row);
+        });
+
+        if (uniqueProcessed.length === 0) {
+          let errMsg = 'All rows in the Excel file are duplicates.';
+          if (duplicateInDbCount > 0) errMsg += ` (${duplicateInDbCount} match existing database records)`;
+          if (duplicateInFileCount > 0) errMsg += ` (${duplicateInFileCount} match other rows in the file)`;
+          throw new Error(errMsg);
+        }
+
+        const { error } = await supabase.from(tableName).insert(uniqueProcessed);
         
         if (error) throw error;
         
-        await logger.log('IMPORT', activeTab, `Imported ${processedData.length} records via Excel`);
-        addToast(`Successfully imported ${processedData.length} document entries into ${activeTab}!`, 'success');
+        await logger.log('IMPORT', activeTab, `Imported ${uniqueProcessed.length} records via Excel (skipped ${duplicateInDbCount + duplicateInFileCount} duplicates)`);
+        
+        let successMsg = `Successfully imported ${uniqueProcessed.length} new document entries into ${activeTab}!`;
+        if (duplicateInDbCount > 0 || duplicateInFileCount > 0) {
+          successMsg += ` Skipped ${duplicateInDbCount + duplicateInFileCount} duplicates (${duplicateInDbCount} in DB, ${duplicateInFileCount} in file).`;
+        }
+        addToast(successMsg, 'success');
         fetchRecords();
       } catch (err: any) {
         const msg = err.message || String(err);

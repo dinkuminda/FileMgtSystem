@@ -469,11 +469,68 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     setLoading(true);
     setError(null);
 
+    const checksToPerform: Array<{ field: string, value: string, label: string }> = [];
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
       const tableName = TABLE_MAP[type];
+
+      if (formData.personal_file_no && (type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID')) {
+        checksToPerform.push({ field: 'personal_file_no', value: formData.personal_file_no.trim(), label: 'Personal File No.' });
+      }
+      if (formData.passport_number) {
+        checksToPerform.push({ field: 'passport_number', value: formData.passport_number.trim(), label: 'Passport Number' });
+      }
+      if (formData.request_number) {
+        checksToPerform.push({ field: 'request_number', value: formData.request_number.trim(), label: 'Request Number' });
+      }
+      if (formData.eoid_number && (type === 'EOID' || type === 'EOID Under_Age')) {
+        checksToPerform.push({ field: 'eoid_number', value: formData.eoid_number.trim(), label: 'EOID Number' });
+      }
+      if (formData.personal_id && (type === 'EOID' || type === 'EOID Under_Age' || type === 'Yellow Card' || type === 'Eritrean ID')) {
+        checksToPerform.push({ field: 'personal_id', value: formData.personal_id.trim(), label: 'Personal ID' });
+      }
+      if (formData.residence_id_no && type === 'Residence ID') {
+        checksToPerform.push({ field: 'residence_id_no', value: formData.residence_id_no.trim(), label: 'Residence ID No.' });
+      }
+      if (formData.etd && type === 'ETD') {
+        checksToPerform.push({ field: 'etd', value: formData.etd.trim(), label: 'ETD Document Number' });
+      }
+
+      // Check against DB table for duplicates
+      for (const check of checksToPerform) {
+        if (!check.value) continue;
+        try {
+          let queryBuilder = supabase
+            .from(tableName)
+            .select('id, full_name')
+            .eq(check.field, check.value);
+          
+          if (record && record.id) {
+            queryBuilder = queryBuilder.neq('id', record.id);
+          }
+          
+          const { data: maybeDupes, error: dupeErr } = await queryBuilder;
+          if (dupeErr) {
+            if (dupeErr.code === '42703' || dupeErr.message?.includes('column') || dupeErr.message?.includes('does not exist')) {
+              console.warn(`Skipping duplicate check for field ${check.field} because column/table is missing on active schema:`, dupeErr.message);
+              continue;
+            }
+            throw dupeErr;
+          }
+          if (maybeDupes && maybeDupes.length > 0) {
+            throw new Error(`Duplicate Record Found: A record matching ${check.label} "${check.value}" already exists in the system (Registered to: ${maybeDupes[0].full_name}). Please verify or enter a unique identifier.`);
+          }
+        } catch (checkErr: any) {
+          if (checkErr.message && checkErr.message.includes('Duplicate Record Found')) {
+            throw checkErr;
+          }
+          console.warn(`Could not run database level duplicate check for field ${check.field}:`, checkErr);
+        }
+      }
+
       const basePayload: any = {
         full_name: formData.full_name,
         sex: formData.sex,
@@ -572,11 +629,24 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecord.id);
         }
       } catch (dbError) {
-        if (type === 'EOID Under_Age' || type === 'EOID') {
+        if (type === 'EOID' || type === 'EOID Under_Age') {
           const storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
           console.warn(`DB operation failed for ${type}, applying localStorage fallback:`, dbError);
           const stored = localStorage.getItem(storageKey);
           const parsed: any[] = stored ? JSON.parse(stored) : [];
+
+          // Local storage duplicate checks
+          for (const check of checksToPerform) {
+            if (!check.value) continue;
+            const duplicate = parsed.find(r => 
+              r[check.field] && 
+              r[check.field].toString().trim().toLowerCase() === check.value.toLowerCase() && 
+              (!record || r.id !== record.id)
+            );
+            if (duplicate) {
+              throw new Error(`Duplicate Record Found (Offline Cache): A local record matching ${check.label} "${check.value}" already exists (Registered to: ${duplicate.full_name}).`);
+            }
+          }
           
           if (record) {
             savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by };
