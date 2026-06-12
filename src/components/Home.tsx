@@ -165,9 +165,7 @@ Securely organize, search, and verify core archives while tracking physical cabi
               <EthiopianImmigrationLogo size="sm" className="h-10 brightness-0 invert" />
               <span className="font-semibold tracking-wider text-xs text-blue-200">FEDERAL ARCHIVE</span>
             </div>
-            <p className="text-[11px] text-blue-100/70 leading-relaxed font-semibold">
-              The central authority in the Federal Democratic Republic of Ethiopia responsible for maintaining civil records security, boundary controls, passport verifications, and high-security file locker compliance.
-            </p>
+          
           </div>
 
           {/* Quick Footer Links */}
