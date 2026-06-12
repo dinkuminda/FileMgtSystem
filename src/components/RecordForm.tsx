@@ -327,7 +327,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                            (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
                            type === 'Alien Passport' ? 'APF' :
                            type === 'Yellow Card' ? 'YPF' :
-                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+                           type === 'Eritrean ID' ? 'ERPF' :
+                           type === 'Residence ID' ? 'RPF' :
+                           type === 'ETD' ? 'TPF' : 'PF';
             
             setFormData(prev => ({
               ...prev,
@@ -339,7 +341,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                            (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
                            type === 'Alien Passport' ? 'APF' :
                            type === 'Yellow Card' ? 'YPF' :
-                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
+                           type === 'Eritrean ID' ? 'ERPF' :
+                           type === 'Residence ID' ? 'RPF' :
+                           type === 'ETD' ? 'TPF' : 'PF';
             setFormData(prev => ({
               ...prev,
               personal_file_no: prev.personal_file_no || `${prefix}-${rand}`
@@ -477,7 +481,15 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
       const tableName = TABLE_MAP[type];
 
-      if (formData.personal_file_no && (type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID')) {
+      // Enforce only visa box numbers (e.g. Visa-000001) for visa records
+      if (type === 'VISA') {
+        const boxNum = (formData.box_number || '').trim();
+        if (!boxNum.toLowerCase().startsWith('visa-')) {
+          throw new Error('Invalid BOX Number: VISA records only accept box numbers starting with "Visa-" (e.g., Visa-000001).');
+        }
+      }
+
+      if (formData.personal_file_no && (type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD')) {
         checksToPerform.push({ field: 'personal_file_no', value: formData.personal_file_no.trim(), label: 'Personal File No.' });
       }
       if (formData.passport_number) {
@@ -561,7 +573,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         basePayload.dob = type === 'EOID' ? null : (formData.dob || null);
         basePayload.under_age = type === 'EOID' ? false : formData.under_age;
       }
-      if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID') {
+      if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD') {
         basePayload.personal_file_no = formData.personal_file_no;
       }
       if (type === 'Yellow Card' || type === 'Eritrean ID') {

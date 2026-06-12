@@ -142,10 +142,10 @@ export default function RecordTable({
       active = false;
     };
   }, [records, activeTab]);
-  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Yellow Card' ? 13 : activeTab === 'Eritrean ID' ? 12 : activeTab === 'Alien Passport' ? 11 : (activeTab === 'VISA' ? 10 : 9);
+  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Yellow Card' ? 13 : activeTab === 'Eritrean ID' ? 12 : (activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? 11 : 9;
 
   return (
-    <div className="w-full">
+    <div className="w-full font-sans">
 
 
       {/* Desktop Table View */}
@@ -153,7 +153,7 @@ export default function RecordTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-100">
-              {activeTab === 'Alien Passport' ? (
+              {(activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? (
                 <>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
@@ -224,9 +224,6 @@ export default function RecordTable({
                   <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">PASSPORT NUMBER</th>
                   <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">REQUEST NUMBER</th>
                   <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">DATE</th>
-                  {activeTab === 'VISA' && (
-                    <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SERVICE PROVIDED</th>
-                  )}
                   <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
                 </>
               )}
@@ -256,7 +253,7 @@ export default function RecordTable({
                       className={`hover:bg-slate-50/50 transition-colors cursor-pointer group ${isExpanded ? 'bg-slate-50/20' : ''}`}
                       onClick={() => setExpandedRecordId(isExpanded ? null : record.id)}
                     >
-                      {activeTab === 'Alien Passport' ? (
+                      {(activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? (
                         <>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number}
@@ -283,7 +280,7 @@ export default function RecordTable({
                             {record.date ? new Date(record.date).toISOString().split('T')[0] : '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
-                            {record.service_provided || 'ALIEN PASSPORT ISSUANCE'}
+                            {record.service_provided || (activeTab === 'VISA' ? 'VISA EXTENSION' : activeTab === 'Residence ID' ? 'RESIDENCE ID ISSUANCE' : activeTab === 'ETD' ? 'ETD ISSUANCE' : 'ALIEN PASSPORT ISSUANCE')}
                           </td>
                           <td className="px-3 py-5">
                             <ScansStatusCell 
@@ -474,11 +471,7 @@ export default function RecordTable({
                           <td className="px-5 py-5 text-xs font-mono text-slate-555 text-slate-500">
                             {new Date(record.date).toISOString().split('T')[0]}
                           </td>
-                          {activeTab === 'VISA' && (
-                            <td className="px-5 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
-                              {record.service_provided?.toUpperCase() || 'VISA EXTENSION'}
-                            </td>
-                          )}
+
                           <td className="px-5 py-5">
                             <ScansStatusCell 
                               record={record} 

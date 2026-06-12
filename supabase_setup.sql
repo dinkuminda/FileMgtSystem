@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS public.eoid_underage_records (
 CREATE TABLE IF NOT EXISTS public.residence_id_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   box_number TEXT NOT NULL,
+  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -176,6 +177,7 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
 CREATE TABLE IF NOT EXISTS public.etd_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   box_number TEXT NOT NULL,
+  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -581,6 +583,10 @@ CREATE POLICY "eritrean_delete" ON public.eritrean_id_records FOR DELETE TO auth
 
 -- Performance Index
 CREATE INDEX IF NOT EXISTS idx_records_eritrean_name ON public.eritrean_id_records(full_name);
+
+-- Dynamic migration columns for any pre-constructed tables
+ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
+ALTER TABLE public.etd_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
 
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';

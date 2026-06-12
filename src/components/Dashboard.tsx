@@ -432,10 +432,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             return [...common, 'personal_file_no', 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
           }
           if (tab === 'Residence ID') {
-            return [...common, 'residence_id_no'];
+            return [...common, 'personal_file_no', 'residence_id_no'];
           }
           if (tab === 'ETD') {
-            return [...common, 'etd'];
+            return [...common, 'personal_file_no', 'etd'];
           }
           return common;
         };
@@ -555,6 +555,17 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (processedData.length === 0) {
           throw new Error('No valid rows containing a "full_name" (or equivalent name column) were found.');
+        }
+
+        // Validate Box Number format for VISA records during excel imports
+        if (activeTab === 'VISA') {
+          for (let i = 0; i < processedData.length; i++) {
+            const row = processedData[i];
+            const boxNum = (row.box_number || '').toString().trim();
+            if (!boxNum.toLowerCase().startsWith('visa-')) {
+              throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". Visa records only accept box numbers starting with "Visa-" (e.g., Visa-000001).`);
+            }
+          }
         }
 
         const tableName = TABLE_MAP[activeTab as RecordType];
