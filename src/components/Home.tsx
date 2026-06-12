@@ -196,9 +196,7 @@ Securely organize, search, and verify core archives while tracking physical cabi
         {/* Legal Signatures */}
         <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-blue-900/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-blue-200/50 font-black uppercase tracking-widest relative z-10">
           <p>© {new Date().getFullYear()} Federal Government of Ethiopia (ICS). All rights reserved.</p>
-          <p className="flex items-center gap-1.5 text-[#3b82f6]">
-            <Shield className="w-3.5 h-3.5" /> PROCLAMATION COMPLIANT PORTAL
-          </p>
+        
         </div>
       </footer>
 

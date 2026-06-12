@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
@@ -674,12 +673,22 @@ How can I help you support system operations?`;
 
   // Register Vite or static serving AFTER all API routes are defined
   async function initStaticAndVite() {
-    if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-      app.use(vite.middlewares);
+    if (process.env.VERCEL) {
+      // On Vercel, static files are handled by the CDN and don't need Express route fallback.
+      return;
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const { createServer: createViteServer } = await import("vite");
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+      } catch (err: any) {
+        console.error("[SERVER] Failed to dynamically load and launch Vite dev middleware:", err.message);
+      }
     } else {
       // Serve static files in production
       const distPath = path.join(process.cwd(), 'dist');
