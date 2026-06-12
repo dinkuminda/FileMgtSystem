@@ -188,14 +188,11 @@ Securely organize, search, and verify core archives while tracking physical cabi
               </ul>
             </div>
           </div>
-
+<p>© {new Date().getFullYear()} Federal Government of Ethiopia (ICS). All rights reserved.</p>
         </div>
 
         {/* Legal Signatures */}
-        <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-blue-900/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[9px] text-blue-200/50 font-black uppercase tracking-widest relative z-10">
-          <p>© {new Date().getFullYear()} Federal Government of Ethiopia (ICS). All rights reserved.</p>
-        
-        </div>
+     
       </footer>
 
       {/* 5. GORGEOUS ADMINISTRATIVE AUTHENTICATION MODAL */}
