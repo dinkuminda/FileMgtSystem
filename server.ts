@@ -24,8 +24,39 @@ if (geminiApiKey) {
   console.warn("[SERVER] WARNING: GEMINI_API_KEY is not defined. Smart Dashboard features will run in simulator mode.");
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Safe runtime resolution of __filename & __dirname for both ESM (tsx dev) and CommonJS (esbuild start)
+const getRuntimePaths = () => {
+  let currentFilename = "";
+  let currentDirname = "";
+
+  try {
+    // If we are in CommonJS, __filename and __dirname are defined globals
+    if (typeof __filename !== 'undefined' && __filename) {
+      currentFilename = __filename;
+    }
+    if (typeof __dirname !== 'undefined' && __dirname) {
+      currentDirname = __dirname;
+    }
+  } catch (e) {}
+
+  if (!currentFilename || !currentDirname) {
+    try {
+      // Evaluate import.meta.url dynamically to prevent load-time Parse SyntaxErrors in CommonJS engines
+      const importMetaUrl = new Function("return import.meta.url")();
+      currentFilename = fileURLToPath(importMetaUrl);
+      currentDirname = path.dirname(currentFilename);
+    } catch (e) {
+      // Graceful fallback to execution context directory
+      currentFilename = path.join(process.cwd(), "server.ts");
+      currentDirname = process.cwd();
+    }
+  }
+  return { filename: currentFilename, dirname: currentDirname };
+};
+
+const { filename: __filenameResolved, dirname: __dirnameResolved } = getRuntimePaths();
+const __filename = __filenameResolved;
+const __dirname = __dirnameResolved;
 
 const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder-project.supabase.co";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
