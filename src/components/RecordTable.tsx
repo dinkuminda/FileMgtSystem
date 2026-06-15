@@ -142,7 +142,7 @@ export default function RecordTable({
       active = false;
     };
   }, [records, activeTab]);
-  const colSpanCount = activeTab === 'EOID' ? 14 : activeTab === 'Yellow Card' ? 13 : activeTab === 'ETD' ? 11 : (activeTab === 'Eritrean ID' || activeTab === 'VISA' || activeTab === 'Alien Passport' || activeTab === 'Residence ID') ? 12 : 11;
+  const colSpanCount = activeTab === 'EOID' ? 14 : (activeTab === 'ETD' || activeTab === 'Eritrean ID') ? 11 : (activeTab === 'Yellow Card' || activeTab === 'VISA' || activeTab === 'Alien Passport' || activeTab === 'Residence ID') ? 12 : 11;
 
   return (
     <div className="w-full font-sans">
@@ -189,7 +189,6 @@ export default function RecordTable({
                 <>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Shelf No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
@@ -208,7 +207,6 @@ export default function RecordTable({
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Sex</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Id No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">service provided</th>
@@ -354,9 +352,6 @@ export default function RecordTable({
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number || '—'}
                           </td>
-                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
-                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
-                          </td>
                           <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
                             {record.full_name}
                           </td>
@@ -411,9 +406,6 @@ export default function RecordTable({
                           </td>
                           <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
                             {record.citizenship}
-                          </td>
-                          <td className="px-3 py-5 text-xs font-mono text-slate-700 uppercase">
-                            {record.passport_number}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600 uppercase">
                             {record.request_number}
@@ -567,7 +559,7 @@ export default function RecordTable({
                 </div>
                 
                 <div className="space-y-3 mb-4">
-                  {activeTab !== 'ETD' && (
+                  {activeTab !== 'ETD' && activeTab !== 'Eritrean ID' && (
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] font-black text-slate-400 uppercase">Passport</p>
                       <p className="text-xs font-bold font-mono text-slate-700">{record.passport_number}</p>
@@ -993,7 +985,7 @@ function RecordDetailsModal({
             <div>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3.5">Registration Metadata</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {activeTab !== 'ETD' && (
+                {activeTab !== 'ETD' && activeTab !== 'Eritrean ID' && (
                   <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Passport Number</p>
                     <p className="text-sm font-black text-slate-800 font-mono mt-1">{record.passport_number}</p>
