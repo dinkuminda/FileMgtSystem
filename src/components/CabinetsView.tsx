@@ -90,7 +90,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
     if (record._recordType) return record._recordType;
     if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
-    if (record.residence_id_no) return "Residence ID";
+    if (record.id_type || record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
     if (record.document_type) return "Yellow Card";
     return "VISA";
@@ -874,10 +874,12 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sex / Gender</span>
                     <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.sex}</p>
                   </div>
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Passport Number</span>
-                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.passport_number}</p>
-                  </div>
+                  {viewingRecord.passport_number && (
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Passport Number</span>
+                      <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.passport_number}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Citizenship / Origin</span>
                     <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.citizenship}</p>

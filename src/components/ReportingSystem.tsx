@@ -138,7 +138,7 @@ export default function ReportingSystem() {
       const box = (record.box_number || '').toLowerCase();
       const request = (record.request_number || '').toLowerCase();
       const personalFile = ((record as any).personal_file_no || '').toLowerCase();
-      const resId = ((record as any).residence_id_no || '').toLowerCase();
+      const resId = ((record as any).id_type || (record as any).residence_id_no || '').toLowerCase();
       const personalId = ((record as any).personal_id || '').toLowerCase();
       const etdDoc = ((record as any).etd || '').toLowerCase();
       

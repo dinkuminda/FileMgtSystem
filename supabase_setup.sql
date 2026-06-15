@@ -170,7 +170,8 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
-  residence_id_no TEXT NOT NULL,
+  residence_id_no TEXT,
+  id_type TEXT,
   passport_number TEXT NOT NULL,
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
@@ -192,7 +193,7 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
   etd TEXT NOT NULL,
-  passport_number TEXT NOT NULL,
+  passport_number TEXT,
   request_number TEXT NOT NULL,
   date DATE NOT NULL,
   service_provided TEXT NOT NULL,
@@ -603,6 +604,10 @@ CREATE INDEX IF NOT EXISTS idx_records_eritrean_name ON public.eritrean_id_recor
 -- Dynamic migration columns for any pre-constructed tables
 ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
 ALTER TABLE public.etd_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
+ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS id_type TEXT;
+ALTER TABLE public.residence_id_records ALTER COLUMN residence_id_no DROP NOT NULL;
+ALTER TABLE public.etd_records ALTER COLUMN passport_number DROP NOT NULL;
+ALTER TABLE public.etd_records ALTER COLUMN etd DROP NOT NULL;
 
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';

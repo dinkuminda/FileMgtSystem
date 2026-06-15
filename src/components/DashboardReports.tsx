@@ -197,7 +197,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     if (record._recordType) return record._recordType;
     if (record.personal_file_no) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
-    if (record.residence_id_no) return "Residence ID";
+    if (record.id_type || record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";
     if (record.document_type || record.letter_number) return "Yellow Card";
     return "VISA";
@@ -278,7 +278,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
   const getRecordCategory = (record: any) => {
     if (record.eoid_number) return "EOID Logs";
-    if (record.residence_id_no) return "Residence ID";
+    if (record.id_type || record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD Records";
     if (record.document_type) return "Yellow Card Logs";
     return "VISA Records";
@@ -1222,10 +1222,12 @@ WHERE role IN ('admin', 'super_admin');`;
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sex / Gender</span>
                     <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.sex}</p>
                   </div>
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Passport Number</span>
-                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.passport_number}</p>
-                  </div>
+                  {viewingRecord.passport_number && (
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Passport Number</span>
+                      <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.passport_number}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Citizenship / Origin</span>
                     <p className="text-sm font-bold text-slate-700 mt-0.5">{viewingRecord.citizenship}</p>
@@ -1259,10 +1261,10 @@ WHERE role IN ('admin', 'super_admin');`;
                       <p className="text-sm font-mono font-bold text-emerald-600 mt-0.5">{viewingRecord.eoid_number}</p>
                     </div>
                   )}
-                  {viewingRecord.residence_id_no && (
+                  {(viewingRecord.id_type || viewingRecord.residence_id_no) && (
                     <div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residence ID No.</span>
-                      <p className="text-sm font-mono font-bold text-amber-600 mt-0.5">{viewingRecord.residence_id_no}</p>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">ID Type</span>
+                      <p className="text-sm font-bold text-amber-600 mt-0.5">{viewingRecord.id_type || viewingRecord.residence_id_no}</p>
                     </div>
                   )}
                   {viewingRecord.etd && (

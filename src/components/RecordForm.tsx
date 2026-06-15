@@ -259,6 +259,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     document_type: 'Scanned Letter',
     eoid_number: '',
     residence_id_no: '',
+    id_type: '',
     etd: '',
     personal_file_no: '',
     personal_id: '',
@@ -283,6 +284,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         service_provided: record.service_provided || '',
         eoid_number: record.eoid_number || '',
         residence_id_no: record.residence_id_no || '',
+        id_type: (record as any).id_type || '',
         etd: record.etd || '',
         letter_number: record.letter_number || '',
         document_type: record.document_type || 'Scanned Letter',
@@ -309,6 +311,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         service_provided: type === 'VISA' ? 'Turist Visa' : type === 'Alien Passport' ? 'Alien Passport Issuance' : '',
         eoid_number: '',
         residence_id_no: '',
+        id_type: '',
         etd: '',
         letter_number: '',
         document_type: 'Scanned Letter',
@@ -507,11 +510,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       if (formData.eoid_number && (type === 'EOID' || type === 'EOID Under_Age')) {
         checksToPerform.push({ field: 'eoid_number', value: formData.eoid_number.trim(), label: 'EOID Number' });
       }
-      if (formData.personal_id && (type === 'EOID' || type === 'EOID Under_Age' || type === 'Yellow Card' || type === 'Eritrean ID')) {
+      if (formData.personal_id && (type === 'EOID' || type === 'EOID Under_Age' || type === 'Yellow Card')) {
         checksToPerform.push({ field: 'personal_id', value: formData.personal_id.trim(), label: 'Personal ID' });
-      }
-      if (formData.residence_id_no && type === 'Residence ID') {
-        checksToPerform.push({ field: 'residence_id_no', value: formData.residence_id_no.trim(), label: 'Residence ID No.' });
       }
       if (formData.etd && type === 'ETD') {
         checksToPerform.push({ field: 'etd', value: formData.etd.trim(), label: 'ETD Document Number' });
@@ -553,7 +553,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         full_name: formData.full_name,
         sex: formData.sex,
         citizenship: formData.citizenship,
-        passport_number: formData.passport_number,
+        passport_number: type === 'ETD' ? null : formData.passport_number,
         request_number: formData.request_number,
         date: formData.date,
         service_provided: 
@@ -585,11 +585,17 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD') {
         basePayload.personal_file_no = formData.personal_file_no;
       }
-      if (type === 'Yellow Card' || type === 'Eritrean ID') {
+      if (type === 'Yellow Card') {
         basePayload.personal_id = formData.personal_id;
         basePayload.eoid_type = formData.eoid_type;
+      } else if (type === 'Eritrean ID') {
+        basePayload.personal_id = null;
+        basePayload.eoid_type = null;
       }
-      if (type === 'Residence ID') basePayload.residence_id_no = formData.residence_id_no;
+      if (type === 'Residence ID') {
+        basePayload.id_type = formData.id_type || null;
+        basePayload.residence_id_no = null;
+      }
       if (type === 'ETD') basePayload.etd = formData.etd;
       if (type === 'Yellow Card' || type === 'Eritrean ID') {
         basePayload.letter_number = formData.letter_number;
@@ -785,7 +791,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                 </select>
               </div>
 
-              {/* Field 1.5: Personal ID No. for all records */}
+               {/* Field 1.5: Personal ID No. for all records */}
               <div className="flex flex-col gap-1.5" id="form-personal-id-no-container">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal ID No.</label>
                 <input
@@ -796,56 +802,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   onChange={e => setFormData({ ...formData, personal_id_no: e.target.value })}
                 />
               </div>
-
-              {/* Field 2: Personal File No. (shown conditionally/positioned specifically) */}
-              {(type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID') ? (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal File No.</label>
-                  <div className="relative">
-                    <input
-                      required
-                      placeholder="e.g. VPF-00001"
-                      className="w-full pl-4 pr-16 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                      value={formData.personal_file_no}
-                      onChange={e => setFormData({ ...formData, personal_file_no: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const table = TABLE_MAP[type];
-                        if (table) {
-                          try {
-                            const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true });
-                            if (error) throw error;
-                            const nextNum = (count || 0) + 1;
-                            const padded = String(nextNum).padStart(5, '0');
-                            const prefix = type === 'VISA' ? 'VPF' :
-                                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
-                                           type === 'Alien Passport' ? 'APF' :
-                                           type === 'Yellow Card' ? 'YPF' :
-                                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
-                            setFormData(prev => ({ ...prev, personal_file_no: `${prefix}-${padded}` }));
-                          } catch (err) {
-                            const rand = Math.floor(1001 + Math.random() * 8999);
-                            const prefix = type === 'VISA' ? 'VPF' :
-                                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
-                                           type === 'Alien Passport' ? 'APF' :
-                                           type === 'Yellow Card' ? 'YPF' :
-                                           type === 'Eritrean ID' ? 'ERPF' : 'PF';
-                            setFormData(prev => ({ ...prev, personal_file_no: `${prefix}-${rand}` }));
-                          }
-                        }
-                      }}
-                      className="absolute right-2 top-[5px] px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#1b8b58] text-[9.5px] font-black uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
-                      title="Auto-Generate File Number"
-                    >
-                      Auto
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                null
-              )}
 
               {/* Field 3: fullname */}
               <div className="flex flex-col gap-1.5">
@@ -889,18 +845,20 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  {type === 'Eritrean ID' ? 'Id No.' : 'Passport Number'}
-                </label>
-                <input
-                  required
-                  placeholder={type === 'Eritrean ID' ? 'e.g. ID-88402' : 'e.g. EP0192837'}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                  value={formData.passport_number}
-                  onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
-                />
-              </div>
+              {type !== 'ETD' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    {type === 'Eritrean ID' ? 'Id No.' : 'Passport Number'}
+                  </label>
+                  <input
+                    required
+                    placeholder={type === 'Eritrean ID' ? 'e.g. ID-88402' : 'e.g. EP0192837'}
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
+                    value={formData.passport_number}
+                    onChange={e => setFormData({ ...formData, passport_number: e.target.value })}
+                  />
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Request / Reference Number</label>
@@ -1044,7 +1002,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     </>
                   )}
 
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5 font-mono text-slate-600">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Number (Optional)</label>
                     <input
                       placeholder="e.g. EOID-10293 (optional)"
@@ -1054,6 +1012,22 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     />
                   </div>
                 </>
+              )}
+
+              {type === 'Residence ID' && (
+                <div className="flex flex-col gap-1.5 transition-all">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ID Type</label>
+                  <select
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer shadow-xs"
+                    value={formData.id_type || ''}
+                    onChange={e => setFormData({ ...formData, id_type: e.target.value })}
+                  >
+                    <option value="">Select ID Type...</option>
+                    <option value="Permenant ID">Permenant ID</option>
+                    <option value="Temporary ID">Temporary ID</option>
+                  </select>
+                </div>
               )}
 
               {/* Custom upload format for EOID, VISA, Residence ID, ETD, etc. matching Screenshot */}
@@ -1412,7 +1386,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                       )}
                     </AnimatePresence>
                   </div>
-              {(type === 'Yellow Card' || type === 'Eritrean ID') && (
+              {type === 'Yellow Card' && (
                 <>
                   <div className="flex flex-col gap-1.5 transition-all">
                     <label className="text-[11px] font-bold text-rose-500 uppercase tracking-widest font-black flex items-center gap-1">
@@ -1428,51 +1402,27 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     />
                   </div>
 
-                  {type === 'Yellow Card' && (
-                    <div className="flex flex-col gap-1.5 transition-all">
-                      <label className="text-[11px] font-bold text-rose-500 uppercase tracking-widest font-black flex items-center gap-1">
-                        <span>Yellow Card Type</span>
-                        <span className="text-[9px] px-1 py-0.2 bg-rose-100 text-rose-700 rounded-sm">REQUIRED</span>
-                      </label>
-                      <select
-                        required
-                        className="w-full px-4 py-3 bg-rose-50/5 hover:bg-rose-50/15 focus:bg-white border-2 border-rose-200/85 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer shadow-xs"
-                        value={formData.eoid_type || ''}
-                        onChange={e => setFormData({ ...formData, eoid_type: e.target.value })}
-                      >
-                        <option value="">Select Yellow Card Type...</option>
-                        <option value="By Marriage">By Marriage</option>
-                        <option value="By Blood">By Blood</option>
-                        <option value="By Ras Teferian">By Ras Teferian</option>
-                        <option value="other">other</option>
-                      </select>
-                    </div>
-                  )}
+                  <div className="flex flex-col gap-1.5 transition-all">
+                    <label className="text-[11px] font-bold text-rose-500 uppercase tracking-widest font-black flex items-center gap-1">
+                      <span>Yellow Card Type</span>
+                      <span className="text-[9px] px-1 py-0.2 bg-rose-100 text-rose-700 rounded-sm">REQUIRED</span>
+                    </label>
+                    <select
+                      required
+                      className="w-full px-4 py-3 bg-rose-50/5 hover:bg-rose-50/15 focus:bg-white border-2 border-rose-200/85 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer shadow-xs"
+                      value={formData.eoid_type || ''}
+                      onChange={e => setFormData({ ...formData, eoid_type: e.target.value })}
+                    >
+                      <option value="">Select Yellow Card Type...</option>
+                      <option value="By Marriage">By Marriage</option>
+                      <option value="By Blood">By Blood</option>
+                      <option value="By Ras Teferian">By Ras Teferian</option>
+                      <option value="other">other</option>
+                    </select>
+                  </div>
                 </>
               )}
-              {type === 'Residence ID' && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Residence ID No.</label>
-                  <input
-                    required
-                    className="w-full px-4 py-4 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                    style={{ padding: '12px 16px' }}
-                    value={formData.residence_id_no}
-                    onChange={e => setFormData({ ...formData, residence_id_no: e.target.value })}
-                  />
-                </div>
-              )}
-              {type === 'ETD' && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ETD Reference Code</label>
-                  <input
-                    required
-                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                    value={formData.etd}
-                    onChange={e => setFormData({ ...formData, etd: e.target.value })}
-                  />
-                </div>
-              )}
+              {type === 'ETD' && null}
               {type === 'Yellow Card' && (
                 <>
                   <div className="flex flex-col gap-1.5">

@@ -432,7 +432,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             return [...common, 'personal_file_no', 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
           }
           if (tab === 'Residence ID') {
-            return [...common, 'personal_file_no', 'residence_id_no'];
+            return [...common, 'personal_file_no', 'id_type'];
           }
           if (tab === 'ETD') {
             return [...common, 'personal_file_no', 'etd'];
@@ -471,8 +471,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (['eoid_number', 'eoid_no', 'eoidnumber', 'eoidno', 'origin_id'].includes(normalized)) {
             return 'eoid_number';
           }
-          if (['residence_id_no', 'residence_id_number', 'residence_id', 'residence_no', 'residenceid'].includes(normalized)) {
-            return 'residence_id_no';
+          if (['residence_id_no', 'residence_id_number', 'residence_id', 'residence_no', 'residenceid', 'id_type', 'idtype', 'residence_type', 'id_category'].includes(normalized)) {
+            return 'id_type';
           }
           if (['personal_file_no', 'personal_file_number', 'personal_file', 'fileno', 'file_no'].includes(normalized)) {
             return 'personal_file_no';

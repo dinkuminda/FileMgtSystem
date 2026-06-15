@@ -598,7 +598,7 @@ Our secure physical and digital filing cabinets host a secure distribution of **
         supabaseAdmin.from("visa_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15),
         supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number, personal_id, dob, under_age, personal_file_no, eoid_type").limit(15),
         supabaseAdmin.from("eoid_underage_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, personal_id, dob, under_age, personal_file_no").limit(15),
-        supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, residence_id_no").limit(15),
+        supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, id_type").limit(15),
         supabaseAdmin.from("etd_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, etd").limit(15),
         supabaseAdmin.from("yellow_card_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
       ]);

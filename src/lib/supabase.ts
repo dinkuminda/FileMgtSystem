@@ -76,7 +76,7 @@ export interface ImmigrationRecord {
   full_name: string;
   sex: 'Male' | 'Female' | 'Other' | 'M' | 'F';
   citizenship: string;
-  passport_number: string;
+  passport_number?: string;
   request_number: string;
   date: string;
   service_provided: string;
@@ -85,6 +85,7 @@ export interface ImmigrationRecord {
   // Specific fields
   eoid_number?: string;
   residence_id_no?: string;
+  id_type?: string;
   personal_file_no?: string;
   personal_id?: string;
   shelf_number?: string;
