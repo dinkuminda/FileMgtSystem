@@ -246,9 +246,23 @@ export default function VisaSpecimenCard({ record }: VisaSpecimenCardProps) {
 
               {/* Holographic Sticker on the right bottom corner */}
               <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-850">
-                <div className="flex flex-col">
-                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Box Registry Reference</span>
-                  <span className="text-xs font-black font-mono text-slate-900 dark:text-white leading-none mt-1 bg-slate-50 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-800">{record.box_number || 'B-92'}</span>
+                <div className="flex gap-3">
+                  {(record as any).shelf_number && (
+                    <div className="flex flex-col">
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Shelf No</span>
+                      <span className="text-xs font-black font-mono text-slate-900 dark:text-white leading-none mt-1 bg-slate-50 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-800">{(record as any).shelf_number}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Box Reference</span>
+                    <span className="text-xs font-black font-mono text-slate-900 dark:text-white leading-none mt-1 bg-slate-50 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-800">{record.box_number || 'B-92'}</span>
+                  </div>
+                  {(record as any).personal_id_no && (
+                    <div className="flex flex-col">
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Personal ID No</span>
+                      <span className="text-xs font-black font-mono text-slate-900 dark:text-white leading-none mt-1 bg-slate-50 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-800">{(record as any).personal_id_no}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Hologram Box */}

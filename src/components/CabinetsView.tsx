@@ -887,8 +887,11 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
                     <p className="text-sm font-mono font-black text-[#1b54ac] mt-0.5">{viewingRecord.request_number}</p>
                   </div>
                   <div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Physical Box Location</span>
-                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">{viewingRecord.box_number || 'N/A'}</p>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Box & Shelf Reference</span>
+                    <p className="text-sm font-mono font-bold text-slate-800 mt-0.5">
+                      {viewingRecord.box_number || 'N/A'}
+                      {viewingRecord.shelf_number ? ` (Shelf: ${viewingRecord.shelf_number})` : ''}
+                    </p>
                   </div>
                   <div>
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Registry Creation Date</span>

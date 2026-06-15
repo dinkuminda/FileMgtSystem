@@ -83,7 +83,9 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- VISA Table
 CREATE TABLE IF NOT EXISTS public.visa_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
@@ -101,7 +103,9 @@ CREATE TABLE IF NOT EXISTS public.visa_records (
 -- EOID Table
 CREATE TABLE IF NOT EXISTS public.eoid_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
@@ -135,7 +139,9 @@ CREATE TABLE IF NOT EXISTS public.eoid_records (
 -- EOID Under_Age Table
 CREATE TABLE IF NOT EXISTS public.eoid_underage_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
@@ -157,7 +163,9 @@ CREATE TABLE IF NOT EXISTS public.eoid_underage_records (
 -- Residence ID Table
 CREATE TABLE IF NOT EXISTS public.residence_id_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
@@ -176,7 +184,9 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
 -- ETD Table
 CREATE TABLE IF NOT EXISTS public.etd_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
@@ -195,7 +205,9 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
 -- Alien Passport Table
 CREATE TABLE IF NOT EXISTS public.alien_passport_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
@@ -374,7 +386,9 @@ DROP TABLE IF EXISTS public.airport_records CASCADE;
 
 CREATE TABLE IF NOT EXISTS public.yellow_card_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   personal_id TEXT,
   eoid_type TEXT,
@@ -530,7 +544,9 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
 -- 12. Eritrean ID Records Table
 CREATE TABLE IF NOT EXISTS public.eritrean_id_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  shelf_number TEXT,
   box_number TEXT NOT NULL,
+  personal_id_no TEXT,
   personal_file_no TEXT,
   personal_id TEXT, -- Personal ID No.
   eoid_type TEXT, -- Yellow Card Type / Eritrean Card Type

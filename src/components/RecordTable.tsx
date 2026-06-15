@@ -142,7 +142,7 @@ export default function RecordTable({
       active = false;
     };
   }, [records, activeTab]);
-  const colSpanCount = activeTab === 'EOID' ? 13 : activeTab === 'Yellow Card' ? 13 : activeTab === 'Eritrean ID' ? 12 : (activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? 11 : 9;
+  const colSpanCount = activeTab === 'EOID' ? 15 : activeTab === 'Yellow Card' ? 14 : (activeTab === 'Eritrean ID' || activeTab === 'VISA' || activeTab === 'Alien Passport' || activeTab === 'Residence ID' || activeTab === 'ETD') ? 13 : 12;
 
   return (
     <div className="w-full font-sans">
@@ -155,7 +155,9 @@ export default function RecordTable({
             <tr className="border-b border-slate-100">
               {(activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? (
                 <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Shelf No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
@@ -168,7 +170,9 @@ export default function RecordTable({
                 </>
               ) : activeTab === 'EOID' ? (
                 <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Shelf No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal file No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
@@ -183,12 +187,13 @@ export default function RecordTable({
                 </>
               ) : activeTab === 'Yellow Card' ? (
                 <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Shelf No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gender</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-rose-500 uppercase tracking-[0.1em] font-black">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-rose-500 uppercase tracking-[0.1em] font-black">Yellow Card Type</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
@@ -198,12 +203,13 @@ export default function RecordTable({
                 </>
               ) : activeTab === 'Eritrean ID' ? (
                 <>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Shelf No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">BOX Number</th>
+                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal File No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">full Name</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Sex</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
-                  <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Personal ID No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Id No.</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
@@ -255,8 +261,14 @@ export default function RecordTable({
                     >
                       {(activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? (
                         <>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500">
+                            {(record as any).shelf_number || '—'}
+                          </td>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600">
                             {(record as any).personal_file_no || '—'}
@@ -293,8 +305,14 @@ export default function RecordTable({
                         </>
                       ) : activeTab === 'EOID' ? (
                         <>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500">
+                            {(record as any).shelf_number || '—'}
+                          </td>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600">
                             {(record as any).personal_file_no || '—'}
@@ -302,14 +320,11 @@ export default function RecordTable({
                           <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
                             {record.full_name}
                           </td>
-                          <td className="px-3 py-5 text-xs font-semibold text-slate-505 text-slate-500 uppercase">
+                          <td className="px-3 py-5 text-xs font-semibold text-slate-525 text-slate-500 uppercase">
                             {record.sex ? record.sex[0].toUpperCase() : '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-medium text-slate-655 text-slate-600 uppercase">
                             {record.citizenship}
-                          </td>
-                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
-                            {(record as any).personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-bold text-amber-700 uppercase">
                             <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px]">
@@ -339,8 +354,14 @@ export default function RecordTable({
                         </>
                       ) : activeTab === 'Yellow Card' ? (
                         <>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500">
+                            {(record as any).shelf_number || '—'}
+                          </td>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600">
                             {record.personal_file_no || '—'}
@@ -353,9 +374,6 @@ export default function RecordTable({
                           </td>
                           <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
                             {record.citizenship}
-                          </td>
-                          <td className="px-3 py-5 text-xs font-mono font-bold text-rose-700">
-                            {record.personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-bold text-rose-700 uppercase">
                             <span className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[10px]">
@@ -385,8 +403,14 @@ export default function RecordTable({
                         </>
                       ) : activeTab === 'Eritrean ID' ? (
                         <>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-500">
+                            {(record as any).shelf_number || '—'}
+                          </td>
                           <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
                             {record.box_number || '—'}
+                          </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600">
                             {record.personal_file_no || '—'}
@@ -399,9 +423,6 @@ export default function RecordTable({
                           </td>
                           <td className="px-3 py-5 text-xs font-medium text-slate-600 uppercase">
                             {record.citizenship}
-                          </td>
-                          <td className="px-3 py-5 text-xs font-mono font-bold text-slate-600">
-                            {record.personal_id || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-700 uppercase">
                             {record.passport_number}
@@ -563,7 +584,7 @@ export default function RecordTable({
                     </div>
                   </div>
                   <span className="text-[9px] font-black font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                    BOX {record.box_number}
+                    {(record as any).shelf_number ? `${(record as any).shelf_number} • ` : ''}BOX {record.box_number}
                   </span>
                 </div>
                 
@@ -973,9 +994,15 @@ function RecordDetailsModal({
                 <p className="text-sm font-bold text-slate-800 mt-1">{record.sex}</p>
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Box Number</p>
-                <span className="inline-block text-xs font-black font-mono text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 mt-1">
-                  {record.box_number}
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Shelf / Box Number</p>
+                <span className="inline-flex gap-1.5 items-center text-xs font-black font-mono text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 mt-1">
+                  {(record as any).shelf_number && (
+                    <>
+                      <span>{(record as any).shelf_number}</span>
+                      <span className="text-slate-300">•</span>
+                    </>
+                  )}
+                  <span>{record.box_number}</span>
                 </span>
               </div>
             </div>

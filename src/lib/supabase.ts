@@ -87,6 +87,8 @@ export interface ImmigrationRecord {
   residence_id_no?: string;
   personal_file_no?: string;
   personal_id?: string;
+  shelf_number?: string;
+  personal_id_no?: string;
   eoid_type?: string;
   dob?: string;
   under_age?: boolean;

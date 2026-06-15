@@ -246,6 +246,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
   const [formData, setFormData] = useState({
     box_number: '',
+    shelf_number: '',
+    personal_id_no: '',
     full_name: '',
     sex: 'Male',
     citizenship: '',
@@ -270,6 +272,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     if (record) {
       setFormData({
         box_number: record.box_number || defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
+        shelf_number: (record as any).shelf_number || '',
+        personal_id_no: (record as any).personal_id_no || '',
         full_name: record.full_name || '',
         sex: record.sex || 'Male',
         citizenship: record.citizenship || '',
@@ -294,6 +298,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       setFormData(prev => ({
         ...prev,
         box_number: defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
+        shelf_number: '',
+        personal_id_no: '',
         full_name: '',
         sex: 'Male',
         citizenship: '',
@@ -565,6 +571,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       basePayload.box_number = formData.box_number || MODULE_BOX_MAP[type] || 'Visa-000001';
       basePayload.attachments = formData.attachments_json;
 
+      basePayload.shelf_number = formData.shelf_number || null;
+      basePayload.personal_id_no = formData.personal_id_no || null;
+
       if (type === 'EOID' || type === 'EOID Under_Age') {
         basePayload.eoid_number = formData.eoid_number;
         basePayload.personal_file_no = formData.personal_file_no;
@@ -597,7 +606,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           if (error) {
             if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
               // Sequentially clean optional columns list and retry
-              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
+              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
               let cleanPayload = { ...updatePayload };
               for (const f of optFields) {
                 if (error.message?.includes(f)) {
@@ -620,7 +629,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
           if (error) {
             if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
-              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments'];
+              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
               let cleanPayload = { ...basePayload };
               for (const f of optFields) {
                 if (error.message?.includes(f)) {
@@ -747,6 +756,18 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Field 0: Shelf Number (for all records) */}
+              <div className="flex flex-col gap-1.5" id="form-shelf-container">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Shelf Number</label>
+                <input
+                  required
+                  placeholder="e.g. Shelf-A1"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all"
+                  value={formData.shelf_number}
+                  onChange={e => setFormData({ ...formData, shelf_number: e.target.value })}
+                />
+              </div>
+
               {/* Field 1: Box No(cabinet) */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOX Number</label>
@@ -762,6 +783,18 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     <option value={formData.box_number}>{formData.box_number}</option>
                   )}
                 </select>
+              </div>
+
+              {/* Field 1.5: Personal ID No. for all records */}
+              <div className="flex flex-col gap-1.5" id="form-personal-id-no-container">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal ID No.</label>
+                <input
+                  required
+                  placeholder="e.g. PID-987654"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all"
+                  value={formData.personal_id_no}
+                  onChange={e => setFormData({ ...formData, personal_id_no: e.target.value })}
+                />
               </div>
 
               {/* Field 2: Personal File No. (shown conditionally/positioned specifically) */}
