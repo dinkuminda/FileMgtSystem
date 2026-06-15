@@ -119,7 +119,8 @@ const PORT = 3000;
     try {
       // 1. Verify the requester is an admin
       // We use the regular supabase client (via the token) to verify identity
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data: userData, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const user = userData?.user;
       
       if (authError || !user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -164,7 +165,8 @@ const PORT = 3000;
     }
 
     try {
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const user = data?.user;
       if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
@@ -220,7 +222,8 @@ const PORT = 3000;
     }
 
     try {
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const user = data?.user;
       if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
@@ -285,7 +288,8 @@ const PORT = 3000;
     }
 
     try {
-      const { data: { user: requester }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const requester = data?.user;
       if (authError || !requester) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
@@ -346,7 +350,8 @@ const PORT = 3000;
 
     try {
       // 1. Verify requester is admin
-      const { data: { user: requester }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const requester = data?.user;
       if (authError || !requester) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
@@ -392,7 +397,8 @@ const PORT = 3000;
 
     try {
       // 1. Verify requester is admin OR has USERS module clearance
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const user = data?.user;
       if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
       const { data: profile } = await supabaseAdmin
