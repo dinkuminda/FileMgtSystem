@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.visa_records (
   shelf_number TEXT,
   box_number TEXT NOT NULL,
   personal_id_no TEXT,
-  personal_file_no TEXT,
+  visa_type TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -110,7 +110,6 @@ CREATE TABLE IF NOT EXISTS public.eoid_records (
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
   eoid_number TEXT, -- For backward-compatibility (optional now)
-  personal_file_no TEXT,
   personal_id TEXT,
   eoid_type TEXT, -- By Marriage, By Residence, By Ownership, By Ras Teferian
   passport_number TEXT NOT NULL,
@@ -145,12 +144,12 @@ CREATE TABLE IF NOT EXISTS public.eoid_underage_records (
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
-  personal_file_no TEXT NOT NULL,
-  personal_id TEXT NOT NULL,
+  personal_id TEXT,
   eoid_number TEXT,  -- For backward-compatibility / alias
+  eoid_type TEXT,    -- By Marriage, By Residence, By Ownership, By Ras Teferian (symmetric with eoid_records)
   passport_number TEXT NOT NULL,
   request_number TEXT NOT NULL,
-  dob DATE NOT NULL,
+  dob DATE,
   under_age BOOLEAN NOT NULL DEFAULT TRUE,
   attachments JSONB DEFAULT '[]'::jsonb,
   date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -166,7 +165,6 @@ CREATE TABLE IF NOT EXISTS public.residence_id_records (
   shelf_number TEXT,
   box_number TEXT NOT NULL,
   personal_id_no TEXT,
-  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -188,7 +186,6 @@ CREATE TABLE IF NOT EXISTS public.etd_records (
   shelf_number TEXT,
   box_number TEXT NOT NULL,
   personal_id_no TEXT,
-  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -209,7 +206,6 @@ CREATE TABLE IF NOT EXISTS public.alien_passport_records (
   shelf_number TEXT,
   box_number TEXT NOT NULL,
   personal_id_no TEXT,
-  personal_file_no TEXT,
   full_name TEXT NOT NULL,
   sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
   citizenship TEXT NOT NULL,
@@ -390,7 +386,6 @@ CREATE TABLE IF NOT EXISTS public.yellow_card_records (
   shelf_number TEXT,
   box_number TEXT,
   personal_id_no TEXT,
-  personal_file_no TEXT,
   personal_id TEXT,
   eoid_type TEXT,
   full_name TEXT NOT NULL,
@@ -548,7 +543,6 @@ CREATE TABLE IF NOT EXISTS public.eritrean_id_records (
   shelf_number TEXT,
   box_number TEXT NOT NULL,
   personal_id_no TEXT,
-  personal_file_no TEXT,
   personal_id TEXT, -- Personal ID No.
   eoid_type TEXT, -- Yellow Card Type / Eritrean Card Type
   full_name TEXT NOT NULL,
@@ -602,12 +596,62 @@ CREATE POLICY "eritrean_delete" ON public.eritrean_id_records FOR DELETE TO auth
 CREATE INDEX IF NOT EXISTS idx_records_eritrean_name ON public.eritrean_id_records(full_name);
 
 -- Dynamic migration columns for any pre-constructed tables
-ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
-ALTER TABLE public.etd_records ADD COLUMN IF NOT EXISTS personal_file_no TEXT;
 ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS id_type TEXT;
 ALTER TABLE public.residence_id_records ALTER COLUMN residence_id_no DROP NOT NULL;
 ALTER TABLE public.etd_records ALTER COLUMN passport_number DROP NOT NULL;
 ALTER TABLE public.etd_records ALTER COLUMN etd DROP NOT NULL;
+
+-- Dynamic migration columns for eoid_underage_records matching the modified form
+ALTER TABLE public.eoid_underage_records ALTER COLUMN personal_id DROP NOT NULL;
+ALTER TABLE public.eoid_underage_records ALTER COLUMN dob DROP NOT NULL;
+ALTER TABLE public.eoid_underage_records ADD COLUMN IF NOT EXISTS eoid_type TEXT;
+
+-- Dynamic migration to drop personal_file_no from all records tables
+ALTER TABLE public.visa_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.eoid_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.eoid_underage_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.residence_id_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.etd_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.alien_passport_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.yellow_card_records DROP COLUMN IF EXISTS personal_file_no;
+ALTER TABLE public.eritrean_id_records DROP COLUMN IF EXISTS personal_file_no;
+
+ALTER TABLE public.visa_records ADD COLUMN IF NOT EXISTS visa_type TEXT;
+
+-- Dynamic migration to ensure personal_id_no exists in all tables
+ALTER TABLE public.visa_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.eoid_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.eoid_underage_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.residence_id_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.etd_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.alien_passport_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.yellow_card_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.eritrean_id_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+
+-- Dynamic migration to ensure sex check constraints accommodate single letter values
+ALTER TABLE public.visa_records DROP CONSTRAINT IF EXISTS visa_records_sex_check;
+ALTER TABLE public.visa_records ADD CONSTRAINT visa_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.eoid_records DROP CONSTRAINT IF EXISTS eoid_records_sex_check;
+ALTER TABLE public.eoid_records ADD CONSTRAINT eoid_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.eoid_underage_records DROP CONSTRAINT IF EXISTS eoid_underage_records_sex_check;
+ALTER TABLE public.eoid_underage_records ADD CONSTRAINT eoid_underage_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.residence_id_records DROP CONSTRAINT IF EXISTS residence_id_records_sex_check;
+ALTER TABLE public.residence_id_records ADD CONSTRAINT residence_id_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.etd_records DROP CONSTRAINT IF EXISTS etd_records_sex_check;
+ALTER TABLE public.etd_records ADD CONSTRAINT etd_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.alien_passport_records DROP CONSTRAINT IF EXISTS alien_passport_records_sex_check;
+ALTER TABLE public.alien_passport_records ADD CONSTRAINT alien_passport_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.yellow_card_records DROP CONSTRAINT IF EXISTS yellow_card_records_sex_check;
+ALTER TABLE public.yellow_card_records ADD CONSTRAINT yellow_card_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
+
+ALTER TABLE public.eritrean_id_records DROP CONSTRAINT IF EXISTS eritrean_id_records_sex_check;
+ALTER TABLE public.eritrean_id_records ADD CONSTRAINT eritrean_id_records_sex_check CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F'));
 
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';

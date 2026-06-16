@@ -195,7 +195,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
   const getRecordType = (record: any): RecordType => {
     if (record._recordType) return record._recordType;
-    if (record.personal_file_no) return "EOID Under_Age";
+    if (record.under_age) return "EOID Under_Age";
     if (record.eoid_number) return "EOID";
     if (record.id_type || record.residence_id_no) return "Residence ID";
     if (record.etd) return "ETD";

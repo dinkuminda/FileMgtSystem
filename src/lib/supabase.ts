@@ -98,6 +98,7 @@ export interface ImmigrationRecord {
   letter_number?: string;
   document_type?: string;
   attachment_url?: string;
+  visa_type?: string;
 }
 
 export interface RecordAttachment {

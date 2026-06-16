@@ -142,7 +142,7 @@ export default function RecordTable({
       active = false;
     };
   }, [records, activeTab]);
-  const colSpanCount = activeTab === 'EOID' ? 14 : (activeTab === 'ETD' || activeTab === 'Eritrean ID') ? 11 : (activeTab === 'Yellow Card' || activeTab === 'VISA' || activeTab === 'Alien Passport' || activeTab === 'Residence ID') ? 12 : 11;
+  const colSpanCount = activeTab === 'EOID' ? 14 : (activeTab === 'ETD' || activeTab === 'Eritrean ID') ? 11 : (activeTab === 'Yellow Card' || activeTab === 'VISA' || activeTab === 'Alien Passport' || activeTab === 'Residence ID') ? (activeTab === 'VISA' ? 13 : 12) : 11;
 
   return (
     <div className="w-full font-sans">
@@ -163,6 +163,9 @@ export default function RecordTable({
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Citizenship</th>
                   {activeTab !== 'ETD' && (
                     <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">passport number</th>
+                  )}
+                  {activeTab === 'VISA' && (
+                    <th className="px-3 py-5 text-[10px] font-black text-rose-500 uppercase tracking-[0.1em] font-bold">Visa Type</th>
                   )}
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Request Number</th>
                   <th className="px-3 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Date</th>
@@ -278,6 +281,13 @@ export default function RecordTable({
                           {activeTab !== 'ETD' && (
                             <td className="px-3 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
                               {record.passport_number}
+                            </td>
+                          )}
+                          {activeTab === 'VISA' && (
+                            <td className="px-3 py-5 text-xs font-bold text-rose-600 uppercase">
+                              <span className="px-1.5 py-0.5 bg-rose-50 border border-rose-100 rounded text-[10px] tracking-wide font-black">
+                                {(record as any).visa_type || '—'}
+                              </span>
                             </td>
                           )}
                           <td className="px-3 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
@@ -1009,10 +1019,16 @@ function RecordDetailsModal({
           )}
 
           {/* Module-Specific Parameters in nice detail */}
-          {!isVisa && (record.eoid_number || (record as any).id_type || record.residence_id_no || record.etd || record.letter_number || record.document_type || (record as any).personal_id || (record as any).dob || (record as any).eoid_type) && (
+          {(!isVisa || (isVisa && (record as any).visa_type)) && (record.eoid_number || (record as any).id_type || record.residence_id_no || record.etd || record.letter_number || record.document_type || (record as any).personal_id || (record as any).dob || (record as any).eoid_type || (record as any).visa_type) && (
             <div>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3.5">Module Parameters</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {(record as any).visa_type && (
+                  <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Visa Type</p>
+                    <p className="text-sm font-black text-rose-700 mt-1">{(record as any).visa_type}</p>
+                  </div>
+                )}
                 {(record as any).personal_id && (
                   <div className="border border-slate-100 p-4 rounded-2xl bg-white shadow-xs">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Personal ID</p>

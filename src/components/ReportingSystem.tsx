@@ -137,7 +137,6 @@ export default function ReportingSystem() {
       const passport = (record.passport_number || '').toLowerCase();
       const box = (record.box_number || '').toLowerCase();
       const request = (record.request_number || '').toLowerCase();
-      const personalFile = ((record as any).personal_file_no || '').toLowerCase();
       const resId = ((record as any).id_type || (record as any).residence_id_no || '').toLowerCase();
       const personalId = ((record as any).personal_id || '').toLowerCase();
       const etdDoc = ((record as any).etd || '').toLowerCase();
@@ -146,7 +145,6 @@ export default function ReportingSystem() {
                       passport.includes(term) || 
                       box.includes(term) || 
                       request.includes(term) || 
-                      personalFile.includes(term) || 
                       resId.includes(term) || 
                       personalId.includes(term) ||
                       etdDoc.includes(term);

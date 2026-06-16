@@ -126,7 +126,7 @@ export default function VisaSpecimenCard({ record }: VisaSpecimenCardProps) {
           {/* eVisa Badge Title */}
           <div className="mt-3 text-center">
             <h5 className="text-[12px] font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center justify-center gap-1.5 font-sans">
-              ELECTRONIC VISA (eVisa) - TOURIST
+              ELECTRONIC VISA (eVisa) - {record.visa_type ? record.visa_type.replace(/ visa/gi, '').toUpperCase() : 'TOURIST'}
             </h5>
             <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 tracking-tight leading-none">
               ({record.document_type || 'VTE'})
@@ -213,7 +213,7 @@ export default function VisaSpecimenCard({ record }: VisaSpecimenCardProps) {
                 </div>
                 <div>
                   <span className="text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider block">Visa Type:</span>
-                  <span className="font-extrabold text-slate-900 dark:text-white block uppercase">{record.document_type || 'TOURIST VISA (VTE)'}</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white block uppercase">{record.visa_type || record.document_type || 'Tourist Visa'}</span>
                 </div>
 
                 <div>

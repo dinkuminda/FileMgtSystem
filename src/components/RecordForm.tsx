@@ -270,9 +270,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     residence_id_no: '',
     id_type: '',
     etd: '',
-    personal_file_no: '',
     personal_id: '',
     eoid_type: '',
+    visa_type: '',
     dob: '',
     under_age: false,
     attachments_json: [] as Array<{ file_type: string; url: string; verification_status: 'Pending' | 'Verified' | 'Rejected'; category?: string; is_other?: boolean }>,
@@ -297,9 +297,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         etd: record.etd || '',
         letter_number: record.letter_number || '',
         document_type: record.document_type || 'Scanned Letter',
-        personal_file_no: (record as any).personal_file_no || '',
         personal_id: (record as any).personal_id || '',
         eoid_type: (record as any).eoid_type || '',
+        visa_type: (record as any).visa_type || '',
         dob: (record as any).dob || '',
         under_age: (record as any).under_age !== undefined ? (record as any).under_age : (type === 'EOID Under_Age'),
         attachments_json: getMergedAttachments(type, (record as any).attachments, (record as any).id_type),
@@ -332,52 +332,14 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         etd: '',
         letter_number: '',
         document_type: 'Scanned Letter',
-        personal_file_no: '',
         personal_id: '',
         eoid_type: '',
+        visa_type: '',
         dob: '',
         under_age: (type === 'EOID Under_Age'),
         attachments_json: getDefaultAttachments(type),
       }));
 
-      // Auto-generate realistic Personal File No. sequential-looking indices
-      const table = TABLE_MAP[type];
-      if (table) {
-        const fetchCount = async () => {
-          try {
-            const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true });
-            if (error) throw error;
-            const nextNum = (count || 0) + 1;
-            const padded = String(nextNum).padStart(5, '0');
-            const prefix = type === 'VISA' ? 'VPF' :
-                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
-                           type === 'Alien Passport' ? 'APF' :
-                           type === 'Yellow Card' ? 'YPF' :
-                           type === 'Eritrean ID' ? 'ERPF' :
-                           type === 'Residence ID' ? 'RPF' :
-                           type === 'ETD' ? 'TPF' : 'PF';
-            
-            setFormData(prev => ({
-              ...prev,
-              personal_file_no: prev.personal_file_no || `${prefix}-${padded}`
-            }));
-          } catch (err) {
-            const rand = Math.floor(1001 + Math.random() * 8999);
-            const prefix = type === 'VISA' ? 'VPF' :
-                           (type === 'EOID' || type === 'EOID Under_Age') ? 'EPF' :
-                           type === 'Alien Passport' ? 'APF' :
-                           type === 'Yellow Card' ? 'YPF' :
-                           type === 'Eritrean ID' ? 'ERPF' :
-                           type === 'Residence ID' ? 'RPF' :
-                           type === 'ETD' ? 'TPF' : 'PF';
-            setFormData(prev => ({
-              ...prev,
-              personal_file_no: prev.personal_file_no || `${prefix}-${rand}`
-            }));
-          }
-        };
-        fetchCount();
-      }
     }
   }, [record, type, defaultBoxNumber]);
 
@@ -519,9 +481,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         }
       }
 
-      if (formData.personal_file_no && (type === 'EOID' || type === 'EOID Under_Age' || type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD')) {
-        checksToPerform.push({ field: 'personal_file_no', value: formData.personal_file_no.trim(), label: 'Personal File No.' });
-      }
       if (formData.passport_number && type !== 'ETD' && type !== 'Eritrean ID') {
         checksToPerform.push({ field: 'passport_number', value: formData.passport_number.trim(), label: 'Passport Number' });
       }
@@ -599,7 +558,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
       if (type === 'EOID' || type === 'EOID Under_Age') {
         basePayload.eoid_number = formData.eoid_number || null;
-        basePayload.personal_file_no = formData.personal_file_no;
         basePayload.personal_id = formData.personal_id;
         basePayload.dob = formData.dob || null;
         basePayload.under_age = formData.under_age;
@@ -608,9 +566,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         } else {
           basePayload.eoid_type = formData.eoid_type || null;
         }
-      }
-      if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD') {
-        basePayload.personal_file_no = formData.personal_file_no;
       }
       if (type === 'Yellow Card') {
         basePayload.personal_id = null;
@@ -626,6 +581,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       if (type === 'Residence ID') {
         basePayload.id_type = formData.id_type || null;
         basePayload.residence_id_no = null;
+      }
+      if (type === 'VISA') {
+        basePayload.visa_type = formData.visa_type || null;
       }
       if (type === 'ETD') basePayload.etd = formData.etd;
 
@@ -645,7 +603,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             let insertRes = await supabase.from(tableName).insert([insertPayload]).select().single();
             if (insertRes.error) {
               if (insertRes.error.code === '42703' || insertRes.error.message?.includes('does not exist') || insertRes.error.message?.includes('schema cache') || insertRes.error.message?.includes('column')) {
-                const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
+                const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
                 let cleanPayload = { ...insertPayload };
                 for (const f of optFields) {
                   if (insertRes.error.message?.includes(f)) {
@@ -666,15 +624,12 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             if (updateRes.error) {
               if (updateRes.error.code === '42703' || updateRes.error.message?.includes('does not exist') || updateRes.error.message?.includes('schema cache') || updateRes.error.message?.includes('column')) {
                 // Sequentially clean optional columns list and retry
-                const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
+                const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
                 let cleanPayload = { ...updatePayload };
                 for (const f of optFields) {
                   if (updateRes.error.message?.includes(f)) {
                     delete (cleanPayload as any)[f];
                   }
-                }
-                if (JSON.stringify(cleanPayload) === JSON.stringify(updatePayload)) {
-                  delete (cleanPayload as any).personal_file_no;
                 }
                 const retryRes = await supabase.from(tableName).update(cleanPayload).eq('id', record.id).select().single();
                 if (retryRes.error) throw retryRes.error;
@@ -692,15 +647,12 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
           if (error) {
             if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
-              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
+              const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
               let cleanPayload = { ...basePayload };
               for (const f of optFields) {
                 if (error.message?.includes(f)) {
                   delete (cleanPayload as any)[f];
                 }
-              }
-              if (JSON.stringify(cleanPayload) === JSON.stringify(basePayload)) {
-                delete (cleanPayload as any).personal_file_no;
               }
               const retryRes = await supabase.from(tableName).insert([cleanPayload]).select().single();
               if (retryRes.error) throw retryRes.error;
@@ -713,50 +665,56 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           await logger.log('CREATE', activeFormType, `Created new record for ${basePayload.full_name}`, savedRecord.id);
         }
       } catch (dbError) {
+        console.warn(`DB operation failed for ${activeFormType}, applying localStorage fallback:`, dbError);
+        
+        let storageKey = '';
         if (type === 'EOID' || type === 'EOID Under_Age') {
-          const storageKey = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
-          const oldStorageKey = record ? ((record as any).under_age ? 'local_records_eoid_under_age' : 'local_records_eoid') : null;
-          
-          // Clear from old local storage category if it changed
-          if (oldStorageKey && oldStorageKey !== storageKey) {
-            const oldStored = localStorage.getItem(oldStorageKey);
-            if (oldStored) {
-              const oldParsed = JSON.parse(oldStored);
-              localStorage.setItem(oldStorageKey, JSON.stringify(oldParsed.filter((r: any) => r.id !== record.id)));
-            }
-          }
-
-          console.warn(`DB operation failed for ${activeFormType}, applying localStorage fallback:`, dbError);
-          const stored = localStorage.getItem(storageKey);
-          const parsed: any[] = stored ? JSON.parse(stored) : [];
-
-          // Local storage duplicate checks
-          for (const check of checksToPerform) {
-            if (!check.value) continue;
-            const duplicate = parsed.find(r => 
-              r[check.field] && 
-              r[check.field].toString().trim().toLowerCase() === check.value.toLowerCase() && 
-              (!record || r.id !== record.id)
-            );
-            if (duplicate) {
-              throw new Error(`Duplicate Record Found (Offline Cache): A local record matching ${check.label} "${check.value}" already exists (Registered to: ${duplicate.full_name}).`);
-            }
-          }
-          
-          if (record) {
-            savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by, under_age: formData.under_age };
-            const idx = parsed.findIndex(r => r.id === record.id);
-            if (idx >= 0) parsed[idx] = savedRecord;
-            else parsed.push(savedRecord);
-          } else {
-            savedRecord = { ...basePayload, id: (activeFormType === 'EOID' ? "eoid-local-" : "ua-local-") + Date.now().toString(), created_at: new Date().toISOString(), under_age: formData.under_age };
-            parsed.push(savedRecord);
-          }
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-          await logger.log(record ? 'UPDATE' : 'CREATE', activeFormType, `${record ? 'Updated' : 'Created'} local record for ${basePayload.full_name}`, savedRecord.id);
+          storageKey = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
         } else {
-          throw dbError;
+          storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         }
+        
+        const oldStorageKey = (type === 'EOID' || type === 'EOID Under_Age') && record 
+          ? ((record as any).under_age ? 'local_records_eoid_under_age' : 'local_records_eoid') 
+          : null;
+        
+        // Clear from old local storage category if it changed
+        if (oldStorageKey && oldStorageKey !== storageKey) {
+          const oldStored = localStorage.getItem(oldStorageKey);
+          if (oldStored) {
+            const oldParsed = JSON.parse(oldStored);
+            localStorage.setItem(oldStorageKey, JSON.stringify(oldParsed.filter((r: any) => r.id !== record.id)));
+          }
+        }
+
+        const stored = localStorage.getItem(storageKey);
+        const parsed: any[] = stored ? JSON.parse(stored) : [];
+
+        // Local storage duplicate checks
+        for (const check of checksToPerform) {
+          if (!check.value) continue;
+          const duplicate = parsed.find(r => 
+            r[check.field] && 
+            r[check.field].toString().trim().toLowerCase() === check.value.toLowerCase() && 
+            (!record || r.id !== record.id)
+          );
+          if (duplicate) {
+            throw new Error(`Duplicate Record Found (Offline Cache): A local record matching ${check.label} "${check.value}" already exists (Registered to: ${duplicate.full_name}).`);
+          }
+        }
+        
+        if (record) {
+          savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by, ...(type === 'EOID' || type === 'EOID Under_Age' ? { under_age: formData.under_age } : {}) };
+          const idx = parsed.findIndex(r => r.id === record.id);
+          if (idx >= 0) parsed[idx] = savedRecord;
+          else parsed.push(savedRecord);
+        } else {
+          const prefix = type.toLowerCase().replace(/[^a-z0-9]/g, '') + '-local-';
+          savedRecord = { ...basePayload, id: prefix + Date.now().toString(), created_at: new Date().toISOString(), ...(type === 'EOID' || type === 'EOID Under_Age' ? { under_age: formData.under_age } : {}) };
+          parsed.push(savedRecord);
+        }
+        localStorage.setItem(storageKey, JSON.stringify(parsed));
+        await logger.log(record ? 'UPDATE' : 'CREATE', activeFormType, `${record ? 'Updated' : 'Created'} local record for ${basePayload.full_name}`, savedRecord.id);
       }
 
       // Handle pending uploads
@@ -1037,6 +995,26 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     />
                   </div>
                 </>
+              )}
+
+              {type === 'VISA' && (
+                <div className="flex flex-col gap-1.5 transition-all">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Visa Type</label>
+                  <select
+                    required
+                    className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer shadow-xs"
+                    value={formData.visa_type || ''}
+                    onChange={e => setFormData({ ...formData, visa_type: e.target.value })}
+                  >
+                    <option value="">Select Visa Type...</option>
+                    <option value="Tourist Visa">Tourist Visa</option>
+                    <option value="Business Visa">Business Visa</option>
+                    <option value="Work Visa">Work Visa</option>
+                    <option value="Student Visa">Student Visa</option>
+                    <option value="Transit Visa">Transit Visa</option>
+                    <option value="Diplomatic Visa">Diplomatic Visa</option>
+                  </select>
+                </div>
               )}
 
               {type === 'Residence ID' && (

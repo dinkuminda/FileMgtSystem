@@ -232,7 +232,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       full_name: "Yared Yohannes Assefa",
       sex: "Male",
       citizenship: "Ethiopia",
-      personal_file_no: "PF-UA-10492",
       eoid_number: "ID-12490-UA",
       passport_number: "EP0891242",
       request_number: "REQ-778931",
@@ -247,7 +246,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       full_name: "Netsanet Tesfaye Bekele",
       sex: "Female",
       citizenship: "Ethiopia",
-      personal_file_no: "PF-UA-10493",
       eoid_number: "ID-12491-UA",
       passport_number: "EP0891243",
       request_number: "REQ-778932",
@@ -262,7 +260,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       full_name: "Binyam Daniel Samuel",
       sex: "Male",
       citizenship: "United States",
-      personal_file_no: "PF-UA-10494",
       eoid_number: "ID-12492-UA",
       passport_number: "US9918231",
       request_number: "REQ-778933",
@@ -336,7 +333,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         setRecords(combinedLocal);
       } else {
-        setRecords([]);
+        const tableKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const stored = localStorage.getItem(tableKey) || '[]';
+        const parsed = JSON.parse(stored);
+        setRecords(parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] })));
       }
     }
     setLoading(false);
@@ -447,25 +447,25 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           ];
           
           if (tab === 'VISA') {
-            return [...common, 'personal_file_no'];
+            return [...common, 'visa_type'];
           }
           if (tab === 'EOID') {
-            return [...common, 'eoid_number', 'personal_file_no', 'personal_id', 'eoid_type', 'under_age'];
+            return [...common, 'eoid_number', 'personal_id', 'eoid_type', 'under_age'];
           }
           if (tab === 'EOID Under_Age') {
-            return [...common, 'eoid_number', 'personal_file_no', 'personal_id', 'eoid_type', 'dob', 'under_age'];
+            return [...common, 'eoid_number', 'personal_id', 'eoid_type', 'dob', 'under_age'];
           }
           if (tab === 'Alien Passport') {
-            return [...common, 'personal_file_no'];
+            return common;
           }
           if (tab === 'Yellow Card' || tab === 'Eritrean ID') {
-            return [...common, 'personal_file_no', 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
+            return [...common, 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
           }
           if (tab === 'Residence ID') {
-            return [...common, 'personal_file_no', 'id_type'];
+            return [...common, 'id_type'];
           }
           if (tab === 'ETD') {
-            return [...common, 'personal_file_no', 'etd'];
+            return [...common, 'etd'];
           }
           return common;
         };
@@ -504,9 +504,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (['residence_id_no', 'residence_id_number', 'residence_id', 'residence_no', 'residenceid', 'id_type', 'idtype', 'residence_type', 'id_category'].includes(normalized)) {
             return 'id_type';
           }
-          if (['personal_file_no', 'personal_file_number', 'personal_file', 'fileno', 'file_no'].includes(normalized)) {
-            return 'personal_file_no';
-          }
           if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number', 'id_no', 'idno'].includes(normalized)) {
             return 'personal_id';
           }
@@ -521,6 +518,9 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           }
           if (['etd', 'etd_no', 'etd_number'].includes(normalized)) {
             return 'etd';
+          }
+          if (['visa_type', 'visatype', 'visa_category', 'visacategory', 'visa_class', 'visaclass'].includes(normalized)) {
+            return 'visa_type';
           }
           return normalized;
         };
