@@ -558,7 +558,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
       if (type === 'EOID' || type === 'EOID Under_Age') {
         basePayload.eoid_number = formData.eoid_number || null;
-        basePayload.personal_id = formData.personal_id;
+        basePayload.personal_id = formData.personal_id || formData.personal_id_no || null;
         basePayload.dob = formData.dob || null;
         basePayload.under_age = formData.under_age;
         if (formData.under_age) {
@@ -914,17 +914,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
               {(type === 'EOID' || type === 'EOID Under_Age') && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal ID</label>
-                    <input
-                      required
-                      placeholder="e.g. ID-994021"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                      value={formData.personal_id}
-                      onChange={e => setFormData({ ...formData, personal_id: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Category / Age Group</label>
                     <select
                       required
@@ -982,16 +971,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                           under_age: age < 18 
                         }));
                       }}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 font-mono text-slate-600">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Number (Optional)</label>
-                    <input
-                      placeholder="e.g. EOID-10293 (optional)"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all"
-                      value={formData.eoid_number}
-                      onChange={e => setFormData({ ...formData, eoid_number: e.target.value })}
                     />
                   </div>
                 </>
