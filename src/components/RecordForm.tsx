@@ -153,15 +153,13 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     };
   }, [previews]);
 
-  const getDefaultAttachments = (recordType: RecordType): Array<{ category: string; file_type: string; url: string; verification_status: string; is_other?: boolean }> => {
+  const getDefaultAttachments = (recordType: RecordType, idType?: string): Array<{ category: string; file_type: string; url: string; verification_status: string; is_other?: boolean }> => {
     if (recordType === 'EOID' || recordType === 'EOID Under_Age') {
       return [
-        { category: 'APPLICANT', file_type: 'DAMAGED PASSPORT', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'FAYDA ID', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'APPLICANT REQUIRES A LEGAL DOCUMENT FROM WOMEN AFFAIRS', url: '', verification_status: 'Pending' },
-        { category: 'GUARDIAN', file_type: 'FAYDA ID', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'SIGNED APPLICATION FORM', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'MARRIAGE CERTIFICATE', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'BIRTH CERTIFICATE', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'FAMILY DOCUMENT OR COURT LETTER', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'VISA') {
       return [
@@ -170,13 +168,28 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         { category: 'APPLICANT', file_type: 'ENTRY VISA', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Residence ID') {
-      return [
-        { category: 'APPLICANT', file_type: 'WORK PERMIT / IMMIGRATION STAMP', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'LEASE AGREEMENT / HOUSE TITLE CERTIFICATE', url: '', verification_status: 'Pending' },
-        { category: 'GUARDIAN', file_type: 'LOCAL RESIDENCE CARD (KEBELE ID)', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'EMPLOYER LETTER / SPONSOR LICENSE', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'POLICE CLEARANCE CERTIFICATE', url: '', verification_status: 'Pending' }
-      ];
+      const selectedIdType = idType || (formData ? formData.id_type : '') || '';
+      if (selectedIdType === 'Temporary ID') {
+        return [
+          { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'APPLICATION LETTER', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'BUSINESS LICENSE', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'WORK PERMIT', url: '', verification_status: 'Pending' }
+        ];
+      } else if (selectedIdType === 'Permenant ID') {
+        return [
+          { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'AUTHORIZED OFFICIAL DECISION', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'VALIDITY PERIOD', url: '', verification_status: 'Pending' }
+        ];
+      } else {
+        return [
+          { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+          { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' }
+        ];
+      }
     } else if (recordType === 'ETD') {
       return [
         { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
@@ -194,7 +207,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       return [
         { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
         { category: 'APPLICANT', file_type: 'APPLICATION LETTER', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'BEFORE ID', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'PREVIOUS ID', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Alien Passport') {
       return [
@@ -208,8 +221,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
     ];
   };
 
-  const getMergedAttachments = (recordType: RecordType, recordAttachments?: any[]) => {
-    const defaultList = getDefaultAttachments(recordType);
+  const getMergedAttachments = (recordType: RecordType, recordAttachments?: any[], idType?: string) => {
+    const defaultList = getDefaultAttachments(recordType, idType);
     if (!recordAttachments || !Array.isArray(recordAttachments) || recordAttachments.length === 0) {
       return defaultList;
     }
@@ -289,7 +302,7 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         eoid_type: (record as any).eoid_type || '',
         dob: (record as any).dob || '',
         under_age: (record as any).under_age !== undefined ? (record as any).under_age : (type === 'EOID Under_Age'),
-        attachments_json: getMergedAttachments(type, (record as any).attachments),
+        attachments_json: getMergedAttachments(type, (record as any).attachments, (record as any).id_type),
       });
       fetchAttachments(record.id);
     } else {
@@ -492,7 +505,11 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const tableName = TABLE_MAP[type];
+      let activeFormType = type;
+      if (type === 'EOID' || type === 'EOID Under_Age') {
+        activeFormType = formData.under_age ? 'EOID Under_Age' : 'EOID';
+      }
+      const tableName = TABLE_MAP[activeFormType];
 
       // Enforce only visa box numbers (e.g. Visa-000001) for visa records
       if (type === 'VISA') {
@@ -581,12 +598,16 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       basePayload.personal_id_no = formData.personal_id_no || null;
 
       if (type === 'EOID' || type === 'EOID Under_Age') {
-        basePayload.eoid_number = formData.eoid_number;
+        basePayload.eoid_number = formData.eoid_number || null;
         basePayload.personal_file_no = formData.personal_file_no;
         basePayload.personal_id = formData.personal_id;
-        basePayload.eoid_type = formData.eoid_type;
-        basePayload.dob = type === 'EOID' ? null : (formData.dob || null);
-        basePayload.under_age = type === 'EOID' ? false : formData.under_age;
+        basePayload.dob = formData.dob || null;
+        basePayload.under_age = formData.under_age;
+        if (formData.under_age) {
+          basePayload.eoid_type = null;
+        } else {
+          basePayload.eoid_type = formData.eoid_type || null;
+        }
       }
       if (type === 'VISA' || type === 'Alien Passport' || type === 'Yellow Card' || type === 'Eritrean ID' || type === 'Residence ID' || type === 'ETD') {
         basePayload.personal_file_no = formData.personal_file_no;
@@ -614,29 +635,59 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         if (record) {
           // Remove created_by from update payload as it should remain original creator
           const { created_by, ...updatePayload } = basePayload;
-          let { data, error } = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
-          if (error) {
-            if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
-              // Sequentially clean optional columns list and retry
-              const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
-              let cleanPayload = { ...updatePayload };
-              for (const f of optFields) {
-                if (error.message?.includes(f)) {
-                  delete (cleanPayload as any)[f];
+          const originalTableName = (record as any)._table || TABLE_MAP[type];
+          
+          let data, error;
+          if (originalTableName !== tableName) {
+            console.log(`EOID Category changed. Migrating record from ${originalTableName} to ${tableName}`);
+            await supabase.from(originalTableName).delete().eq('id', record.id);
+            const insertPayload = { ...basePayload, id: record.id, created_at: record.created_at };
+            let insertRes = await supabase.from(tableName).insert([insertPayload]).select().single();
+            if (insertRes.error) {
+              if (insertRes.error.code === '42703' || insertRes.error.message?.includes('does not exist') || insertRes.error.message?.includes('schema cache') || insertRes.error.message?.includes('column')) {
+                const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
+                let cleanPayload = { ...insertPayload };
+                for (const f of optFields) {
+                  if (insertRes.error.message?.includes(f)) {
+                    delete (cleanPayload as any)[f];
+                  }
                 }
+                const retryInsert = await supabase.from(tableName).insert([cleanPayload]).select().single();
+                if (retryInsert.error) throw retryInsert.error;
+                data = retryInsert.data;
+              } else {
+                throw insertRes.error;
               }
-              if (JSON.stringify(cleanPayload) === JSON.stringify(updatePayload)) {
-                delete (cleanPayload as any).personal_file_no;
-              }
-              const retryRes = await supabase.from(tableName).update(cleanPayload).eq('id', record.id).select().single();
-              if (retryRes.error) throw retryRes.error;
-              data = retryRes.data;
             } else {
-              throw error;
+              data = insertRes.data;
+            }
+          } else {
+            let updateRes = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
+            if (updateRes.error) {
+              if (updateRes.error.code === '42703' || updateRes.error.message?.includes('does not exist') || updateRes.error.message?.includes('schema cache') || updateRes.error.message?.includes('column')) {
+                // Sequentially clean optional columns list and retry
+                const optFields = ['personal_file_no', 'personal_id', 'eoid_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
+                let cleanPayload = { ...updatePayload };
+                for (const f of optFields) {
+                  if (updateRes.error.message?.includes(f)) {
+                    delete (cleanPayload as any)[f];
+                  }
+                }
+                if (JSON.stringify(cleanPayload) === JSON.stringify(updatePayload)) {
+                  delete (cleanPayload as any).personal_file_no;
+                }
+                const retryRes = await supabase.from(tableName).update(cleanPayload).eq('id', record.id).select().single();
+                if (retryRes.error) throw retryRes.error;
+                data = retryRes.data;
+              } else {
+                throw updateRes.error;
+              }
+            } else {
+              data = updateRes.data;
             }
           }
           savedRecord = data;
-          await logger.log('UPDATE', type, `Updated record for ${basePayload.full_name}`, record.id);
+          await logger.log('UPDATE', activeFormType, `Updated record for ${basePayload.full_name}`, record.id);
         } else {
           let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
           if (error) {
@@ -659,12 +710,23 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
             }
           }
           savedRecord = data;
-          await logger.log('CREATE', type, `Created new record for ${basePayload.full_name}`, savedRecord.id);
+          await logger.log('CREATE', activeFormType, `Created new record for ${basePayload.full_name}`, savedRecord.id);
         }
       } catch (dbError) {
         if (type === 'EOID' || type === 'EOID Under_Age') {
-          const storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
-          console.warn(`DB operation failed for ${type}, applying localStorage fallback:`, dbError);
+          const storageKey = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          const oldStorageKey = record ? ((record as any).under_age ? 'local_records_eoid_under_age' : 'local_records_eoid') : null;
+          
+          // Clear from old local storage category if it changed
+          if (oldStorageKey && oldStorageKey !== storageKey) {
+            const oldStored = localStorage.getItem(oldStorageKey);
+            if (oldStored) {
+              const oldParsed = JSON.parse(oldStored);
+              localStorage.setItem(oldStorageKey, JSON.stringify(oldParsed.filter((r: any) => r.id !== record.id)));
+            }
+          }
+
+          console.warn(`DB operation failed for ${activeFormType}, applying localStorage fallback:`, dbError);
           const stored = localStorage.getItem(storageKey);
           const parsed: any[] = stored ? JSON.parse(stored) : [];
 
@@ -682,16 +744,16 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           }
           
           if (record) {
-            savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by };
+            savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by, under_age: formData.under_age };
             const idx = parsed.findIndex(r => r.id === record.id);
             if (idx >= 0) parsed[idx] = savedRecord;
             else parsed.push(savedRecord);
           } else {
-            savedRecord = { ...basePayload, id: (type === 'EOID' ? "eoid-local-" : "ua-local-") + Date.now().toString(), created_at: new Date().toISOString() };
+            savedRecord = { ...basePayload, id: (activeFormType === 'EOID' ? "eoid-local-" : "ua-local-") + Date.now().toString(), created_at: new Date().toISOString(), under_age: formData.under_age };
             parsed.push(savedRecord);
           }
           localStorage.setItem(storageKey, JSON.stringify(parsed));
-          await logger.log(record ? 'UPDATE' : 'CREATE', type, `${record ? 'Updated' : 'Created'} local record for ${basePayload.full_name}`, savedRecord.id);
+          await logger.log(record ? 'UPDATE' : 'CREATE', activeFormType, `${record ? 'Updated' : 'Created'} local record for ${basePayload.full_name}`, savedRecord.id);
         } else {
           throw dbError;
         }
@@ -903,69 +965,67 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                       onChange={e => setFormData({ ...formData, personal_id: e.target.value })}
                     />
                   </div>
-                  {type === 'EOID' && (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Type</label>
-                      <select
-                        required
-                        className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
-                        value={formData.eoid_type}
-                        onChange={e => setFormData({ ...formData, eoid_type: e.target.value })}
-                      >
-                        <option value="">Select EOID Type...</option>
-                        <option value="By Marriage">By Marriage</option>
-                        <option value="By Residence">By Residence</option>
-                        <option value="By Ownership">By Ownership</option>
-                        <option value="By Ras Teferian">By Ras Teferian</option>
-                      </select>
-                    </div>
-                  )}
-                  {type === 'EOID Under_Age' && (
-                    <>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth (DOB)</label>
-                        <input
-                          required
-                          type="date"
-                          className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all cursor-pointer"
-                          value={formData.dob}
-                          onChange={e => {
-                            const dobVal = e.target.value;
-                            if (!dobVal) {
-                              setFormData(prev => ({ ...prev, dob: dobVal, under_age: true }));
-                              return;
-                            }
-                            const birthDate = new Date(dobVal);
-                            const refDate = formData.date ? new Date(formData.date) : new Date();
-                            let age = refDate.getFullYear() - birthDate.getFullYear();
-                            const monthDiff = refDate.getMonth() - birthDate.getMonth();
-                            if (monthDiff < 0 || (monthDiff === 0 && refDate.getDate() < birthDate.getDate())) {
-                              age--;
-                            }
-                            setFormData(prev => ({ ...prev, dob: dobVal, under_age: age < 18 }));
-                          }}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5 justify-center">
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Age Group / Under Age?</label>
-                        <div className="flex items-center h-full min-h-[46px]">
-                          {formData.dob ? (
-                            formData.under_age ? (
-                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black rounded-lg uppercase tracking-wider">
-                                <span>👶 Under Age (TRUE)</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black rounded-lg uppercase tracking-wider">
-                                <span>⚠️ Adult (FALSE)</span>
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Please provide valid DOB</span>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Category / Age Group</label>
+                    <select
+                      required
+                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                      value={formData.under_age ? "Under-Age" : "Normal"}
+                      onChange={e => {
+                        const isUnderAge = e.target.value === "Under-Age";
+                        setFormData(prev => ({ ...prev, under_age: isUnderAge }));
+                      }}
+                    >
+                      <option value="Normal">Normal Registry (Adult)</option>
+                      <option value="Under-Age">Under-Age Application (Minor)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Type</label>
+                    <select
+                      required={!formData.under_age}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
+                      value={formData.eoid_type || ''}
+                      onChange={e => setFormData({ ...formData, eoid_type: e.target.value })}
+                    >
+                      <option value="">Select EOID Type...</option>
+                      <option value="By Marriage">By Marriage</option>
+                      <option value="By Residence">By Residence</option>
+                      <option value="By Ownership">By Ownership</option>
+                      <option value="By Ras Teferian">By Ras Teferian</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth (DOB)</label>
+                    <input
+                      required={formData.under_age}
+                      type="date"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 font-mono outline-none transition-all cursor-pointer"
+                      value={formData.dob}
+                      onChange={e => {
+                        const dobVal = e.target.value;
+                        if (!dobVal) {
+                          setFormData(prev => ({ ...prev, dob: dobVal }));
+                          return;
+                        }
+                        const birthDate = new Date(dobVal);
+                        const refDate = formData.date ? new Date(formData.date) : new Date();
+                        let age = refDate.getFullYear() - birthDate.getFullYear();
+                        const monthDiff = refDate.getMonth() - birthDate.getMonth();
+                        if (monthDiff < 0 || (monthDiff === 0 && refDate.getDate() < birthDate.getDate())) {
+                          age--;
+                        }
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          dob: dobVal, 
+                          under_age: age < 18 
+                        }));
+                      }}
+                    />
+                  </div>
 
                   <div className="flex flex-col gap-1.5 font-mono text-slate-600">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Number (Optional)</label>
@@ -986,7 +1046,23 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                     required
                     className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer shadow-xs"
                     value={formData.id_type || ''}
-                    onChange={e => setFormData({ ...formData, id_type: e.target.value })}
+                    onChange={e => {
+                      const newIdType = e.target.value;
+                      const currentAttachments = formData.attachments_json || [];
+                      const newDefaults = getDefaultAttachments('Residence ID', newIdType);
+                      const allEmpty = currentAttachments.every(att => !att.url);
+                      let updatedAttachments;
+                      if (allEmpty) {
+                        updatedAttachments = newDefaults;
+                      } else {
+                        updatedAttachments = getMergedAttachments('Residence ID', currentAttachments, newIdType);
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        id_type: newIdType,
+                        attachments_json: updatedAttachments
+                      }));
+                    }}
                   >
                     <option value="">Select ID Type...</option>
                     <option value="Permenant ID">Permenant ID</option>

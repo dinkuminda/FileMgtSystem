@@ -307,7 +307,7 @@ export default function RecordTable({
                             {record.box_number}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-600">
-                            {(record as any).personal_id_no || (record as any).personal_id || '—'}
+                            {(record as any).personal_id_no || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-bold text-slate-800 tracking-tight uppercase">
                             {record.full_name}
@@ -318,19 +318,22 @@ export default function RecordTable({
                           <td className="px-3 py-5 text-xs font-medium text-slate-655 text-slate-600 uppercase">
                             {record.citizenship}
                           </td>
+                          <td className="px-3 py-5 text-xs font-mono text-slate-600">
+                            {(record as any).personal_id || '—'}
+                          </td>
                           <td className="px-3 py-5 text-xs font-bold text-amber-700 uppercase">
-                            <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px]">
-                              {(record as any).eoid_type || '—'}
+                            <span className="px-1.5 py-0.5 bg-amber-50/80 text-amber-700 border border-amber-100 rounded text-[10px] tracking-wide font-black">
+                              {(record as any).under_age ? 'Under-Age' : ((record as any).eoid_type || 'Normal')}
                             </span>
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-705 text-slate-700 uppercase">
-                            {record.passport_number}
+                            {record.passport_number || '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-655 text-slate-600 uppercase">
                             {record.request_number}
                           </td>
                           <td className="px-3 py-5 text-xs font-mono text-slate-555 text-slate-500">
-                            {new Date(record.date).toISOString().split('T')[0]}
+                            {record.date ? new Date(record.date).toISOString().split('T')[0] : '—'}
                           </td>
                           <td className="px-3 py-5 text-xs font-extrabold text-[#2b825a] uppercase leading-none">
                             {record.service_provided?.toUpperCase() || 'EOID ISSUANCE'}

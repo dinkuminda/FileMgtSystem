@@ -134,13 +134,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
-    { type: 'EOID', icon: Fingerprint, label: 'Normal EOID' },
-    { type: 'EOID Under_Age', icon: Baby, label: 'Under-Age EOID' },
+    { type: 'EOID', icon: Fingerprint, label: 'Ethiopian Origin ID' },
     { type: 'Alien Passport', icon: CreditCard, label: 'Alien Passport' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
-    { type: 'Yellow Card', icon: Shield, label: 'Yellow Card ' },
-      { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
+    { type: 'Yellow Card', icon: Shield, label: 'Yellow Card' },
+    { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Management' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit' },
@@ -277,36 +276,65 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const fetchRecords = async () => {
     if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS') return;
     setLoading(true);
-    const tableName = TABLE_MAP[activeTab as RecordType];
+    setSchemaError(null);
     
     try {
-      const { data, error } = await supabase
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (activeTab === 'EOID') {
+        const [eoidRes, underageRes] = await Promise.all([
+          supabase.from('eoid_records').select('*').order('created_at', { ascending: false }),
+          supabase.from('eoid_underage_records').select('*').order('created_at', { ascending: false })
+        ]);
 
-      if (!error && data) {
-        setRecords(data as ImmigrationRecord[]);
-        setSchemaError(null);
+        if (eoidRes.error) throw eoidRes.error;
+        if (underageRes.error) throw underageRes.error;
+
+        const combined = [
+          ...(eoidRes.data || []).map(r => ({ ...r, _table: 'eoid_records', under_age: r.under_age ?? false })),
+          ...(underageRes.data || []).map(r => ({ ...r, _table: 'eoid_underage_records', under_age: r.under_age ?? true }))
+        ];
+
+        combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setRecords(combined as ImmigrationRecord[]);
       } else {
-        throw error || new Error("Failed to load");
+        const tableName = TABLE_MAP[activeTab as RecordType];
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setRecords((data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[]);
+        } else {
+          throw error || new Error("Failed to load");
+        }
       }
     } catch (e: any) {
       console.warn(`Error or missing table on fetching ${activeTab} records, applying fallback:`, e?.message || e);
       const msg = e?.message || String(e);
       if (msg.includes('schema cache') || msg.includes('does not exist')) {
-        setSchemaError(`Database schema out of sync: The table "${tableName}" for "${activeTab}" is missing/uncached in Supabase. Please copy/run Section #7 / #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`);
+        const expectedTable = TABLE_MAP[activeTab as RecordType] || 'eoid_records';
+        setSchemaError(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`);
       } else {
         setSchemaError(null);
       }
-      if (activeTab === 'EOID Under_Age') {
-        const stored = localStorage.getItem('local_records_eoid_under_age');
-        if (stored) {
-          setRecords(JSON.parse(stored));
-        } else {
+      
+      if (activeTab === 'EOID') {
+        const storedNormal = localStorage.getItem('local_records_eoid') || '[]';
+        const storedUnderage = localStorage.getItem('local_records_eoid_under_age') || '[]';
+        
+        let valNormal = JSON.parse(storedNormal);
+        let valUnderage = JSON.parse(storedUnderage);
+        if (valUnderage.length === 0 && !localStorage.getItem('local_records_eoid_under_age')) {
+          valUnderage = DEFAULT_EOID_UNDERAGE_MOCKS;
           localStorage.setItem('local_records_eoid_under_age', JSON.stringify(DEFAULT_EOID_UNDERAGE_MOCKS));
-          setRecords(DEFAULT_EOID_UNDERAGE_MOCKS);
         }
+
+        const combinedLocal = [
+          ...valNormal.map((r: any) => ({ ...r, under_age: r.under_age ?? false, _table: 'eoid_records' })),
+          ...valUnderage.map((r: any) => ({ ...r, under_age: r.under_age ?? true, _table: 'eoid_underage_records' }))
+        ];
+        combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setRecords(combinedLocal);
       } else {
         setRecords([]);
       }
@@ -331,7 +359,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const executeDelete = async (id: string) => {
     setLoading(true);
     const record = records.find(r => r.id === id);
-    const tableName = TABLE_MAP[activeTab as RecordType];
+    const tableName = (record as any)?._table || TABLE_MAP[activeTab as RecordType];
     
     try {
       try {
@@ -348,20 +376,22 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (error) throw error;
       } catch (dbErr) {
-        if (activeTab === 'EOID Under_Age') {
-          console.warn("Delete DB error, performing local delete", dbErr);
-          const stored = localStorage.getItem('local_records_eoid_under_age');
+        if (activeTab === 'EOID') {
+          const isUnderAge = (record as any)?.under_age;
+          const storageKey = isUnderAge ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          console.warn("Delete DB error, performing local delete for EOID", dbErr);
+          const stored = localStorage.getItem(storageKey);
           if (stored) {
             const parsed = JSON.parse(stored) as ImmigrationRecord[];
             const updated = parsed.filter(r => r.id !== id);
-            localStorage.setItem('local_records_eoid_under_age', JSON.stringify(updated));
+            localStorage.setItem(storageKey, JSON.stringify(updated));
           }
         } else {
           throw dbErr;
         }
       }
       
-      await logger.log('DELETE', activeTab, `Deleted record for ${record?.full_name || 'unknown'}`, id);
+      await logger.log('DELETE', activeTab === 'EOID' ? (((record as any)?.under_age) ? 'EOID Under_Age' : 'EOID') : activeTab, `Deleted record for ${record?.full_name || 'unknown'}`, id);
       setRecords(records.filter(r => r.id !== id));
       addToast(`Record for ${record?.full_name || 'unknown'} was successfully deleted from the register.`, 'success');
     } catch (err: any) {
@@ -574,11 +604,16 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         const existingPassports = new Set<string>();
         const existingRequests = new Set<string>();
         try {
-          const { data: dbRecords, error: dbErr } = await supabase
-            .from(tableName)
-            .select('passport_number, request_number');
-          
-          if (!dbErr && dbRecords) {
+          if (activeTab === 'EOID') {
+            const [normalDb, underageDb] = await Promise.all([
+              supabase.from('eoid_records').select('passport_number, request_number'),
+              supabase.from('eoid_underage_records').select('passport_number, request_number')
+            ]);
+            
+            const dbRecords = [
+              ...(normalDb.data || []),
+              ...(underageDb.data || [])
+            ];
             dbRecords.forEach((r: any) => {
               if (r.passport_number) {
                 existingPassports.add(r.passport_number.toString().trim().toLowerCase());
@@ -587,6 +622,20 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 existingRequests.add(r.request_number.toString().trim().toLowerCase());
               }
             });
+          } else {
+            const { data: dbRecords, error: dbErr } = await supabase
+              .from(tableName)
+              .select('passport_number, request_number');
+            if (!dbErr && dbRecords) {
+              dbRecords.forEach((r: any) => {
+                if (r.passport_number) {
+                  existingPassports.add(r.passport_number.toString().trim().toLowerCase());
+                }
+                if (r.request_number) {
+                  existingRequests.add(r.request_number.toString().trim().toLowerCase());
+                }
+              });
+            }
           }
         } catch (e) {
           console.warn('Could not load existing records for duplicate checks, using file-level checks:', e);
@@ -639,9 +688,26 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           throw new Error(errMsg);
         }
 
-        const { error } = await supabase.from(tableName).insert(uniqueProcessed);
-        
-        if (error) throw error;
+        if (activeTab === 'EOID') {
+          const normalRows = uniqueProcessed.filter(row => !row.under_age);
+          const underageRows = uniqueProcessed.filter(row => !!row.under_age);
+
+          const promises = [];
+          if (normalRows.length > 0) {
+            const cleanedNormal = normalRows.map(({ dob, ...r }) => r);
+            promises.push(supabase.from('eoid_records').insert(cleanedNormal));
+          }
+          if (underageRows.length > 0) {
+            promises.push(supabase.from('eoid_underage_records').insert(underageRows));
+          }
+
+          const results = await Promise.all(promises);
+          const firstErr = results.find(res => res.error);
+          if (firstErr) throw firstErr.error;
+        } else {
+          const { error } = await supabase.from(tableName).insert(uniqueProcessed);
+          if (error) throw error;
+        }
         
         await logger.log('IMPORT', activeTab, `Imported ${uniqueProcessed.length} records via Excel (skipped ${duplicateInDbCount + duplicateInFileCount} duplicates)`);
         
@@ -653,7 +719,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         fetchRecords();
       } catch (err: any) {
         const msg = err.message || String(err);
-        const expectedTable = TABLE_MAP[activeTab as RecordType];
+        const expectedTable = TABLE_MAP[activeTab as RecordType] || 'eoid_records';
         if ((msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist'))) {
           addToast(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`, 'error');
         } else {
@@ -723,102 +789,28 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             >
               {(() => {
                 const renderedItems: React.ReactNode[] = [];
-                let hasRenderedEoidGroup = false;
 
                 tabs.forEach((tab) => {
-                  const isGroupItem = tab.type === 'EOID' || tab.type === 'EOID Under_Age';
-
-                  if (isGroupItem) {
-                    if (!hasRenderedEoidGroup) {
-                      hasRenderedEoidGroup = true;
-                      
-                      const innerGroupTabs = tabs.filter(t => t.type === 'EOID' || t.type === 'EOID Under_Age');
-                      const isAnyChildActive = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
-                      
-                      renderedItems.push(
-                        <div key="eoid-group" className="space-y-1.5 mt-2.5">
-                          {/* Group Header */}
-                          {!isSidebarCollapsed ? (
-                            <button
-                              type="button"
-                              onClick={() => setIsEoidGroupOpen(!isEoidGroupOpen)}
-                              className={`w-full flex items-center justify-between px-4 py-2 text-[10px] font-black tracking-widest uppercase transition-all rounded-lg outline-none border-none cursor-pointer ${
-                                isAnyChildActive
-                                  ? 'text-[#8c1d1d] font-extrabold bg-red-50/20'
-                                  : 'text-slate-400 hover:text-slate-655 hover:text-slate-600'
-                              }`}
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <Fingerprint className={`w-3.5 h-3.5 ${isAnyChildActive ? 'text-[#8c1d1d]' : 'text-slate-400'}`} />
-                                <span>Ethiopian Origin ID</span>
-                              </span>
-                              <div>
-                                {isEoidGroupOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                              </div>
-                            </button>
-                          ) : (
-                            <div className="border-t border-slate-100 my-2" />
-                          )}
-
-                          {/* Sub items */}
-                          <AnimatePresence initial={false}>
-                            {(isEoidGroupOpen || isSidebarCollapsed) && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className={`space-y-1 overflow-hidden ${!isSidebarCollapsed ? 'pl-3 border-l border-slate-100 ml-5' : ''}`}
-                              >
-                                {innerGroupTabs.map((subTab) => {
-                                  const isSubActive = activeTab === subTab.type;
-                                  const path = `/${subTab.type.toLowerCase().replace(' ', '-')}`;
-                                  return (
-                                    <Link
-                                      key={subTab.type}
-                                      to={path}
-                                      onClick={() => setIsSidebarOpen(false)}
-                                      className={`flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                                        isSidebarCollapsed ? 'justify-center' : 'justify-start'
-                                      } ${
-                                        isSubActive 
-                                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-xs` 
-                                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                                      }`}
-                                    >
-                                      <subTab.icon className={`w-4 h-4 flex-shrink-0 ${isSubActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                                      {!isSidebarCollapsed && <span className="flex-1 truncate">{subTab.label}</span>}
-                                    </Link>
-                                  );
-                                })}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    }
-                  } else {
-                    // Normal non-grouped tab link
-                    const isActive = activeTab === tab.type;
-                    const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
-                    renderedItems.push(
-                      <Link
-                        key={tab.type}
-                        to={path}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                          isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
-                        } ${
-                          isActive 
-                            ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                        }`}
-                      >
-                        <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
-                        {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
-                      </Link>
-                    );
-                  }
+                  // Normal non-grouped tab link
+                  const isActive = activeTab === tab.type;
+                  const path = tab.type === 'OVERVIEW' ? '/' : `/${tab.type.toLowerCase().replace(' ', '-')}`;
+                  renderedItems.push(
+                    <Link
+                      key={tab.type}
+                      to={path}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                        isSidebarCollapsed ? 'justify-center font-bold' : 'justify-start'
+                      } ${
+                        isActive 
+                          ? `${currentTheme.bgLight} ${currentTheme.primaryText} font-extrabold shadow-sm border-l-4 ${currentTheme.border}` 
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                      }`}
+                    >
+                      <tab.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? currentTheme.primaryText : 'text-slate-400'}`} />
+                      {!isSidebarCollapsed && <span className="flex-1">{tab.label}</span>}
+                    </Link>
+                  );
                 });
 
                 return renderedItems;
@@ -990,10 +982,9 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     {/* FSD Division style heading row */}
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
-                        <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight">
+                         <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
                           {activeTab === 'VISA' ? 'VISA Records' : 
-                           activeTab === 'EOID' ? 'Ethiopian Origin ID - Normal Registrations' : 
-                           activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID - Under-Age Applications' : 
+                           activeTab === 'EOID' ? 'Ethiopian Origin ID' : 
                            activeTab === 'Residence ID' ? 'Residence ID Records' : 
                            activeTab === 'ETD' ? 'ETD Records' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
@@ -1002,8 +993,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
-                           activeTab === 'EOID' ? 'SOURCE: - National ID verification feeds' : 
-                           activeTab === 'EOID Under_Age' ? 'SOURCE: - Verified Minors Database Registry' : 
+                           activeTab === 'EOID' ? 'SOURCE: - Unified National ID Verification Feeds' : 
                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
                            activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
@@ -1090,7 +1080,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
-                <Route path="/yellow-card" element={
+                 <Route path="/yellow-card" element={
                   hasAccess('Yellow Card') ? (
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                       <RecordTable 
@@ -1119,7 +1109,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eoid" element={
-                  hasAccess('EOID') ? (
+                  (hasAccess('EOID') || hasAccess('EOID Under_Age')) ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                       <RecordTable 
                         loading={loading}
@@ -1132,20 +1122,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
-                <Route path="/eoid-under_age" element={
-                  hasAccess('EOID Under_Age') ? (
-                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
-                    </div>
-                  ) : <Navigate to="/" replace />
-                } />
+                <Route path="/eoid-under_age" element={<Navigate to="/eoid" replace />} />
                 <Route path="/residence-id" element={
                   hasAccess('Residence ID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
