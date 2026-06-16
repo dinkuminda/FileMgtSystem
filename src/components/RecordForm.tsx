@@ -165,11 +165,9 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       ];
     } else if (recordType === 'VISA') {
       return [
-        { category: 'APPLICANT', file_type: 'PASSPORT COPY (PAGES 1-3)', url: '', verification_status: 'Pending' },
-        { category: 'SPONSOR', file_type: 'LETTER OF INVITATION / GUARANTOR LETTER', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'VISA APPLICATION FORM (SIGNED)', url: '', verification_status: 'Pending' },
-        { category: 'TRANSACTION', file_type: 'VISA FEE RECEIPT / BANK CONFIRMATION', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'RETURN FLIGHT TICKET ITINERARY', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION LETTER', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'ENTRY VISA', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Residence ID') {
       return [
@@ -181,30 +179,28 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       ];
     } else if (recordType === 'ETD') {
       return [
-        { category: 'APPLICANT', file_type: 'LOST PASSPORT POLICE REPORT', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'PROOF OF CITIZENSHIP / ERA OVERVIEW', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'ETD APPLICATION FORM (SIGNED)', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'EMERGENCY FLIGHT DETAILS / RESERVATION', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'ARA LETTER', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'HILAWINET', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Yellow Card') {
       return [
-        { category: 'APPLICANT', file_type: 'ORIGIN PASSPORT COPY', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'ETHIOPIAN ORIGIN CERTIFICATE (KEBELE/COURT)', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'SIGNED APPLICATION FORM', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'PROVABLE FAMILY TREE DEED', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'PASSPORT COPY', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'BIRTH CERTIFICATE', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'FAMILY DOCUMENT OR COURT LETTER', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Eritrean ID') {
       return [
-        { category: 'APPLICANT', file_type: 'COMMUNITY ASSOCIATION LETTER', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'ERITREAN ID CARD (EXPIRED/PREVIOUS)', url: '', verification_status: 'Pending' },
-        { category: 'GUARDIAN', file_type: 'GUARANTOR NATIONAL ID', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'SIGNED REGISTRATION FORM', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION LETTER', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'BEFORE ID', url: '', verification_status: 'Pending' }
       ];
     } else if (recordType === 'Alien Passport') {
       return [
-        { category: 'APPLICANT', file_type: 'Alien Passport Copy', url: '', verification_status: 'Pending' },
-        { category: 'APPLICANT', file_type: 'Application Form', url: '', verification_status: 'Pending' },
-        { category: 'TRANSACTION', file_type: 'Sponsor Guarantee Letter', url: '', verification_status: 'Pending' }
+        { category: 'APPLICANT', file_type: 'ERITREAN ID', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION FORM', url: '', verification_status: 'Pending' },
+        { category: 'APPLICANT', file_type: 'APPLICATION LETTER', url: '', verification_status: 'Pending' }
       ];
     }
     return [
