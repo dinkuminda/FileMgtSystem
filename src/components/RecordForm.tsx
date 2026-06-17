@@ -575,8 +575,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       } else if (type === 'Eritrean ID') {
         basePayload.personal_id = null;
         basePayload.eoid_type = null;
-        basePayload.letter_number = formData.letter_number || null;
-        basePayload.document_type = formData.document_type || null;
+        basePayload.letter_number = null;
+        basePayload.document_type = 'Scanned Letter';
       }
       if (type === 'Residence ID') {
         basePayload.id_type = formData.id_type || null;
@@ -1061,6 +1061,8 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
                   </select>
                 </div>
               )}
+
+
 
               {/* Custom upload format for EOID, VISA, Residence ID, ETD, etc. matching Screenshot */}
               <div className="md:col-span-2 mt-4 space-y-6">

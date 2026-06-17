@@ -546,9 +546,9 @@ CREATE TABLE IF NOT EXISTS public.eritrean_id_records (
   personal_id TEXT, -- Personal ID No.
   eoid_type TEXT, -- Yellow Card Type / Eritrean Card Type
   full_name TEXT NOT NULL,
-  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other')),
+  sex TEXT NOT NULL CHECK (sex IN ('Male', 'Female', 'Other', 'M', 'F')),
   citizenship TEXT NOT NULL,
-  passport_number TEXT NOT NULL, -- Displays as "Id No." in the frontend
+  passport_number TEXT, -- Displays as "Id No." in the frontend
   request_number TEXT NOT NULL,
   letter_number TEXT,
   document_type TEXT NOT NULL DEFAULT 'Scanned Letter',
@@ -627,6 +627,7 @@ ALTER TABLE public.etd_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
 ALTER TABLE public.alien_passport_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
 ALTER TABLE public.yellow_card_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
 ALTER TABLE public.eritrean_id_records ADD COLUMN IF NOT EXISTS personal_id_no TEXT;
+ALTER TABLE public.eritrean_id_records ALTER COLUMN passport_number DROP NOT NULL;
 
 -- Dynamic migration to ensure sex check constraints accommodate single letter values
 ALTER TABLE public.visa_records DROP CONSTRAINT IF EXISTS visa_records_sex_check;

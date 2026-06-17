@@ -458,8 +458,11 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (tab === 'Alien Passport') {
             return common;
           }
-          if (tab === 'Yellow Card' || tab === 'Eritrean ID') {
+          if (tab === 'Yellow Card') {
             return [...common, 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
+          }
+          if (tab === 'Eritrean ID') {
+            return common;
           }
           if (tab === 'Residence ID') {
             return [...common, 'id_type'];
