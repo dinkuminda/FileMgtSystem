@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface EthiopianImmigrationLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -28,6 +26,3 @@ export default function EthiopianImmigrationLogo({ className = '', size = 'md' }
     </div>
   );
 }
-
-
-     

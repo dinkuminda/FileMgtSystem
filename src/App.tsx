@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured, type UserProfile, logger, mapDbRoleToFr
 import Auth from './components/Auth';
 import Home from './components/Home';
 import Dashboard from './components/Dashboard';
+import Presentation from './components/Presentation';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -158,6 +159,7 @@ export default function App() {
           path="/login" 
           element={!session ? <Auth /> : <Navigate to="/" replace />} 
         />
+        <Route path="/presentation" element={<Presentation />} />
         {session ? (
           <Route 
             path="/*" 

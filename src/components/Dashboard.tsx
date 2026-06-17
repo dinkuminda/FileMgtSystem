@@ -7,7 +7,7 @@ import {
   FileOutput, FileInput, LayoutDashboard, Shield, X,
   Activity, BarChart3, Plane, Paperclip,
   ArrowLeft, Clock, List, LayoutGrid, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Bell, Archive, Baby, Calendar
+  Bell, Archive, Baby, Calendar, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
@@ -962,6 +962,12 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         {/* Header Bar */}
         <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-white border-b border-slate-100 sticky top-0 z-30">
           <div className="flex items-center gap-3">
+            <Link 
+              to="/presentation" 
+              className="hidden lg:flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 border border-blue-200 rounded-lg transition-all"
+            >
+              <BookOpen className="w-4 h-4" /> Project Implementation (15 Slides)
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
