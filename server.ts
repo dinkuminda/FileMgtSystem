@@ -710,7 +710,8 @@ How can I help you support system operations?`;
 
   // Register Vite or static serving AFTER all API routes are defined
   async function initStaticAndVite() {
-    if (process.env.VERCEL) {
+    const isServerless = process.env.VERCEL === "1" || process.env.VERCEL === "true" || process.env.IS_SERVERLESS === "true" || !!process.env.LAMBDA_TASK_ROOT;
+    if (isServerless) {
       // On Vercel, static files are handled by the CDN and don't need Express route fallback.
       return;
     }
@@ -738,8 +739,9 @@ How can I help you support system operations?`;
 
   initStaticAndVite();
 
-  // Start server if not running on Vercel
-  if (!process.env.VERCEL) {
+  // Start server if not running on Vercel or any other serverless system
+  const isServerlessEnvironment = process.env.VERCEL === "1" || process.env.VERCEL === "true" || process.env.IS_SERVERLESS === "true" || !!process.env.LAMBDA_TASK_ROOT;
+  if (!isServerlessEnvironment) {
     app.listen(PORT, "0.0.0.0", async () => {
       console.log(`[SERVER] Ready and listening on http://0.0.0.0:${PORT}`);
       console.log(`[SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
