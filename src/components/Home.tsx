@@ -32,12 +32,6 @@ export default function Home() {
               >
                 Home
               </a>
-              <Link 
-                to="/presentation" 
-                className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-blue-200 transition-all select-none"
-              >
-                <BookOpen className="w-3.5 h-3.5" /> Project Slides (15 Slides)
-              </Link>
             </nav>
           </div>
 
@@ -148,9 +142,6 @@ export default function Home() {
 
       </main>
 
-  
-
-      {/* 4. FOOTER */}
       <footer className="relative overflow-hidden bg-[#072146] border-t border-[#0d346b] py-16 px-6 sm:px-8 mt-auto text-white/90" id="portal-system-footer">
         
         {/* Large Aesthetic Watermark Brand Seal */}
