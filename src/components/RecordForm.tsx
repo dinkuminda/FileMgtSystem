@@ -533,7 +533,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         full_name: formData.full_name,
         sex: formData.sex,
         citizenship: formData.citizenship,
-        passport_number: (type === 'ETD' || type === 'Eritrean ID') ? null : formData.passport_number,
         request_number: formData.request_number,
         date: formData.date,
         service_provided: formData.service_provided || (
@@ -548,6 +547,10 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         ),
         created_by: user.id,
       };
+
+      if (type !== 'Eritrean ID') {
+        basePayload.passport_number = (type === 'ETD') ? (formData.passport_number || '-') : formData.passport_number;
+      }
 
       // Ensure each module is assigned to a dynamic or default physical cabinet box
       basePayload.box_number = formData.box_number || MODULE_BOX_MAP[type] || 'Visa-000001';
@@ -572,11 +575,6 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
         basePayload.eoid_type = formData.eoid_type;
         basePayload.letter_number = null;
         basePayload.document_type = null;
-      } else if (type === 'Eritrean ID') {
-        basePayload.personal_id = null;
-        basePayload.eoid_type = null;
-        basePayload.letter_number = null;
-        basePayload.document_type = 'Scanned Letter';
       }
       if (type === 'Residence ID') {
         basePayload.id_type = formData.id_type || null;
@@ -590,75 +588,104 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       let savedRecord: any = record;
 
       try {
+        let data: any = null;
+
         if (record) {
           // Remove created_by from update payload as it should remain original creator
           const { created_by, ...updatePayload } = basePayload;
           const originalTableName = (record as any)._table || TABLE_MAP[type];
           
-          let data, error;
           if (originalTableName !== tableName) {
             console.log(`EOID Category changed. Migrating record from ${originalTableName} to ${tableName}`);
             await supabase.from(originalTableName).delete().eq('id', record.id);
-            const insertPayload = { ...basePayload, id: record.id, created_at: record.created_at };
-            let insertRes = await supabase.from(tableName).insert([insertPayload]).select().single();
-            if (insertRes.error) {
-              if (insertRes.error.code === '42703' || insertRes.error.message?.includes('does not exist') || insertRes.error.message?.includes('schema cache') || insertRes.error.message?.includes('column')) {
-                const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
-                let cleanPayload = { ...insertPayload };
-                for (const f of optFields) {
-                  if (insertRes.error.message?.includes(f)) {
-                    delete (cleanPayload as any)[f];
+            
+            let currentPayload = { ...basePayload, id: record.id, created_at: record.created_at };
+            let success = false;
+            let attempts = 0;
+            while (!success && attempts < 15) {
+              attempts++;
+              const res = await supabase.from(tableName).insert([currentPayload]).select().single();
+              if (res.error) {
+                const errMsg = res.error.message || '';
+                if (res.error.code === '42703' || errMsg.includes('does not exist') || errMsg.includes('schema cache') || errMsg.includes('column')) {
+                  let matched = false;
+                  const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no', 'passport_number', 'etd', 'id_type', 'under_age', 'dob', 'eoid_number', 'residence_id_no', 'attachment_url'];
+                  for (const f of optFields) {
+                    if (errMsg.includes(f) && (f in currentPayload)) {
+                      console.log(`Self-healing DB (Migration): Column "${f}" is missing from "${tableName}". Deleting and retrying.`);
+                      delete (currentPayload as any)[f];
+                      matched = true;
+                      break;
+                    }
                   }
+                  if (!matched) throw res.error;
+                } else {
+                  throw res.error;
                 }
-                const retryInsert = await supabase.from(tableName).insert([cleanPayload]).select().single();
-                if (retryInsert.error) throw retryInsert.error;
-                data = retryInsert.data;
               } else {
-                throw insertRes.error;
+                data = res.data;
+                success = true;
               }
-            } else {
-              data = insertRes.data;
             }
           } else {
-            let updateRes = await supabase.from(tableName).update(updatePayload).eq('id', record.id).select().single();
-            if (updateRes.error) {
-              if (updateRes.error.code === '42703' || updateRes.error.message?.includes('does not exist') || updateRes.error.message?.includes('schema cache') || updateRes.error.message?.includes('column')) {
-                // Sequentially clean optional columns list and retry
-                const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
-                let cleanPayload = { ...updatePayload };
-                for (const f of optFields) {
-                  if (updateRes.error.message?.includes(f)) {
-                    delete (cleanPayload as any)[f];
+            let currentPayload = { ...updatePayload };
+            let success = false;
+            let attempts = 0;
+            while (!success && attempts < 15) {
+              attempts++;
+              const res = await supabase.from(tableName).update(currentPayload).eq('id', record.id).select().single();
+              if (res.error) {
+                const errMsg = res.error.message || '';
+                if (res.error.code === '42703' || errMsg.includes('does not exist') || errMsg.includes('schema cache') || errMsg.includes('column')) {
+                  let matched = false;
+                  const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no', 'passport_number', 'etd', 'id_type', 'under_age', 'dob', 'eoid_number', 'residence_id_no', 'attachment_url'];
+                  for (const f of optFields) {
+                    if (errMsg.includes(f) && (f in currentPayload)) {
+                      console.log(`Self-healing DB (Update): Column "${f}" is missing from "${tableName}". Deleting and retrying.`);
+                      delete (currentPayload as any)[f];
+                      matched = true;
+                      break;
+                    }
                   }
+                  if (!matched) throw res.error;
+                } else {
+                  throw res.error;
                 }
-                const retryRes = await supabase.from(tableName).update(cleanPayload).eq('id', record.id).select().single();
-                if (retryRes.error) throw retryRes.error;
-                data = retryRes.data;
               } else {
-                throw updateRes.error;
+                data = res.data;
+                success = true;
               }
-            } else {
-              data = updateRes.data;
             }
           }
           savedRecord = data;
           await logger.log('UPDATE', activeFormType, `Updated record for ${basePayload.full_name}`, record.id);
         } else {
-          let { data, error } = await supabase.from(tableName).insert([basePayload]).select().single();
-          if (error) {
-            if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache') || error.message?.includes('column')) {
-              const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no'];
-              let cleanPayload = { ...basePayload };
-              for (const f of optFields) {
-                if (error.message?.includes(f)) {
-                  delete (cleanPayload as any)[f];
+          let currentPayload = { ...basePayload };
+          let success = false;
+          let attempts = 0;
+          while (!success && attempts < 15) {
+            attempts++;
+            const res = await supabase.from(tableName).insert([currentPayload]).select().single();
+            if (res.error) {
+              const errMsg = res.error.message || '';
+              if (res.error.code === '42703' || errMsg.includes('does not exist') || errMsg.includes('schema cache') || errMsg.includes('column')) {
+                let matched = false;
+                const optFields = ['personal_id', 'eoid_type', 'visa_type', 'box_number', 'letter_number', 'document_type', 'attachments', 'shelf_number', 'personal_id_no', 'passport_number', 'etd', 'id_type', 'under_age', 'dob', 'eoid_number', 'residence_id_no', 'attachment_url'];
+                for (const f of optFields) {
+                  if (errMsg.includes(f) && (f in currentPayload)) {
+                    console.log(`Self-healing DB (Insert): Column "${f}" is missing from "${tableName}". Deleting and retrying.`);
+                    delete (currentPayload as any)[f];
+                    matched = true;
+                    break;
+                  }
                 }
+                if (!matched) throw res.error;
+              } else {
+                throw res.error;
               }
-              const retryRes = await supabase.from(tableName).insert([cleanPayload]).select().single();
-              if (retryRes.error) throw retryRes.error;
-              data = retryRes.data;
             } else {
-              throw error;
+              data = res.data;
+              success = true;
             }
           }
           savedRecord = data;

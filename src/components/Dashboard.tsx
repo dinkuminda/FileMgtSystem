@@ -462,7 +462,11 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             return [...common, 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
           }
           if (tab === 'Eritrean ID') {
-            return common;
+            return [
+              'shelf_number', 'box_number', 'personal_id_no', 'full_name',
+              'sex', 'citizenship', 'request_number', 'date',
+              'service_provided', 'created_by', 'attachment_url'
+            ];
           }
           if (tab === 'Residence ID') {
             return [...common, 'id_type'];
@@ -766,11 +770,15 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     return hasUpdateAccess(userProfile.role, activeTab, permissionRules);
   };
 
-  const filteredRecords = records.filter(r => 
-    r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.passport_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.request_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRecords = records.filter(r => {
+    const query = searchQuery.toLowerCase();
+    const nameMatch = (r.full_name || '').toLowerCase().includes(query);
+    const passportMatch = r.passport_number ? r.passport_number.toLowerCase().includes(query) : false;
+    const requestMatch = (r.request_number || '').toLowerCase().includes(query);
+    const shelfMatch = (r as any).shelf_number ? (r as any).shelf_number.toLowerCase().includes(query) : false;
+    const personalIdMatch = (r as any).personal_id_no ? (r as any).personal_id_no.toLowerCase().includes(query) : false;
+    return nameMatch || passportMatch || requestMatch || shelfMatch || personalIdMatch;
+  });
 
   const SidebarContent = () => {
     return (
