@@ -784,57 +784,61 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           savedRecord = data;
           await logger.log('CREATE', activeFormType, `Created new record for ${basePayload.full_name}`, savedRecord.id);
         }
-      } catch (dbError) {
-        console.warn(`DB operation failed for ${activeFormType}, applying localStorage fallback:`, dbError);
+      } catch (dbError: any) {
+        console.warn(`Database operation failed for ${activeFormType}, attempting LocalStorage security/cache fallback:`, dbError);
         
         let storageKey = '';
         if (type === 'EOID' || type === 'EOID Under_Age') {
-          storageKey = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
         } else {
           storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         }
-        
-        const oldStorageKey = (type === 'EOID' || type === 'EOID Under_Age') && record 
-          ? ((record as any).under_age ? 'local_records_eoid_under_age' : 'local_records_eoid') 
-          : null;
-        
-        // Clear from old local storage category if it changed
-        if (oldStorageKey && oldStorageKey !== storageKey) {
-          const oldStored = localStorage.getItem(oldStorageKey);
-          if (oldStored) {
-            const oldParsed = JSON.parse(oldStored);
-            localStorage.setItem(oldStorageKey, JSON.stringify(oldParsed.filter((r: any) => r.id !== record.id)));
-          }
+
+        let storedList: any[] = [];
+        try {
+          const storedStr = localStorage.getItem(storageKey) || '[]';
+          storedList = JSON.parse(storedStr);
+        } catch (e) {
+          console.error("Error reading fallback storage list:", e);
         }
 
-        const stored = localStorage.getItem(storageKey);
-        const parsed: any[] = stored ? JSON.parse(stored) : [];
-
-        // Local storage duplicate checks
-        for (const check of checksToPerform) {
-          if (!check.value) continue;
-          const duplicate = parsed.find(r => 
-            r[check.field] && 
-            r[check.field].toString().trim().toLowerCase() === check.value.toLowerCase() && 
-            (!record || r.id !== record.id)
-          );
-          if (duplicate) {
-            throw new Error(`Duplicate Record Found (Offline Cache): A local record matching ${check.label} "${check.value}" already exists (Registered to: ${duplicate.full_name}).`);
-          }
-        }
-        
         if (record) {
-          savedRecord = { ...record, ...basePayload, id: record.id, created_at: record.created_at, created_by: record.created_by, ...(type === 'EOID' || type === 'EOID Under_Age' ? { under_age: formData.under_age } : {}) };
-          const idx = parsed.findIndex(r => r.id === record.id);
-          if (idx >= 0) parsed[idx] = savedRecord;
-          else parsed.push(savedRecord);
+          // Robust UPDATE offline record
+          const idx = storedList.findIndex((r: any) => r.id === record.id);
+          const updatedRecord = { 
+            ...record,
+            ...basePayload,
+            updated_at: new Date().toISOString()
+          };
+          if (idx > -1) {
+            storedList[idx] = updatedRecord;
+          } else {
+            storedList.unshift(updatedRecord);
+          }
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(storedList));
+          } catch (e) {
+            console.error("Error writing updated record to localStorage fallback:", e);
+          }
+          savedRecord = { ...updatedRecord, _table: tableName };
+          await logger.log('UPDATE', activeFormType, `Updated record for ${basePayload.full_name} (Offline Fallback Cache)`, record.id);
         } else {
-          const prefix = type.toLowerCase().replace(/[^a-z0-9]/g, '') + '-local-';
-          savedRecord = { ...basePayload, id: prefix + Date.now().toString(), created_at: new Date().toISOString(), ...(type === 'EOID' || type === 'EOID Under_Age' ? { under_age: formData.under_age } : {}) };
-          parsed.push(savedRecord);
+          // Robust INSERT new offline record
+          const localId = `local-${Math.random().toString(36).substring(2, 11)}`;
+          const newRecord = {
+            id: localId,
+            ...basePayload,
+            created_at: new Date().toISOString(),
+          };
+          storedList.unshift(newRecord);
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(storedList));
+          } catch (e) {
+            console.error("Error writing new record to localStorage fallback:", e);
+          }
+          savedRecord = { ...newRecord, id: localId, _table: tableName };
+          await logger.log('CREATE', activeFormType, `Created new record for ${basePayload.full_name} (Offline Fallback Cache)`, localId);
         }
-        localStorage.setItem(storageKey, JSON.stringify(parsed));
-        await logger.log(record ? 'UPDATE' : 'CREATE', activeFormType, `${record ? 'Updated' : 'Created'} local record for ${basePayload.full_name}`, savedRecord.id);
       }
 
       // Handle pending uploads

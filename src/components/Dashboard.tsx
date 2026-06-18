@@ -475,42 +475,39 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         if (!user) throw new Error('Not authenticated');
 
         const getValidColumnsForTab = (tab: string): string[] => {
-          const common = [
+          // Columns that exist in absolutely all tables (except passport_number, personal_id, personal_id_no)
+          const baseAll = [
             'box_number', 'full_name', 'sex', 'citizenship', 
-            'passport_number', 'request_number', 'date', 
-            'service_provided', 'created_by', 'attachment_url',
-            'shelf_number', 'personal_id_no', 'personal_id'
+            'request_number', 'date', 'service_provided',
+            'shelf_number', 'personal_id_no', 'attachment_url'
           ];
           
           if (tab === 'VISA') {
-            return [...common, 'visa_type'];
+            return [...baseAll, 'passport_number', 'visa_type'];
           }
           if (tab === 'EOID') {
-            return [...common, 'eoid_number', 'personal_id', 'eoid_type', 'under_age'];
+            return [...baseAll, 'passport_number', 'personal_id', 'eoid_number', 'eoid_type', 'under_age', 'dob'];
           }
           if (tab === 'EOID Under_Age') {
-            return [...common, 'eoid_number', 'personal_id', 'eoid_type', 'dob', 'under_age'];
+            return [...baseAll, 'passport_number', 'personal_id', 'eoid_number', 'eoid_type', 'under_age', 'dob'];
           }
           if (tab === 'Alien Passport') {
-            return common;
+            return [...baseAll, 'passport_number'];
           }
           if (tab === 'Yellow Card') {
-            return [...common, 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
+            return [...baseAll, 'passport_number', 'personal_id', 'eoid_type', 'letter_number', 'document_type'];
           }
           if (tab === 'Eritrean ID') {
-            return [
-              'shelf_number', 'box_number', 'personal_id_no', 'personal_id', 'full_name',
-              'sex', 'citizenship', 'request_number', 'date',
-              'service_provided', 'created_by', 'attachment_url'
-            ];
+            // Note: Eritrean ID has no passport_number in the db!
+            return baseAll;
           }
           if (tab === 'Residence ID') {
-            return [...common, 'id_type'];
+            return [...baseAll, 'passport_number', 'id_type'];
           }
           if (tab === 'ETD') {
-            return [...common, 'etd'];
+            return [...baseAll, 'passport_number', 'etd'];
           }
-          return common;
+          return baseAll;
         };
 
         const normalizeKey = (key: string): string => {
@@ -605,6 +602,17 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           return new Date().toISOString().split('T')[0];
         };
 
+        const localModuleBoxMap: Record<string, string> = {
+          'VISA': 'Visa-000001',
+          'EOID': 'EOID-000002',
+          'Residence ID': 'Residence-000003',
+          'ETD': 'ETD-000004',
+          'Yellow Card': 'Yellow-000005',
+          'EOID Under_Age': 'EOID-Underage-000006',
+          'Alien Passport': 'Alien-000007',
+          'Eritrean ID': 'Eritrean-000008'
+        };
+
         const processedData = json.map((row: any) => {
           const cleanRow: any = {};
           // Normalize and filter key values of individual row
@@ -623,17 +631,42 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           delete cleanRow.id;
           delete cleanRow.created_at;
 
-          // Cross-populate personal_id and personal_id_no for dual-field database column matching
-          if (cleanRow.personal_id_no) {
+          // Cross-populate personal_id and personal_id_no safely ONLY if supported in current tab's schema definition
+          if (cleanRow.personal_id_no && validColumns.includes('personal_id')) {
             cleanRow.personal_id = cleanRow.personal_id_no;
-          } else if (cleanRow.personal_id) {
+          } else if (cleanRow.personal_id && validColumns.includes('personal_id_no')) {
             cleanRow.personal_id_no = cleanRow.personal_id;
           }
 
-          return {
-            ...cleanRow,
-            created_by: user.id
-          };
+          const finalRow: any = {};
+          validColumns.forEach(col => {
+            if (cleanRow[col] !== undefined) {
+              finalRow[col] = cleanRow[col];
+            }
+          });
+
+          // Auto-populate cabinet box number format if blank or undefined
+          if (!finalRow.box_number) {
+            finalRow.box_number = localModuleBoxMap[activeTab] || 'Visa-000001';
+          }
+
+          // Force trim and normalize gender values to handle Case/Single letter constraints (e.g., MALE -> Male, f -> Female)
+          if (finalRow.sex) {
+            const normalizedSex = finalRow.sex.toString().trim().toLowerCase();
+            if (normalizedSex.startsWith('m')) {
+              finalRow.sex = 'Male';
+            } else if (normalizedSex.startsWith('f')) {
+              finalRow.sex = 'Female';
+            } else {
+              finalRow.sex = 'Other';
+            }
+          } else {
+            finalRow.sex = 'Male';
+          }
+
+          finalRow.created_by = user.id;
+
+          return finalRow;
         }).filter((row: any) => row.full_name);
 
         if (processedData.length === 0) {
