@@ -407,8 +407,18 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (records.length === 0) return;
     await logger.log('EXPORT', activeTab, `Exported ${records.length} records to Excel`);
     
+    // Map records to replace "id" string with a sequential 1-based autonumber
+    const formattedRecords = records.map((record, index) => {
+      // Build an object with 'id' as the very first column/key
+      const { id, ...rest } = record as any;
+      return {
+        id: index + 1,
+        ...rest
+      };
+    });
+
     // Convert JSON records to an Excel Worksheet
-    const worksheet = XLSX.utils.json_to_sheet(records);
+    const worksheet = XLSX.utils.json_to_sheet(formattedRecords);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.substring(0, 31)); // sheet names must be <= 31 chars
 
@@ -423,8 +433,33 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (!file) return;
 
     setLoading(true);
+
+    // 1. Prevent duplicate file import immediately
+    try {
+      const importedFilesStr = localStorage.getItem('local_imported_files_log') || '[]';
+      const importedFilesLog = JSON.parse(importedFilesStr);
+      
+      const isDuplicateFile = importedFilesLog.some((f: any) => 
+        f.fileName === file.name && 
+        f.fileSize === file.size && 
+        f.tab === activeTab
+      );
+      
+      if (isDuplicateFile) {
+        addToast(`Duplicate File Cancelled: The spreadsheet "${file.name}" has already been imported into the "${activeTab}" module. To prevent duplicate registers, this import has been cancelled.`, 'error');
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+    } catch (err) {
+      console.error("Error verifying file registry duplicates:", err);
+    }
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
+      let uniqueProcessed: any[] = [];
+      let duplicateInDbCount = 0;
+      let duplicateInFileCount = 0;
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
@@ -443,7 +478,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           const common = [
             'box_number', 'full_name', 'sex', 'citizenship', 
             'passport_number', 'request_number', 'date', 
-            'service_provided', 'created_by', 'attachment_url'
+            'service_provided', 'created_by', 'attachment_url',
+            'shelf_number', 'personal_id_no', 'personal_id'
           ];
           
           if (tab === 'VISA') {
@@ -463,7 +499,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           }
           if (tab === 'Eritrean ID') {
             return [
-              'shelf_number', 'box_number', 'personal_id_no', 'full_name',
+              'shelf_number', 'box_number', 'personal_id_no', 'personal_id', 'full_name',
               'sex', 'citizenship', 'request_number', 'date',
               'service_provided', 'created_by', 'attachment_url'
             ];
@@ -511,8 +547,11 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (['residence_id_no', 'residence_id_number', 'residence_id', 'residence_no', 'residenceid', 'id_type', 'idtype', 'residence_type', 'id_category'].includes(normalized)) {
             return 'id_type';
           }
-          if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number', 'id_no', 'idno'].includes(normalized)) {
-            return 'personal_id';
+          if (['personal_id', 'personal_id_no', 'personal_id_number', 'id_number', 'id_no', 'idno', 'personalid', 'personalid_no'].includes(normalized)) {
+            return 'personal_id_no';
+          }
+          if (['shelf_number', 'shelf', 'shelf_num', 'shelfno'].includes(normalized)) {
+            return 'shelf_number';
           }
           if (['date', 'registered_date', 'creation_date', 'registration_date'].includes(normalized)) {
             return 'date';
@@ -584,6 +623,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           delete cleanRow.id;
           delete cleanRow.created_at;
 
+          // Cross-populate personal_id and personal_id_no for dual-field database column matching
+          if (cleanRow.personal_id_no) {
+            cleanRow.personal_id = cleanRow.personal_id_no;
+          } else if (cleanRow.personal_id) {
+            cleanRow.personal_id_no = cleanRow.personal_id;
+          }
+
           return {
             ...cleanRow,
             created_by: user.id
@@ -607,66 +653,210 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         const tableName = TABLE_MAP[activeTab as RecordType];
 
-        // Fetch existing records for duplicate check checking passport_number and request_number
+        // PRE-CALCULATE MAXIMUM SEQUENTIAL ID KEY IN THE DATABASE & OFFLINE CORES
+        let maxNum = 0;
+        let prefix = 'PID-';
+        if (activeTab === 'VISA') prefix = 'PID-VISA-';
+        else if (activeTab === 'EOID') prefix = 'PID-EOID-';
+        else if (activeTab === 'EOID Under_Age') prefix = 'PID-U-';
+        else if (activeTab === 'Residence ID') prefix = 'PID-RES-';
+        else if (activeTab === 'ETD') prefix = 'PID-ETD-';
+        else if (activeTab === 'Yellow Card') prefix = 'PID-YEL-';
+        else if (activeTab === 'Alien Passport') prefix = 'PID-ALN-';
+        else if (activeTab === 'Eritrean ID') prefix = 'PID-ER-';
+
         const existingPassports = new Set<string>();
         const existingRequests = new Set<string>();
+        const existingPersonalIds = new Set<string>();
+        const existingEtds = new Set<string>();
+        const existingEoidNumbers = new Set<string>();
+        const existingLetterNumbers = new Set<string>();
+
+        // Dynamically build select columns based on table requirements to prevent missing column crashes
+        let selectCols = 'request_number, personal_id_no';
+        if (activeTab !== 'Eritrean ID') {
+          selectCols += ', passport_number';
+        }
+        if (activeTab === 'ETD') {
+          selectCols += ', etd';
+        }
+        if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
+          selectCols += ', eoid_number, personal_id';
+        }
+        if (activeTab === 'Yellow Card') {
+          selectCols += ', personal_id, letter_number';
+        }
+
+        // 1. Populating unique verification sets from active database records
         try {
+          let dbRecords: any[] = [];
           if (activeTab === 'EOID') {
             const [normalDb, underageDb] = await Promise.all([
-              supabase.from('eoid_records').select('passport_number, request_number'),
-              supabase.from('eoid_underage_records').select('passport_number, request_number')
+              supabase.from('eoid_records').select(selectCols),
+              supabase.from('eoid_underage_records').select(selectCols)
             ]);
-            
-            const dbRecords = [
+            dbRecords = [
               ...(normalDb.data || []),
               ...(underageDb.data || [])
             ];
-            dbRecords.forEach((r: any) => {
-              if (r.passport_number) {
-                existingPassports.add(r.passport_number.toString().trim().toLowerCase());
-              }
-              if (r.request_number) {
-                existingRequests.add(r.request_number.toString().trim().toLowerCase());
-              }
-            });
           } else {
-            const { data: dbRecords, error: dbErr } = await supabase
+            const { data, error: dbErr } = await supabase
               .from(tableName)
-              .select('passport_number, request_number');
-            if (!dbErr && dbRecords) {
-              dbRecords.forEach((r: any) => {
+              .select(selectCols);
+            if (!dbErr && data) {
+              dbRecords = data;
+            }
+          }
+
+          dbRecords.forEach((r: any) => {
+            if (r.passport_number) {
+              existingPassports.add(r.passport_number.toString().trim().toLowerCase());
+            }
+            if (r.request_number) {
+              existingRequests.add(r.request_number.toString().trim().toLowerCase());
+            }
+            if (r.personal_id_no) {
+              const idVal = r.personal_id_no.toString().trim();
+              existingPersonalIds.add(idVal.toLowerCase());
+              const match = idVal.match(/\d+/);
+              if (match) {
+                const num = parseInt(match[0], 10);
+                if (num > maxNum) maxNum = num;
+              }
+            }
+            if (r.personal_id) {
+              existingPersonalIds.add(r.personal_id.toString().trim().toLowerCase());
+            }
+            if (r.etd) {
+              existingEtds.add(r.etd.toString().trim().toLowerCase());
+            }
+            if (r.eoid_number) {
+              existingEoidNumbers.add(r.eoid_number.toString().trim().toLowerCase());
+            }
+            if (r.letter_number) {
+              existingLetterNumbers.add(r.letter_number.toString().trim().toLowerCase());
+            }
+          });
+        } catch (e) {
+          console.warn('Could not load database-level records for duplicate checklist, checking local cache instead:', e);
+        }
+
+        // 2. Load from local storage cache always (ensures offline entries are also accounted for)
+        const storageKeys = [];
+        if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
+          storageKeys.push('local_records_eoid', 'local_records_eoid_under_age');
+        } else {
+          storageKeys.push('local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+        }
+
+        storageKeys.forEach(storageKey => {
+          try {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              parsed.forEach((r: any) => {
                 if (r.passport_number) {
                   existingPassports.add(r.passport_number.toString().trim().toLowerCase());
                 }
                 if (r.request_number) {
                   existingRequests.add(r.request_number.toString().trim().toLowerCase());
                 }
+                if (r.personal_id_no) {
+                  const idVal = r.personal_id_no.toString().trim();
+                  existingPersonalIds.add(idVal.toLowerCase());
+                  const match = idVal.match(/\d+/);
+                  if (match) {
+                    const num = parseInt(match[0], 10);
+                    if (num > maxNum) maxNum = num;
+                  }
+                }
+                if (r.personal_id) {
+                  existingPersonalIds.add(r.personal_id.toString().trim().toLowerCase());
+                }
+                if (r.etd) {
+                  existingEtds.add(r.etd.toString().trim().toLowerCase());
+                }
+                if (r.eoid_number) {
+                  existingEoidNumbers.add(r.eoid_number.toString().trim().toLowerCase());
+                }
+                if (r.letter_number) {
+                  existingLetterNumbers.add(r.letter_number.toString().trim().toLowerCase());
+                }
               });
             }
+          } catch (storageErr) {
+            console.error('Error loading offline storage cache for key ' + storageKey, storageErr);
           }
-        } catch (e) {
-          console.warn('Could not load existing records for duplicate checks, using file-level checks:', e);
-        }
+        });
 
-        const uniqueProcessed: any[] = [];
-        let duplicateInDbCount = 0;
-        let duplicateInFileCount = 0;
+        // Automatic ID sequence initiation point
+        let importSeqNum = maxNum === 0 ? 100001 : maxNum + 1;
+
+        uniqueProcessed = [];
+        duplicateInDbCount = 0;
+        duplicateInFileCount = 0;
         const filePassports = new Set<string>();
         const fileRequests = new Set<string>();
+        const filePersonalIds = new Set<string>();
+        const fileEtds = new Set<string>();
+        const fileEoidNumbers = new Set<string>();
+        const fileLetterNumbers = new Set<string>();
 
         processedData.forEach((row: any) => {
+          // If row misses Personal ID No., assign the next sequential non-colliding ID immediately
+          if (!row.personal_id_no) {
+            let nextId = `${prefix}${importSeqNum.toString().padStart(6, '0')}`;
+            while (existingPersonalIds.has(nextId.toLowerCase()) || filePersonalIds.has(nextId.toLowerCase())) {
+              importSeqNum++;
+              nextId = `${prefix}${importSeqNum.toString().padStart(6, '0')}`;
+            }
+            row.personal_id_no = nextId;
+            row.personal_id = nextId;
+            importSeqNum++;
+          }
+
           const pass = row.passport_number ? row.passport_number.toString().trim() : '';
           const req = row.request_number ? row.request_number.toString().trim() : '';
+          const pid = row.personal_id_no ? row.personal_id_no.toString().trim() : '';
+          const pid2 = row.personal_id ? row.personal_id.toString().trim() : '';
+          const etdDoc = row.etd ? row.etd.toString().trim() : '';
+          const eoidNum = row.eoid_number ? row.eoid_number.toString().trim() : '';
+          const letNum = row.letter_number ? row.letter_number.toString().trim() : '';
           
           const passLower = pass.toLowerCase();
           const reqLower = req.toLowerCase();
+          const pidLower = pid.toLowerCase();
+          const pid2Lower = pid2.toLowerCase();
+          const etdLower = etdDoc.toLowerCase();
+          const eoidLower = eoidNum.toLowerCase();
+          const letLower = letNum.toLowerCase();
 
-          // 1. Check if it exists in the active DB
+          // 1. Check if it exists in the active DB / local storage
           if (pass && existingPassports.has(passLower)) {
             duplicateInDbCount++;
             return;
           }
           if (req && existingRequests.has(reqLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (pid && existingPersonalIds.has(pidLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (pid2 && existingPersonalIds.has(pid2Lower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (etdLower && existingEtds.has(etdLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (eoidLower && existingEoidNumbers.has(eoidLower)) {
+            duplicateInDbCount++;
+            return;
+          }
+          if (letLower && existingLetterNumbers.has(letLower)) {
             duplicateInDbCount++;
             return;
           }
@@ -680,10 +870,35 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             duplicateInFileCount++;
             return;
           }
+          if (pid && filePersonalIds.has(pidLower)) {
+            duplicateInFileCount++;
+            return;
+          }
+          if (pid2 && filePersonalIds.has(pid2Lower)) {
+            duplicateInFileCount++;
+            return;
+          }
+          if (etdLower && fileEtds.has(etdLower)) {
+            duplicateInFileCount++;
+            return;
+          }
+          if (eoidLower && fileEoidNumbers.has(eoidLower)) {
+            duplicateInFileCount++;
+            return;
+          }
+          if (letLower && fileLetterNumbers.has(letLower)) {
+            duplicateInFileCount++;
+            return;
+          }
 
           // Add to tracked sets
           if (pass) filePassports.add(passLower);
           if (req) fileRequests.add(reqLower);
+          if (pid) filePersonalIds.add(pidLower);
+          if (pid2) filePersonalIds.add(pid2Lower);
+          if (etdLower) fileEtds.add(etdLower);
+          if (eoidLower) fileEoidNumbers.add(eoidLower);
+          if (letLower) fileLetterNumbers.add(letLower);
 
           uniqueProcessed.push(row);
         });
@@ -718,6 +933,22 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         
         await logger.log('IMPORT', activeTab, `Imported ${uniqueProcessed.length} records via Excel (skipped ${duplicateInDbCount + duplicateInFileCount} duplicates)`);
         
+        // Log imported file metadata to local storage to prevent duplicate double imports
+        try {
+          const importedFilesStr = localStorage.getItem('local_imported_files_log') || '[]';
+          const importedFilesLog = JSON.parse(importedFilesStr);
+          importedFilesLog.push({
+            fileName: file.name,
+            fileSize: file.size,
+            importedAt: new Date().toISOString(),
+            tab: activeTab,
+            recordCount: uniqueProcessed.length
+          });
+          localStorage.setItem('local_imported_files_log', JSON.stringify(importedFilesLog));
+        } catch (e) {
+          console.error("Error storing imported file log:", e);
+        }
+
         let successMsg = `Successfully imported ${uniqueProcessed.length} new document entries into ${activeTab}!`;
         if (duplicateInDbCount > 0 || duplicateInFileCount > 0) {
           successMsg += ` Skipped ${duplicateInDbCount + duplicateInFileCount} duplicates (${duplicateInDbCount} in DB, ${duplicateInFileCount} in file).`;
@@ -727,6 +958,55 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       } catch (err: any) {
         const msg = err.message || String(err);
         const expectedTable = TABLE_MAP[activeTab as RecordType] || 'eoid_records';
+        if (msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('relation')) {
+          try {
+            console.warn(`Excel import DB insertion failed for ${activeTab}, falling back to localStorage offline security cache:`, err);
+            let storageKey = '';
+            if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
+              storageKey = activeTab === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+            } else {
+              storageKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            }
+            const stored = localStorage.getItem(storageKey);
+            const parsed = stored ? JSON.parse(stored) : [];
+            const importPrefix = activeTab.toLowerCase().replace(/[^a-z0-9]/g, '') + '-local-';
+            const fallbackProcessed = uniqueProcessed.map((row, idx) => ({
+              ...row,
+              id: importPrefix + Date.now().toString() + '-' + idx,
+              created_at: new Date().toISOString(),
+              _table: expectedTable
+            }));
+            const merged = [...parsed, ...fallbackProcessed];
+            localStorage.setItem(storageKey, JSON.stringify(merged));
+            try {
+              const importedFilesStr = localStorage.getItem('local_imported_files_log') || '[]';
+              const importedFilesLog = JSON.parse(importedFilesStr);
+              importedFilesLog.push({
+                fileName: file.name,
+                fileSize: file.size,
+                importedAt: new Date().toISOString(),
+                tab: activeTab,
+                recordCount: fallbackProcessed.length,
+                is_local: true
+              });
+              localStorage.setItem('local_imported_files_log', JSON.stringify(importedFilesLog));
+            } catch (e) {
+              console.error("Error storing imported file log:", e);
+            }
+            let offlineSuccessMsg = `Successfully imported ${fallbackProcessed.length} new document entries into offline cache for ${activeTab}!`;
+            if (duplicateInDbCount > 0 || duplicateInFileCount > 0) {
+              offlineSuccessMsg += ` Skipped ${duplicateInDbCount + duplicateInFileCount} duplicates (${duplicateInDbCount} in offline, ${duplicateInFileCount} in file).`;
+            }
+            addToast(offlineSuccessMsg, 'success');
+            setSchemaError(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Imported data was safely recorded in local web storage. To sync, run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor.`);
+            fetchRecords();
+            return;
+          } catch (fallbackErr: any) {
+            console.error("Local list import recovery failed:", fallbackErr);
+            addToast('Error importing Excel file offline: ' + (fallbackErr.message || String(fallbackErr)), 'error');
+            return;
+          }
+        }
         if ((msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist'))) {
           addToast(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`, 'error');
         } else {

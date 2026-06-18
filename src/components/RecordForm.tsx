@@ -24,7 +24,7 @@ interface RecordFormProps {
   defaultBoxNumber?: string;
 }
 
-export default function RecordForm({ type, onClose, onSuccess, record, defaultBoxNumber }: RecordFormProps) {
+export default function RecordForm({ type, isOpen, onClose, onSuccess, record, defaultBoxNumber }: RecordFormProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +32,75 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Sequential automatic ID generation states & logic
+  const [isGeneratingId, setIsGeneratingId] = useState(false);
+
+  const generateNextId = async () => {
+    setIsGeneratingId(true);
+    try {
+      let existingIds: string[] = [];
+      const tableName = TABLE_MAP[type];
+      
+      const { data, error: fetchError } = await supabase
+        .from(tableName)
+        .select('personal_id_no');
+        
+      if (!fetchError && data) {
+        existingIds = data.map((r: any) => r.personal_id_no || '').filter(Boolean);
+      } else {
+        // Fallback to local storage
+        let storageKey = '';
+        if (type === 'EOID' || type === 'EOID Under_Age') {
+          storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+        } else {
+          storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        }
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          existingIds = parsed.map((r: any) => r.personal_id_no || '').filter(Boolean);
+        }
+      }
+
+      let prefix = 'PID-';
+      if (type === 'VISA') prefix = 'PID-VISA-';
+      else if (type === 'EOID') prefix = 'PID-EOID-';
+      else if (type === 'EOID Under_Age') prefix = 'PID-U-';
+      else if (type === 'Residence ID') prefix = 'PID-RES-';
+      else if (type === 'ETD') prefix = 'PID-ETD-';
+      else if (type === 'Yellow Card') prefix = 'PID-YEL-';
+      else if (type === 'Alien Passport') prefix = 'PID-ALN-';
+      else if (type === 'Eritrean ID') prefix = 'PID-ER-';
+
+      let maxNum = 0;
+      existingIds.forEach(id => {
+        const match = id.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (num > maxNum) {
+            maxNum = num;
+          }
+        }
+      });
+
+      const nextNum = maxNum === 0 ? 100001 : maxNum + 1;
+      const nextId = `${prefix}${nextNum.toString().padStart(6, '0')}`;
+      
+      setFormData(prev => ({ ...prev, personal_id_no: nextId }));
+    } catch (e) {
+      console.error("Error generating sequential ID:", e);
+      setFormData(prev => ({ ...prev, personal_id_no: `PID-${Math.floor(100000 + Math.random() * 900000)}` }));
+    } finally {
+      setIsGeneratingId(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && !record) {
+      generateNextId();
+    }
+  }, [isOpen, record, type]);
   
   // Custom upload / scan states for the new structured upload panels (from user image)
   const [scanningDocIdx, setScanningDocIdx] = useState<number | null>(null);
@@ -496,10 +565,34 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
       if (formData.etd && type === 'ETD') {
         checksToPerform.push({ field: 'etd', value: formData.etd.trim(), label: 'ETD Document Number' });
       }
+      if (formData.personal_id_no) {
+        checksToPerform.push({ field: 'personal_id_no', value: formData.personal_id_no.trim(), label: 'Personal ID No.' });
+      }
 
-      // Check against DB table for duplicates
+      // 1. Check local storage first (instant and robust) for duplicates before DB check
+      let storageKeyCheck = '';
+      if (type === 'EOID' || type === 'EOID Under_Age') {
+        storageKeyCheck = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
+      } else {
+        storageKeyCheck = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      }
+      const storedCheck = localStorage.getItem(storageKeyCheck);
+      const localParsedCheck: any[] = storedCheck ? JSON.parse(storedCheck) : [];
+
+      // Check against both local storage and database table for duplicates
       for (const check of checksToPerform) {
         if (!check.value) continue;
+
+        // Verify local storage records
+        const localDupe = localParsedCheck.find(r => 
+          r[check.field] && 
+          r[check.field].toString().trim().toLowerCase() === check.value.toLowerCase() && 
+          (!record || r.id !== record.id)
+        );
+        if (localDupe) {
+          throw new Error(`Duplicate Record Found: A record matching ${check.label} "${check.value}" already exists in offline storage (Registered to: ${localDupe.full_name}). Please verify or enter a unique identifier.`);
+        }
+
         try {
           let queryBuilder = supabase
             .from(tableName)
@@ -753,9 +846,15 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
           if (!firstUrl) firstUrl = url;
         }
         
-        // Refresh savedRecord to get the attachment_url
-        const { data: updatedRecord } = await supabase.from(tableName).select('*').eq('id', savedRecord.id).single();
-        if (updatedRecord) savedRecord = updatedRecord;
+        // Refresh savedRecord to get the attachment_url safely
+        try {
+          if (savedRecord && savedRecord.id && !savedRecord.id.toString().includes('-local-')) {
+            const { data: updatedRecord } = await supabase.from(tableName).select('*').eq('id', savedRecord.id).single();
+            if (updatedRecord) savedRecord = updatedRecord;
+          }
+        } catch (queryErr) {
+          console.warn("Could not reload saved record from database:", queryErr);
+        }
       }
 
       if (savedRecord) {
@@ -846,11 +945,26 @@ export default function RecordForm({ type, onClose, onSuccess, record, defaultBo
 
                {/* Field 1.5: Personal ID No. for all records */}
               <div className="flex flex-col gap-1.5" id="form-personal-id-no-container">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal ID No.</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Personal ID No.</span>
+                    <span className="bg-emerald-50 text-[#1b8b58] text-[9px] font-black uppercase tracking-wider border border-emerald-100 px-1.5 py-0.5 rounded">
+                      Auto-Sequential
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateNextId}
+                    disabled={isGeneratingId}
+                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 px-2 py-0.5 rounded transition-all border-none cursor-pointer flex items-center gap-1"
+                  >
+                    {isGeneratingId ? 'Generating...' : 'Re-Generate ↺'}
+                  </button>
+                </div>
                 <input
                   required
                   placeholder="e.g. PID-987654"
-                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all font-mono"
                   value={formData.personal_id_no}
                   onChange={e => setFormData({ ...formData, personal_id_no: e.target.value })}
                 />

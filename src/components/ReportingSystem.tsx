@@ -177,7 +177,17 @@ export default function ReportingSystem() {
 
   const exportFilteredData = () => {
     if (filteredData.length === 0) return;
-    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    
+    // Map records to replace "id" string with a sequential 1-based autonumber
+    const formattedRecords = filteredData.map((record, index) => {
+      const { id, ...rest } = record as any;
+      return {
+        id: index + 1,
+        ...rest
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedRecords);
     const workbook = XLSX.utils.book_new();
     XxlsxUtilsBookAppendSheet: XLSX.utils.book_append_sheet(workbook, worksheet, "Immigration Report");
     const filename = `immigration_report_${new Date().toISOString().split('T')[0]}.xls`;
