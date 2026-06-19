@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_viewer')),
+  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'Editor', 'viewer')),
   modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'],
   updated_at TIMESTAMPTZ DEFAULT now()
 );
