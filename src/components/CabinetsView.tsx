@@ -132,7 +132,13 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
       });
 
       const results = await Promise.all(fetches);
-      const allData = results.flatMap(r => r.data);
+      let allData = results.flatMap(r => r.data);
+
+      const rRole = (userProfile?.role as string || '').toLowerCase();
+      const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+      if (!isElevated && userProfile?.id) {
+        allData = allData.filter(r => r.created_by === userProfile.id);
+      }
 
       // Load physical cabinets from localStorage (supporting unified standard and custom cabinets)
       let cabinetsList: any[] = [];

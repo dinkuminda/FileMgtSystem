@@ -291,7 +291,14 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         ];
 
         combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setRecords(combined as ImmigrationRecord[]);
+
+        const rRole = (userProfile?.role as string || '').toLowerCase();
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        let filteredCombined = combined;
+        if (!isElevated && userProfile?.id) {
+          filteredCombined = combined.filter(r => r.created_by === userProfile.id);
+        }
+        setRecords(filteredCombined as ImmigrationRecord[]);
       } else {
         const tableName = TABLE_MAP[activeTab as RecordType];
         const { data, error } = await supabase
@@ -300,7 +307,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           .order('created_at', { ascending: false });
 
         if (!error && data) {
-          setRecords((data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[]);
+          const rRole = (userProfile?.role as string || '').toLowerCase();
+          const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+          let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
+          if (!isElevated && userProfile?.id) {
+            mappedData = mappedData.filter(r => r.created_by === userProfile.id);
+          }
+          setRecords(mappedData);
         } else {
           throw error || new Error("Failed to load");
         }
@@ -331,12 +344,26 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           ...valUnderage.map((r: any) => ({ ...r, under_age: r.under_age ?? true, _table: 'eoid_underage_records' }))
         ];
         combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setRecords(combinedLocal);
+        
+        const rRole = (userProfile?.role as string || '').toLowerCase();
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        let filteredLocal = combinedLocal;
+        if (!isElevated && userProfile?.id) {
+          filteredLocal = combinedLocal.filter(r => r.created_by === userProfile.id);
+        }
+        setRecords(filteredLocal);
       } else {
         const tableKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const stored = localStorage.getItem(tableKey) || '[]';
         const parsed = JSON.parse(stored);
-        setRecords(parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] })));
+        let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
+        
+        const rRole = (userProfile?.role as string || '').toLowerCase();
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        if (!isElevated && userProfile?.id) {
+          mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
+        }
+        setRecords(mappedParsed);
       }
     }
     setLoading(false);
@@ -1084,6 +1111,15 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   };
 
   const filteredRecords = records.filter(r => {
+    // Role-based visibility layer: non-elevated users can only view their own records
+    const rRole = (userProfile?.role as string || '').toLowerCase();
+    const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+    if (!isElevated && userProfile?.id) {
+      if (r.created_by && r.created_by !== userProfile.id) {
+        return false;
+      }
+    }
+
     const query = searchQuery.toLowerCase();
     const nameMatch = (r.full_name || '').toLowerCase().includes(query);
     const passportMatch = r.passport_number ? r.passport_number.toLowerCase().includes(query) : false;
@@ -1408,7 +1444,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                 <Route path="/" element={<DashboardReports userProfile={userProfile} />} />
                 <Route path="/cabinets" element={hasAccess('CABINETS') ? <CabinetsView userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
-                <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem /> : <Navigate to="/" replace />} />
+                <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
                  <Route path="/yellow-card" element={
                   hasAccess('Yellow Card') ? (

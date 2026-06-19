@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, TABLE_MAP, type ImmigrationRecord, type RecordType } from '../lib/supabase';
+import { supabase, TABLE_MAP, type ImmigrationRecord, type RecordType, type UserProfile } from '../lib/supabase';
 import { 
   BarChart3, Calendar, Globe, FileText, 
   Download, Filter, Loader2, Search,
@@ -14,7 +14,11 @@ import * as XLSX from 'xlsx';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#06b6d4'];
 
-export default function ReportingSystem() {
+interface ReportingSystemProps {
+  userProfile?: UserProfile | null;
+}
+
+export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
   const [data, setData] = useState<ImmigrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -46,10 +50,16 @@ export default function ReportingSystem() {
       );
       
       const results = await Promise.all(allPromises);
-      const combined = results.flatMap((r, idx) => {
+      let combined = results.flatMap((r, idx) => {
         const type = (Object.keys(TABLE_MAP) as RecordType[])[idx];
         return (r.data || []).map((item: any) => ({ ...item, record_type: type }));
       });
+
+      const rRole = (userProfile?.role as string || '').toLowerCase();
+      const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+      if (!isElevated && userProfile?.id) {
+        combined = combined.filter((item: any) => item.created_by === userProfile.id);
+      }
 
       setData(combined);
       

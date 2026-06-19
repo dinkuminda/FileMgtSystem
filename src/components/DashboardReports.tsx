@@ -367,6 +367,16 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       );
 
       // Process totals
+      const rRole = (userProfile?.role as string || '').toLowerCase();
+      const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+      
+      if (!isElevated && userProfile?.id) {
+        results.forEach(r => {
+          r.data = (r.data || []).filter((item: any) => item.created_by === userProfile.id);
+          r.count = r.data.length;
+        });
+      }
+
       const totals = results.map(r => ({ name: r.type, value: r.count }));
       const allData = results.flatMap(r => r.data || []);
 
