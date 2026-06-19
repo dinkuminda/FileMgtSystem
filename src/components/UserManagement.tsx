@@ -18,7 +18,8 @@ import {
   Settings,
   Lock,
   EyeOff,
-  UserCheck
+  UserCheck,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, type UserProfile, mapDbRoleToFrontend, mapFrontendRoleToDb } from '../lib/supabase';
@@ -27,6 +28,7 @@ import {
   savePermissionRules, 
   type ModulePermissionRule 
 } from '../lib/permissions';
+import AuditLogView from './AuditLogView';
 
 // ==========================================
 // TYPES & INTERFACES
@@ -233,7 +235,6 @@ function PermissionsMatrix({ rules, onSave, loading }: PermissionsMatrixProps) {
 
  const ROLES = [
   { id: 'admin', label: 'Super Admin' },
-  { id: 'airport_staff', label: 'Admin' },
   { id: 'staff', label: 'Supervisor' },
   { id: 'airport_viewer', label: 'Editor' },
   { id: 'viewer', label: 'Viewer' }
@@ -514,7 +515,6 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#00966D]/15 focus:border-[#00966D] transition-all font-medium text-slate-800"
 >
   <option value="Super_admin">Super Admin (System Configuration)</option>
-  <option value="admin">Admin (User & Folder Management)</option>
   <option value="Supervisor">Supervisor (Approval & Team Management)</option>
   <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
   <option value="Viewer">Viewer (Can ONLY Read/View files)</option>
@@ -644,7 +644,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
 // MAIN COMPONENT EXPORT
 // ==========================================
 export default function AdminAccessControl({ currentUserProfile, onProfileUpdate }: { currentUserProfile: UserProfile | null, onProfileUpdate?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'directory' | 'permissions'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'permissions' | 'audit'>('directory');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -941,6 +941,17 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Permissions Matrix
               </button>
+              <button
+                onClick={() => setActiveTab('audit')}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
+                  activeTab === 'audit' 
+                    ? 'bg-white text-[#1E3A8A] shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-900 font-medium'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                User Audits
+              </button>
             </div>
 
             {/* Create Account Action Button */}
@@ -1021,13 +1032,17 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                     />
                   </div>
                 </>
-              ) : (
+              ) : activeTab === 'permissions' ? (
                 <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden">
                   <PermissionsMatrix 
                     rules={permissionRules} 
                     onSave={handleSaveMatrix} 
                     loading={rulesLoading} 
                   />
+                </div>
+              ) : (
+                <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-md p-4 overflow-hidden text-left">
+                  <AuditLogView />
                 </div>
               )}
             </motion.div>
@@ -1117,7 +1132,6 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#00966D]/10 focus:border-[#00966D] transition-all font-semibold text-slate-800"
                   >
                     <option value="Super_admin">Super Admin (System Configuration)</option>
-                    <option value="admin">Admin (User & Folder Management)</option>
                     <option value="Supervisor">Supervisor (Approval & Team Management)</option>
                     <option value="Editor">Editor (Read + Write/Upload/Edit)</option>
                     <option value="Viewer">Viewer (Can ONLY Read/View files)</option>

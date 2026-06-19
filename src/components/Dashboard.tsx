@@ -18,6 +18,7 @@ import ReportingSystem from './ReportingSystem';
 import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
 import CabinetsView from './CabinetsView';
+import AdvancedSearch from './AdvancedSearch';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
 import { 
@@ -130,8 +131,9 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const [loading, setLoading] = useState(true);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   
-  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS'; icon: any; label: string }[] = [
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'SEARCH'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
+    { type: 'SEARCH', icon: Search, label: 'Advanced Search' },
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'Ethiopian Origin ID' },
@@ -142,7 +144,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Management' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
-    { type: 'AUDIT', icon: Activity, label: 'System Audit' },
+    { type: 'AUDIT', icon: Activity, label: 'System Audit Logs' },
   ];
 
   // Map path to tab type
@@ -163,7 +165,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
 
     // Command Deck (Overview) is the baseline landing page for everyone
-    if (tab.type === 'OVERVIEW') return true;
+    if (tab.type === 'OVERVIEW' || tab.type === 'SEARCH') return true;
 
     // Direct check for weleba ephrem as an active authorized staff member
     const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
@@ -182,7 +184,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
     // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
     // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
-    if (r === 'airport_staff' || r === 'airport_viewer' || r === 'staff' || r === 'supervisor') {
+    if (r === 'staff' || r === 'supervisor') {
+      return tab.type === 'Yellow Card' || tab.type === 'AUDIT';
+    }
+    if (r === 'airport_viewer') {
       return tab.type === 'Yellow Card';
     }
 
@@ -1138,7 +1143,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1.5 py-4 overflow-y-auto scrollbar-hide min-h-0 text-left">
+        <nav className="flex-1 px-3 space-y-1.5 py-4 overflow-y-auto custom-sidebar-scrollbar min-h-0 text-left">
           <AnimatePresence mode="wait">
             <motion.div
               key="main-sidebar"
@@ -1203,7 +1208,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             title="Log Out"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
-            {!isSidebarCollapsed && <span>Log Out Terminal</span>}
+            {!isSidebarCollapsed && <span>Log Out</span>}
           </button>
           
           <div className="mt-3 pt-2 border-t border-slate-100/45 text-center flex justify-center w-full">
@@ -1311,12 +1316,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         {/* Header Bar */}
         <header className="h-16 md:h-20 flex items-center justify-between px-6 md:px-8 bg-white border-b border-slate-100 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <Link 
-              to="/presentation" 
-              className="hidden lg:flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 border border-blue-200 rounded-lg transition-all"
-            >
-              <BookOpen className="w-4 h-4" /> Project Implementation (15 Slides)
-            </Link>
           </div>
 
           <div className="flex items-center gap-4">
@@ -1412,7 +1411,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   </div>
                 ) : (
-                  activeTab !== 'CABINETS' ? (
+                  activeTab !== 'CABINETS' && activeTab !== 'SEARCH' ? (
                     <div className="text-left">
                       <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
                         {activeTab === 'OVERVIEW' ? 'Overview' : activeTab}
@@ -1442,6 +1441,17 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
               <Routes>
                 <Route path="/" element={<DashboardReports userProfile={userProfile} />} />
+                <Route path="/search" element={
+                  <AdvancedSearch 
+                    userProfile={userProfile} 
+                    onEditRecord={(record) => {
+                      setEditingRecord(record);
+                      setIsFormOpen(true);
+                    }}
+                    onDeleteRecord={handleDelete}
+                    refreshCounter={refreshCounter}
+                  />
+                } />
                 <Route path="/cabinets" element={hasAccess('CABINETS') ? <CabinetsView userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem userProfile={userProfile} /> : <Navigate to="/" replace />} />

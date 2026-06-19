@@ -31,12 +31,13 @@ export interface UserProfile {
 export function mapDbRoleToFrontend(dbRole: string): UserRole {
   const r = (dbRole || '').toLowerCase();
   if (r === 'admin') return 'Super_admin';
-  if (r === 'airport_staff') return 'admin';
+  if (r === 'airport_staff') return 'Supervisor';
   if (r === 'staff') return 'Supervisor';
   if (r === 'airport_viewer') return 'Editor';
   if (r === 'viewer') return 'Viewer';
   // Fallbacks
   if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin') return 'Super_admin';
+  if (r === 'admin') return 'Super_admin';
   if (r === 'supervisor') return 'Supervisor';
   if (r === 'editor') return 'Editor';
   return 'Viewer';
@@ -44,8 +45,7 @@ export function mapDbRoleToFrontend(dbRole: string): UserRole {
 
 export function mapFrontendRoleToDb(frontendRole: string): string {
   const r = (frontendRole || '').toLowerCase();
-  if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin') return 'admin';
-  if (r === 'admin') return 'airport_staff';
+  if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin' || r === 'admin') return 'admin';
   if (r === 'supervisor') return 'staff';
   if (r === 'editor') return 'airport_viewer';
   if (r === 'viewer') return 'viewer';

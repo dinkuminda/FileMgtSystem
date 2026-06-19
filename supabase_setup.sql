@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'airport_viewer')),
-  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'],
+  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'viewer', 'airport_viewer')),
+  modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'],
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 DO $$ 
 BEGIN 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='modules') THEN
-    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
+    ALTER TABLE public.profiles ADD COLUMN modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
   END IF;
 END $$;
 
@@ -47,7 +47,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.is_auth_staff() 
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'staff', 'airport_staff');
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'staff');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "audit_select" ON public.audit_logs;
 DROP POLICY IF EXISTS "audit_insert" ON public.audit_logs;
-CREATE POLICY "audit_select" ON public.audit_logs FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "audit_select" ON public.audit_logs FOR SELECT TO authenticated 
+  USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'staff'));
 CREATE POLICY "audit_insert" ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -239,16 +240,16 @@ BEGIN
     CASE 
       WHEN new.email = 'dinkuh12@gmail.com' THEN 'admin'
       WHEN new.email = 'demebirhanu@gmail.com' THEN 'staff'
-      WHEN new.email = 'dinku_staff@gmail.com' THEN 'airport_staff'
-      WHEN new.email LIKE '%weleba%' THEN 'airport_staff'
+      WHEN new.email = 'dinku_staff@gmail.com' THEN 'staff'
+      WHEN new.email LIKE '%weleba%' THEN 'staff'
       WHEN new.email = 'mohammedturi@gmail.com' THEN 'airport_viewer'
       ELSE 'viewer'
     END,
     CASE
-      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT', 'Yellow Card', 'Eritrean ID', 'AUDIT']
-      WHEN new.email = 'dinku_staff@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
-      WHEN new.email LIKE '%weleba%' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
-      WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
+      WHEN new.email = 'dinkuh12@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
+      WHEN new.email = 'dinku_staff@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
+      WHEN new.email LIKE '%weleba%' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
+      WHEN new.email = 'mohammedturi@gmail.com' THEN ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
       ELSE ARRAY['OVERVIEW']
     END
   );
@@ -274,11 +275,11 @@ DROP POLICY IF EXISTS "visa_insert" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_update" ON public.visa_records;
 DROP POLICY IF EXISTS "visa_delete" ON public.visa_records;
 CREATE POLICY "visa_select" ON public.visa_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "visa_insert" ON public.visa_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "visa_update" ON public.visa_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "visa_delete" ON public.visa_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -288,11 +289,11 @@ DROP POLICY IF EXISTS "eoid_insert" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_update" ON public.eoid_records;
 DROP POLICY IF EXISTS "eoid_delete" ON public.eoid_records;
 CREATE POLICY "eoid_select" ON public.eoid_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "eoid_insert" ON public.eoid_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "eoid_update" ON public.eoid_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "eoid_delete" ON public.eoid_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -302,11 +303,11 @@ DROP POLICY IF EXISTS "eoid_underage_insert" ON public.eoid_underage_records;
 DROP POLICY IF EXISTS "eoid_underage_update" ON public.eoid_underage_records;
 DROP POLICY IF EXISTS "eoid_underage_delete" ON public.eoid_underage_records;
 CREATE POLICY "eoid_underage_select" ON public.eoid_underage_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "eoid_underage_insert" ON public.eoid_underage_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "eoid_underage_update" ON public.eoid_underage_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "eoid_underage_delete" ON public.eoid_underage_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -316,11 +317,11 @@ DROP POLICY IF EXISTS "residence_insert" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_update" ON public.residence_id_records;
 DROP POLICY IF EXISTS "residence_delete" ON public.residence_id_records;
 CREATE POLICY "residence_select" ON public.residence_id_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "residence_insert" ON public.residence_id_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "residence_update" ON public.residence_id_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "residence_delete" ON public.residence_id_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -330,11 +331,11 @@ DROP POLICY IF EXISTS "etd_insert" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_update" ON public.etd_records;
 DROP POLICY IF EXISTS "etd_delete" ON public.etd_records;
 CREATE POLICY "etd_select" ON public.etd_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "etd_insert" ON public.etd_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "etd_update" ON public.etd_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "etd_delete" ON public.etd_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -344,11 +345,11 @@ DROP POLICY IF EXISTS "alien_passport_insert" ON public.alien_passport_records;
 DROP POLICY IF EXISTS "alien_passport_update" ON public.alien_passport_records;
 DROP POLICY IF EXISTS "alien_passport_delete" ON public.alien_passport_records;
 CREATE POLICY "alien_passport_select" ON public.alien_passport_records FOR SELECT TO authenticated 
-  USING (public.is_admin() OR (public.is_authorized() AND (SELECT role FROM public.profiles WHERE id = auth.uid()) NOT IN ('airport_staff', 'airport_viewer')));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_viewer')));
 CREATE POLICY "alien_passport_insert" ON public.alien_passport_records FOR INSERT TO authenticated 
-  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  WITH CHECK (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "alien_passport_update" ON public.alien_passport_records FOR UPDATE TO authenticated 
-  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'staff'));
+  USING (public.is_admin() OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')));
 CREATE POLICY "alien_passport_delete" ON public.alien_passport_records FOR DELETE TO authenticated 
   USING (public.is_admin() OR auth.uid() = created_by);
 
@@ -423,13 +424,13 @@ CREATE POLICY "yellow_card_select" ON public.yellow_card_records FOR SELECT TO a
 CREATE POLICY "yellow_card_insert" ON public.yellow_card_records FOR INSERT TO authenticated 
   WITH CHECK (
     public.is_admin() OR 
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')
   );
 
 CREATE POLICY "yellow_card_update" ON public.yellow_card_records FOR UPDATE TO authenticated 
   USING (
     public.is_admin() OR 
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')
   );
 
 CREATE POLICY "yellow_card_delete" ON public.yellow_card_records FOR DELETE TO authenticated 
@@ -468,24 +469,24 @@ CREATE POLICY "Allow authenticated access" ON storage.objects
 -- 10. Admin Profile Boost
 -- Ensure the primary admin email always has admin role regardless of when they signed up
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport']
+SELECT id, email, 'admin', 'Primary Admin', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport']
 FROM auth.users
 WHERE email = 'dinkuh12@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport'];
+ON CONFLICT (id) DO UPDATE SET role = 'admin', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Eritrean ID', 'AUDIT', 'Alien Passport'];
 
 -- Boost for Ephrem (Airport Only)
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'airport_staff', 'Ephrem (Airport)', ARRAY['OVERVIEW', 'AIRPORT']
+SELECT id, email, 'staff', 'Ephrem (Airport)', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
 FROM auth.users
 WHERE email = 'ephremweleba94@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'airport_staff', modules = ARRAY['OVERVIEW', 'AIRPORT'];
+ON CONFLICT (id) DO UPDATE SET role = 'staff', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
 
 -- Boost for Mohammed Turi (Airport Viewer Only)
 INSERT INTO public.profiles (id, email, role, full_name, modules)
-SELECT id, email, 'airport_viewer', 'Mohammed Turi', ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW']
+SELECT id, email, 'airport_viewer', 'Mohammed Turi', ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
 FROM auth.users
 WHERE email = 'mohammedturi@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'airport_viewer', modules = ARRAY['OVERVIEW', 'AIRPORT', 'AIRPORT_VIEW'];
+ON CONFLICT (id) DO UPDATE SET role = 'airport_viewer', modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
 
 -- 11. Custom permission matrix configuration table
 CREATE TABLE IF NOT EXISTS public.permission_rules (
@@ -528,9 +529,6 @@ INSERT INTO public.permission_rules (module, view_roles, create_roles, update_ro
   ON CONFLICT (module) DO UPDATE SET view_roles = EXCLUDED.view_roles, create_roles = EXCLUDED.create_roles, update_roles = EXCLUDED.update_roles;
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
   ('CABINETS', ARRAY['admin', 'staff'], ARRAY['admin', 'staff'], ARRAY[]::text[])
-  ON CONFLICT (module) DO NOTHING;
-INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
-  ('AIRPORT', ARRAY['admin', 'staff', 'airport_staff', 'airport_viewer'], ARRAY['admin', 'staff', 'airport_staff'], ARRAY[]::text[])
   ON CONFLICT (module) DO NOTHING;
 
 INSERT INTO public.permission_rules (module, view_roles, create_roles, update_roles) VALUES
@@ -575,13 +573,13 @@ CREATE POLICY "eritrean_select" ON public.eritrean_id_records FOR SELECT TO auth
 CREATE POLICY "eritrean_insert" ON public.eritrean_id_records FOR INSERT TO authenticated 
   WITH CHECK (
     public.is_admin() OR 
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')
   );
 
 CREATE POLICY "eritrean_update" ON public.eritrean_id_records FOR UPDATE TO authenticated 
   USING (
     public.is_admin() OR 
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff', 'airport_staff')
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('staff')
   );
 
 CREATE POLICY "eritrean_delete" ON public.eritrean_id_records FOR DELETE TO authenticated 

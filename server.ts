@@ -99,7 +99,7 @@ const PORT = 3000;
   // Helper helper to check if database role corresponds to an authorized Admin user
   function isDbAdminRole(role: string): boolean {
     const r = (role || '').toLowerCase();
-    return r === 'admin' || r === 'super_admin' || r === 'admin_grant' || r === 'airport_staff';
+    return r === 'admin' || r === 'super_admin' || r === 'admin_grant';
   }
 
   // Admin: Reset Password
@@ -204,10 +204,8 @@ const PORT = 3000;
     // Symmetrically map the custom frontend roles into DB compatible checked roles
     let dbRole = 'viewer';
     const r = (newRole || '').toLowerCase();
-    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant') {
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant' || r === 'admin') {
       dbRole = 'admin';
-    } else if (r === 'admin') {
-      dbRole = 'airport_staff';
     } else if (r === 'supervisor' || r === 'staff') {
       dbRole = 'staff';
     } else if (r === 'editor' || r === 'airport_viewer') {
@@ -216,7 +214,7 @@ const PORT = 3000;
       dbRole = 'viewer';
     }
 
-    const validRoles = ['admin', 'staff', 'viewer', 'airport_staff', 'airport_viewer', 'super_admin', 'add_records', 'view_only', 'admin_grant'];
+    const validRoles = ['admin', 'staff', 'viewer', 'airport_viewer', 'super_admin', 'add_records', 'view_only', 'admin_grant'];
     if (!userId || !newRole || !validRoles.includes(dbRole)) {
       return res.status(400).json({ error: "Missing required fields or invalid role" });
     }
@@ -238,10 +236,10 @@ const PORT = 3000;
 
       // Default modules for the new role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (dbRole === 'admin' || dbRole === 'airport_staff') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+      if (dbRole === 'admin') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
       }
@@ -275,10 +273,8 @@ const PORT = 3000;
     // Symmetrically map custom frontend roles to DB check-constraint approved roles
     let dbRole = 'viewer';
     const r = (role || '').toLowerCase();
-    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant') {
+    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin_grant' || r === 'admin') {
       dbRole = 'admin';
-    } else if (r === 'admin') {
-      dbRole = 'airport_staff';
     } else if (r === 'supervisor' || r === 'staff') {
       dbRole = 'staff';
     } else if (r === 'editor' || r === 'airport_viewer') {
@@ -315,10 +311,10 @@ const PORT = 3000;
 
       // Default modules for the role - standard roles default strictly to OVERVIEW baseline (least privilege)
       let defaultModules: string[] = ['OVERVIEW'];
-      if (dbRole === 'admin' || dbRole === 'airport_staff') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'AIRPORT', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+      if (dbRole === 'admin') {
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'staff' || dbRole === 'airport_viewer') {
-        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'AIRPORT', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        defaultModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
       } else if (dbRole === 'viewer') {
         defaultModules = ['OVERVIEW', 'VISA', 'EOID', 'Residence ID', 'Yellow Card'];
       }
@@ -757,10 +753,18 @@ How can I help you support system operations?`;
           { module: 'EOID Under_Age', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
           { module: 'Residence ID', view_roles: ['admin'], create_roles: ['admin'], update_roles: ['admin'] },
           { module: 'ETD', view_roles: ['admin'], create_roles: [], update_roles: [] },
-          { module: 'Yellow Card', view_roles: ['admin', 'airport_staff'], create_roles: [], update_roles: [] },
-          { module: 'CABINETS', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] },
-          { module: 'AIRPORT', view_roles: ['admin', 'airport_staff', 'airport_viewer'], create_roles: ['admin', 'airport_staff'], update_roles: [] }
+          { module: 'Yellow Card', view_roles: ['admin'], create_roles: [], update_roles: [] },
+          { module: 'CABINETS', view_roles: ['admin'], create_roles: ['admin'], update_roles: [] }
         ];
+
+        // Explicitly clean up and eliminate the stale AIRPORT permission rule
+        const { error: delRuleErr } = await supabaseAdmin
+          .from('permission_rules')
+          .delete()
+          .eq('module', 'AIRPORT');
+        if (!delRuleErr) {
+          console.log("[SECURE SYSTEM BOOTSTRAP] Eliminated stale AIRPORT division matrix permissions.");
+        }
 
         for (const rule of secureRules) {
           const { error: rErr } = await supabaseAdmin
@@ -781,17 +785,17 @@ How can I help you support system operations?`;
         if (!pError && welebaProfiles && welebaProfiles.length > 0) {
           for (const p of welebaProfiles) {
             console.log(`[BOOTSTRAP] Found weleba profile: ${p.email} (current modules count: ${p.modules?.length ?? 0})`);
-            // Repair profile: set role to 'staff' and modules strictly to airport divisions
+            // Repair profile: set role to 'staff' and modules to standard supervisor modules
             const { error: updErr } = await supabaseAdmin
               .from('profiles')
               .update({
                 role: 'staff',
-                modules: ['OVERVIEW', 'AIRPORT', 'AIRPORT_ADD', 'AIRPORT_VIEW', 'AIRPORT_EDIT']
+                modules: ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
               })
               .eq('id', p.id);
 
             if (!updErr) {
-              console.log(`[BOOTSTRAP] Successfully restricted weleba profile modules to AIRPORT only!`);
+              console.log(`[BOOTSTRAP] Successfully aligned weleba profile modules with default Supervisor permissions (AIRPORT logic removed).`);
             } else {
               console.error(`[BOOTSTRAP FAILURE] Error repairing weleba modules:`, updErr.message);
             }

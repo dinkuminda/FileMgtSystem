@@ -104,4 +104,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Elegant Thin custom scrollbar */
+  .custom-sidebar-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 99px;
+  }
+  .custom-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+  }
 }

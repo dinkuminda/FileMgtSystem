@@ -66,11 +66,11 @@ export default function Home() {
           <div className="flex-1 text-left space-y-6 relative z-10" id="hero-text-content">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#072146] tracking-tight leading-[1.12]">
               Digital <br />
-              File Management Archive
+              File  Archive System
             </h2>
             
             <p className="text-[#4a5568] text-sm sm:text-[15px] md:text-[16px] leading-relaxed max-w-lg font-medium">
-            A Digital File Management Archive is a centralized, secure repository designed to systematically store, categorize, and preserve digital assets. Moving beyond simple storage, an archive focuses on long-term data preservation, regulatory compliance, and rapid retrieval through robust metadata structures.
+            A Digital File  Archive System is a centralized, secure repository designed to systematically store, categorize, and preserve digital assets. Moving beyond simple storage, an archive focuses on long-term data preservation, regulatory compliance, and rapid retrieval through robust metadata structures.
             </p>
 
             <div className="pt-2">

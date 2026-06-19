@@ -123,11 +123,14 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
           return { type, data: mappedData };
         } catch (err) {
           console.warn(`Cabinet query failed for table ${type}, attempting local fallback...`);
-          if (type === 'EOID Under_Age') {
-            const stored = localStorage.getItem('local_records_eoid_under_age');
-            return { type, data: (stored ? JSON.parse(stored) : []).map((r: any) => ({ ...r, _recordType: type })) };
+          let storageKey = '';
+          if (type === 'EOID' || type === 'EOID Under_Age') {
+            storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          } else {
+            storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
           }
-          return { type, data: [] };
+          const stored = localStorage.getItem(storageKey);
+          return { type, data: (stored ? JSON.parse(stored) : []).map((r: any) => ({ ...r, _recordType: type })) };
         }
       });
 

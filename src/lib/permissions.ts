@@ -41,9 +41,21 @@ export const DEFAULT_PERMISSION_RULES: ModulePermissionRule[] = [
   },
   {
     module: 'Yellow Card',
-    view_roles: ['admin', 'staff', 'airport_staff'],
-    create_roles: [],
-    update_roles: []
+    view_roles: ['admin', 'staff'],
+    create_roles: ['admin', 'staff'],
+    update_roles: ['admin']
+  },
+  {
+    module: 'Eritrean ID',
+    view_roles: ['admin', 'staff'],
+    create_roles: ['admin', 'staff'],
+    update_roles: ['admin']
+  },
+  {
+    module: 'Alien Passport',
+    view_roles: ['admin', 'staff'],
+    create_roles: ['admin', 'staff'],
+    update_roles: ['admin']
   },
   {
     module: 'CABINETS',
@@ -135,10 +147,6 @@ function getEquivalentRoles(role: string): string[] {
     equivalents.add('super-admin');
     equivalents.add('super admin');
     equivalents.add('admin');
-  }
-  if (r === 'admin' || r === 'airport_staff') {
-    equivalents.add('admin');
-    equivalents.add('airport_staff');
   }
   if (r === 'supervisor' || r === 'staff') {
     equivalents.add('supervisor');

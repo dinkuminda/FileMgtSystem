@@ -117,7 +117,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
       const { data: { session } } = await supabase.auth.getSession();
       
       const userR = (userProfile?.role as string || '').toLowerCase();
-      const isAdmin = userR === 'admin' || userR === 'super_admin' || userR === 'admin_grant' || userR === 'airport_staff';
+      const isAdmin = userR === 'admin' || userR === 'super_admin' || userR === 'admin_grant';
       const isUpdatingSelf = selectedUser.id === userProfile?.id;
 
       let success = false;
@@ -204,7 +204,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   };
 
   const profileR = (userProfile?.role as string || '').toLowerCase();
-  const canEditOrDelete = !userProfile || profileR === 'admin' || profileR === 'super_admin' || profileR === 'staff' || profileR === 'airport_staff' || profileR === 'supervisor';
+  const canEditOrDelete = !userProfile || profileR === 'admin' || profileR === 'super_admin' || profileR === 'staff' || profileR === 'supervisor';
 
   const getBoxDesc = (boxName: string) => {
     if (BOX_MODULE_DESC[boxName]) return BOX_MODULE_DESC[boxName];
@@ -333,7 +333,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
                   hasAccess = userProfile.modules.includes(type);
                 }
               } else {
-                if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
+                if (roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
                   hasAccess = type === 'Yellow Card';
                 } else {
                   // Regular staff with no configured modules array get no default division access
@@ -430,7 +430,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           }
           return userProfile.modules.includes(mType);
         } else {
-          if (roleL === 'airport_staff' || roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
+          if (roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
             return mType === 'Yellow Card';
           }
           // Regular staff with no configured modules get no default cabinet access
@@ -492,7 +492,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
         // Apply strict modules filtration filter to logs based on permissions
         const uRole = (userProfile?.role as string || '').toLowerCase();
-        if (userProfile && uRole !== 'admin' && uRole !== 'super_admin' && uRole !== 'admin_grant' && uRole !== 'airport_staff') {
+        if (userProfile && uRole !== 'admin' && uRole !== 'super_admin' && uRole !== 'admin_grant') {
           fetchedLogs = fetchedLogs.filter((log: any) => {
             const moduleType = log.entity_type;
             if (userProfile.modules) {
