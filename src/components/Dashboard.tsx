@@ -187,7 +187,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (r === 'staff' || r === 'supervisor') {
       return tab.type === 'Yellow Card' || tab.type === 'AUDIT';
     }
-    if (r === 'airport_viewer') {
+    if (r === 'airport_viewer' || r === 'editor') {
       return tab.type === 'Yellow Card';
     }
 
@@ -1096,6 +1096,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      const isEditorRole = r === 'editor' || r === 'airport_viewer';
+      if (isEditorRole && (userProfile.modules.includes(activeTab) || userProfile.modules.includes(`${activeTab}:write`) || userProfile.modules.includes(`${activeTab}:approve`))) {
+        return true;
+      }
       return userProfile.modules.includes(`${activeTab}:write`);
     }
     
@@ -1109,6 +1113,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     
     // Check custom granular modules array for activeTab
     if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      const isEditorRole = r === 'editor' || r === 'airport_viewer';
+      if (isEditorRole && (userProfile.modules.includes(activeTab) || userProfile.modules.includes(`${activeTab}:write`) || userProfile.modules.includes(`${activeTab}:approve`))) {
+        return true;
+      }
       return userProfile.modules.includes(`${activeTab}:approve`) || userProfile.modules.includes(`${activeTab}:write`);
     }
     

@@ -233,10 +233,10 @@ function PermissionsMatrix({ rules, onSave, loading }: PermissionsMatrixProps) {
     setDirty(false);
   }, [rules]);
 
- const ROLES = [
+  const ROLES = [
   { id: 'admin', label: 'Super Admin' },
   { id: 'staff', label: 'Supervisor' },
-  { id: 'airport_viewer', label: 'Editor' },
+  { id: 'editor', label: 'Editor' },
   { id: 'viewer', label: 'Viewer' }
 ];
 

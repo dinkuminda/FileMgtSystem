@@ -69,7 +69,7 @@ export default function AdvancedSearch({ userProfile, onEditRecord, onDeleteReco
     }
 
     // Default fallbacks matching Dashboard.tsx
-    if (r === 'airport_viewer' || r === 'staff' || r === 'supervisor') {
+    if (r === 'airport_viewer' || r === 'editor' || r === 'staff' || r === 'supervisor') {
       return checkingModule === 'Yellow Card';
     }
 

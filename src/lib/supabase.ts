@@ -33,7 +33,7 @@ export function mapDbRoleToFrontend(dbRole: string): UserRole {
   if (r === 'admin') return 'Super_admin';
   if (r === 'airport_staff') return 'Supervisor';
   if (r === 'staff') return 'Supervisor';
-  if (r === 'airport_viewer') return 'Editor';
+  if (r === 'airport_viewer' || r === 'editor') return 'Editor';
   if (r === 'viewer') return 'Viewer';
   // Fallbacks
   if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin') return 'Super_admin';
@@ -47,7 +47,7 @@ export function mapFrontendRoleToDb(frontendRole: string): string {
   const r = (frontendRole || '').toLowerCase();
   if (r === 'super_admin' || r === 'super-admin' || r === 'super_admin' || r === 'admin') return 'admin';
   if (r === 'supervisor') return 'staff';
-  if (r === 'editor') return 'airport_viewer';
+  if (r === 'editor') return 'editor';
   if (r === 'viewer') return 'viewer';
   return 'viewer';
 }

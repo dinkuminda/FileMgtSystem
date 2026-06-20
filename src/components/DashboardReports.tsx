@@ -333,7 +333,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
                   hasAccess = userProfile.modules.includes(type);
                 }
               } else {
-                if (roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
+                if (roleL === 'airport_viewer' || roleL === 'editor' || roleL === 'staff' || roleL === 'supervisor') {
                   hasAccess = type === 'Yellow Card';
                 } else {
                   // Regular staff with no configured modules array get no default division access
@@ -430,7 +430,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           }
           return userProfile.modules.includes(mType);
         } else {
-          if (roleL === 'airport_viewer' || roleL === 'staff' || roleL === 'supervisor') {
+          if (roleL === 'airport_viewer' || roleL === 'editor' || roleL === 'staff' || roleL === 'supervisor') {
             return mType === 'Yellow Card';
           }
           // Regular staff with no configured modules get no default cabinet access
