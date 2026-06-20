@@ -298,7 +298,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
+        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
         let filteredCombined = combined;
         if (!isElevated && userProfile?.id) {
           filteredCombined = combined.filter(r => r.created_by === userProfile.id);
@@ -313,7 +313,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (!error && data) {
           const rRole = (userProfile?.role as string || '').toLowerCase();
-          const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
+          const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
           let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
           if (!isElevated && userProfile?.id) {
             mappedData = mappedData.filter(r => r.created_by === userProfile.id);
@@ -351,7 +351,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
+        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
         let filteredLocal = combinedLocal;
         if (!isElevated && userProfile?.id) {
           filteredLocal = combinedLocal.filter(r => r.created_by === userProfile.id);
@@ -364,7 +364,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
         
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
+        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
         if (!isElevated && userProfile?.id) {
           mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
         }
@@ -1126,7 +1126,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const filteredRecords = records.filter(r => {
     // Role-based visibility layer: non-elevated users can only view their own records
     const rRole = (userProfile?.role as string || '').toLowerCase();
-    const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
+    const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
     if (!isElevated && userProfile?.id) {
       if (r.created_by && r.created_by !== userProfile.id) {
         return false;
