@@ -1247,15 +1247,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         )}
       </AnimatePresence>
 
-      {/* FAB */}
-      {canAdd() && ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Eritrean ID', 'Alien Passport'].includes(activeTab) && (
-        <button 
-          onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-          className={`fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 ${currentTheme.primary} ${currentTheme.primaryHover} text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none`}
-        >
-          <Plus className="w-7 h-7 text-white" />
-        </button>
-      )}
+
 
       {/* Mobile Backdrop */}
       <AnimatePresence>
