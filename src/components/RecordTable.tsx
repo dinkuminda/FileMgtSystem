@@ -149,8 +149,8 @@ export default function RecordTable({
 
 
       {/* Desktop Table View */}
-      <div className="hidden lg:block overflow-x-auto overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="hidden lg:block overflow-x-auto">
+        <table className={`w-full text-left border-collapse ${activeTab === 'EOID' ? 'min-w-[1300px]' : activeTab === 'VISA' ? 'min-w-[1200px]' : 'min-w-[1100px]'}`}>
           <thead>
             <tr className="border-b border-slate-100">
               {(activeTab === 'Alien Passport' || activeTab === 'VISA' || activeTab === 'Residence ID' || activeTab === 'ETD') ? (
@@ -232,7 +232,7 @@ export default function RecordTable({
                   <th className="px-5 py-5 text-[10px] font-black text-slate-455 text-slate-400 uppercase tracking-[0.1em]">SCANS</th>
                 </>
               )}
-              <th className="px-5 py-5 text-[10px] font-black text-slate-405 text-slate-400 uppercase tracking-[0.1em] text-right">ACTIONS</th>
+              <th className="sticky right-0 bg-white z-10 px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] text-right border-b border-slate-100 min-w-[140px] w-[140px] shadow-[-8px_0_8px_-4px_rgba(0,0,0,0.05)]">ACTIONS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/65">
@@ -491,7 +491,7 @@ export default function RecordTable({
                           </td>
                         </>
                       )}
-                      <td className="px-5 py-5 text-right font-semibold" onClick={e => e.stopPropagation()}>
+                      <td className="sticky right-0 bg-white/95 backdrop-blur-sm group-hover:bg-slate-50/95 transition-colors px-5 py-5 text-right font-semibold min-w-[140px] w-[140px] shadow-[-8px_0_8px_-4px_rgba(0,0,0,0.05)]" onClick={e => e.stopPropagation()}>
                         <TableActions 
                           record={record} 
                           onEdit={onEdit} 
