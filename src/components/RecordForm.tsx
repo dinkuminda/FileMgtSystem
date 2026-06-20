@@ -820,7 +820,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           } catch (e) {
             console.error("Error writing updated record to localStorage fallback:", e);
           }
-          savedRecord = { ...updatedRecord, _table: tableName };
+          savedRecord = { ...updatedRecord, _table: tableName, _isOffline: true, _offlineError: dbError.message || String(dbError) };
           await logger.log('UPDATE', activeFormType, `Updated record for ${basePayload.full_name} (Offline Fallback Cache)`, record.id);
         } else {
           // Robust INSERT new offline record
@@ -836,7 +836,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           } catch (e) {
             console.error("Error writing new record to localStorage fallback:", e);
           }
-          savedRecord = { ...newRecord, id: localId, _table: tableName };
+          savedRecord = { ...newRecord, id: localId, _table: tableName, _isOffline: true, _offlineError: dbError.message || String(dbError) };
           await logger.log('CREATE', activeFormType, `Created new record for ${basePayload.full_name} (Offline Fallback Cache)`, localId);
         }
       }

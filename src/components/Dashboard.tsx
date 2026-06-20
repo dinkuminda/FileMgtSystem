@@ -298,7 +298,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
         let filteredCombined = combined;
         if (!isElevated && userProfile?.id) {
           filteredCombined = combined.filter(r => r.created_by === userProfile.id);
@@ -313,7 +313,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (!error && data) {
           const rRole = (userProfile?.role as string || '').toLowerCase();
-          const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+          const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
           let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
           if (!isElevated && userProfile?.id) {
             mappedData = mappedData.filter(r => r.created_by === userProfile.id);
@@ -351,7 +351,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
         let filteredLocal = combinedLocal;
         if (!isElevated && userProfile?.id) {
           filteredLocal = combinedLocal.filter(r => r.created_by === userProfile.id);
@@ -364,7 +364,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
         
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+        const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
         if (!isElevated && userProfile?.id) {
           mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
         }
@@ -1118,7 +1118,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const filteredRecords = records.filter(r => {
     // Role-based visibility layer: non-elevated users can only view their own records
     const rRole = (userProfile?.role as string || '').toLowerCase();
-    const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('super_admin');
+    const isElevated = rRole.includes('admin') || rRole.includes('supervisor') || rRole.includes('staff') || rRole.includes('editor') || rRole.includes('airport_viewer') || rRole.includes('super_admin');
     if (!isElevated && userProfile?.id) {
       if (r.created_by && r.created_by !== userProfile.id) {
         return false;
@@ -1578,7 +1578,20 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
               if (activeTab === 'Yellow Card' && record.passport_number) {
                 setSearchQuery(record.request_number || record.passport_number);
               }
-              addToast(`Record for ${record.full_name} was successfully saved!`, 'success');
+              if ((record as any)._isOffline) {
+                const offError = String((record as any)._offlineError || '');
+                const isRLS = offError.toLowerCase().includes('row-level security') || offError.toLowerCase().includes('violates');
+                if (isRLS) {
+                  addToast(
+                    `Database Permission Missing: The record was saved to local browser cache, but the live insert failed due to Row-Level Security (RLS) on table "${(record as any)._table}". To authorize writes, copy & run Section #5 ("Policies for Records") of your "supabase_setup.sql" file in your Supabase SQL Editor and notify schemas.`, 
+                    'error'
+                  );
+                } else {
+                  addToast(`Record Offline Fallback: Saved ${record.full_name} to local browser cache, but database insert failed: ${(record as any)._offlineError}`, 'error');
+                }
+              } else {
+                addToast(`Record for ${record.full_name} was successfully saved!`, 'success');
+              }
               fetchRecords();
             }}
           />
