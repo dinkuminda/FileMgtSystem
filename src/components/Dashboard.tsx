@@ -133,7 +133,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   
   const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'SEARCH'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
-    { type: 'SEARCH', icon: Search, label: 'Advanced Search' },
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'Ethiopian Origin ID' },
@@ -143,6 +142,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'Yellow Card', icon: Shield, label: 'Yellow Card' },
     { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Management' },
+    { type: 'SEARCH', icon: Search, label: 'Advanced Search' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
     { type: 'AUDIT', icon: Activity, label: 'System Audit Logs' },
   ];
