@@ -1411,14 +1411,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   </div>
                 ) : (
-                  activeTab !== 'CABINETS' && activeTab !== 'SEARCH' ? (
+                  activeTab !== 'CABINETS' && activeTab !== 'SEARCH' && activeTab !== 'OVERVIEW' ? (
                     <div className="text-left">
                       <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                        {activeTab === 'OVERVIEW' ? 'Overview' : activeTab}
+                        {activeTab}
                       </h1>
                       <p className="text-slate-500 text-sm md:text-base font-medium">
-                        {activeTab === 'OVERVIEW' ? 'Monitoring organizational resources and performance analytics.' : 
-                         `Manage and process ${activeTab.toLowerCase()} system registry entries.`}
+                        {`Manage and process ${activeTab.toLowerCase()} system registry entries.`}
                       </p>
                     </div>
                   ) : null
