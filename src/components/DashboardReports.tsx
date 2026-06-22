@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase, TABLE_MAP, type RecordType, type UserProfile, type ImmigrationRecord, type RecordAttachment, logger } from '../lib/supabase';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -57,6 +58,7 @@ interface DashboardReportsProps {
 }
 
 export default function DashboardReports({ userProfile }: DashboardReportsProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [selectedBox, setSelectedBox] = useState<string | null>(null);
@@ -257,6 +259,25 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
   const profileR = (userProfile?.role as string || '').toLowerCase();
   const canEditOrDelete = !userProfile || profileR === 'admin' || profileR === 'super_admin' || profileR === 'staff' || profileR === 'supervisor';
+
+  const canUserAccessCabinet = (moduleName: string) => {
+    if (!userProfile) return true;
+    const roleL = (userProfile.role as string || '').toLowerCase();
+    if (roleL === 'admin' || roleL === 'super_admin' || roleL === 'super-admin' || roleL === 'super admin' || roleL === 'admin_grant') {
+      return true;
+    }
+    const normalizedModule = moduleName === 'Airport Checks' ? 'Yellow Card' : moduleName;
+    if (userProfile.modules && Array.isArray(userProfile.modules)) {
+      return userProfile.modules.includes(normalizedModule) ||
+             userProfile.modules.includes(`${normalizedModule}:read`) ||
+             userProfile.modules.includes(`${normalizedModule}:write`) ||
+             userProfile.modules.includes(`${normalizedModule}:approve`);
+    }
+    if (roleL === 'staff' || roleL === 'supervisor' || roleL === 'airport_viewer' || roleL === 'editor') {
+      return normalizedModule === 'Yellow Card';
+    }
+    return false;
+  };
 
   const getBoxDesc = (boxName: string) => {
     if (BOX_MODULE_DESC[boxName]) return BOX_MODULE_DESC[boxName];
@@ -714,68 +735,125 @@ WHERE role IN ('admin', 'super_admin');`;
         </div>
       </div>
 
-      {/* 6 Beautiful Metric Counter Cards exactly like uploaded style */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-4 font-sans">
+      {/* 9 Beautiful Clickable Metric Counter Cards representing all modules in the dashboard */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-4 mb-4 font-sans">
         {[
           {
             label: 'Total Archives',
             value: stats?.totalRecords ?? 0,
             percent: '+8% ▲',
             isPositive: true,
+            path: '#',
           },
           {
-            label: 'Active Visas',
+            label: 'Visas',
             value: stats?.totals?.find((t: any) => t.name === 'VISA')?.value ?? 0,
             percent: '+12% ▲',
             isPositive: true,
+            path: '/visa',
+            moduleName: 'VISA',
           },
           {
-            label: 'National EOIDs',
+            label: 'EOIDs',
             value: stats?.totals?.find((t: any) => t.name === 'EOID')?.value ?? 0,
             percent: '-2% ▼',
             isPositive: false,
+            path: '/eoid',
+            moduleName: 'EOID',
           },
           {
-            label: 'Resident Licenses',
+            label: 'Resident ID',
             value: stats?.totals?.find((t: any) => t.name === 'Residence ID')?.value ?? 0,
             percent: '+5% ▲',
             isPositive: true,
+            path: '/residence-id',
+            moduleName: 'Residence ID',
           },
           {
             label: 'Emergency ETDs',
             value: stats?.totals?.find((t: any) => t.name === 'ETD')?.value ?? 0,
             percent: '-1% ▼',
             isPositive: false,
+            path: '/etd',
+            moduleName: 'ETD',
           },
           {
-            label: 'Airport Checks',
+            label: 'Yellow Card',
             value: stats?.totals?.find((t: any) => t.name === 'Yellow Card')?.value ?? 0,
             percent: '+15% ▲',
             isPositive: true,
+            path: '/yellow-card',
+            moduleName: 'Yellow Card',
           },
-        ].map((card, idx) => (
-          <div 
-            key={idx} 
-            className="bg-white border border-slate-200 rounded-xl p-5 relative overflow-hidden shadow-xs hover:border-slate-350 hover:shadow-sm transition-all text-left"
-          >
-            {/* Top right percent indicator */}
-            <div className={`absolute top-4 right-4 text-[10px] font-extrabold tracking-wider ${
-              card.isPositive ? 'text-emerald-600' : 'text-rose-550'
-            }`}>
-              {card.percent}
-            </div>
+          {
+            label: 'Underage EOIDs',
+            value: stats?.totals?.find((t: any) => t.name === 'EOID Under_Age')?.value ?? 0,
+            percent: 'Active',
+            isPositive: true,
+            path: '/eoid-under_age',
+            moduleName: 'EOID Under_Age',
+          },
+          {
+            label: 'Alien Passports',
+            value: stats?.totals?.find((t: any) => t.name === 'Alien Passport')?.value ?? 0,
+            percent: 'Active',
+            isPositive: true,
+            path: '/alien-passport',
+            moduleName: 'Alien Passport',
+          },
+          {
+            label: 'Eritrean IDs',
+            value: stats?.totals?.find((t: any) => t.name === 'Eritrean ID')?.value ?? 0,
+            percent: 'Active',
+            isPositive: true,
+            path: '/eritrean-id',
+            moduleName: 'Eritrean ID',
+          },
+        ].map((card, idx) => {
+          const isAllowed = card.moduleName ? canUserAccessCabinet(card.moduleName) : true;
+          return (
+            <button 
+              key={idx} 
+              disabled={card.path === '#'}
+              onClick={() => {
+                if (!isAllowed) {
+                  alert(`ACCESS DENIED: Your account is not authorized to access the ${card.label} module. Please contact an Administrator to assign this module to your profile.`);
+                  return;
+                }
+                navigate(card.path);
+              }}
+              className={`relative border rounded-xl p-5 hover:scale-[1.02] active:scale-98 transition-all text-left w-full block border-none bg-transparent ${
+                card.path === '#' ? 'cursor-default' : 'cursor-pointer'
+              } ${
+                !isAllowed 
+                  ? 'bg-slate-50/50 border-slate-200 text-slate-400 opacity-70 hover:border-slate-300' 
+                  : 'bg-white border-slate-200 hover:border-slate-350 hover:shadow-md text-slate-900 shadow-xs'
+              }`}
+            >
+              {/* Top right percent indicator or Lock Icon */}
+              <div className="absolute top-4 right-4 flex items-center gap-1">
+                {!isAllowed && <Lock className="w-3 h-3 text-red-500" />}
+                {isAllowed && (
+                  <span className={`text-[9px] font-extrabold tracking-wider ${
+                    card.isPositive ? 'text-emerald-600' : 'text-rose-550'
+                  }`}>
+                    {card.percent}
+                  </span>
+                )}
+              </div>
 
-            {/* Metrics counter */}
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-              {card.value}
-            </div>
+              {/* Metrics counter */}
+              <div className={`text-2xl font-extrabold tracking-tight mt-1 ${!isAllowed ? 'text-slate-400' : 'text-slate-900'}`}>
+                {card.value}
+              </div>
 
-            {/* Sub label descriptor */}
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 block truncate">
-              {card.label}
-            </div>
-          </div>
-        ))}
+              {/* Sub label descriptor */}
+              <div className="text-[10px] font-black text-slate-450 uppercase tracking-wider mt-2 block truncate">
+                {card.label}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Double-Column Grid: System Activity & Distribution Charts */}
@@ -1035,6 +1113,8 @@ WHERE role IN ('admin', 'super_admin');`;
                 humidity: cabObj?.humidity || 42,
                 isLocked: cabObj?.isLocked || false
               };
+              const userHasAccess = canUserAccessCabinet(boxMeta.module);
+              const isLockState = boxMeta.isLocked || !userHasAccess;
 
               return (
                 <div
@@ -1118,9 +1198,9 @@ WHERE role IN ('admin', 'super_admin');`;
                     <span className="flex items-center gap-1">
                       <Droplets className="w-3.5 h-3.5 text-blue-500" /> {boxMeta.humidity}% RH
                     </span>
-                    <span className={`inline-flex items-center gap-0.5 font-extrabold ${boxMeta.isLocked ? 'text-red-600' : 'text-emerald-600'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${boxMeta.isLocked ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
-                      {boxMeta.isLocked ? 'LKD' : 'OPN'}
+                    <span className={`inline-flex items-center gap-0.5 font-extrabold ${isLockState ? 'text-red-650' : 'text-emerald-600'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isLockState ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+                      {isLockState ? (boxMeta.isLocked ? 'LKD' : 'RESTR') : 'OPN'}
                     </span>
                   </div>
 
@@ -1129,6 +1209,10 @@ WHERE role IN ('admin', 'super_admin');`;
                     <div className="w-full h-1 bg-slate-200 shadow-inner rounded-full" />
                     <button
                       onClick={() => {
+                        if (!userHasAccess) {
+                          alert(`ACCESS DENIED: Your account is not assigned to the ${boxMeta.module} module. Please contact an Administrator to assign this drawer module to your profile.`);
+                          return;
+                        }
                         if (boxMeta.isLocked) {
                           alert(`This physical cabinet ${box.boxName} is currently LOCKED. Please unlock the drawer first before pulling it open.`);
                           return;
@@ -1139,12 +1223,12 @@ WHERE role IN ('admin', 'super_admin');`;
                       className={`w-full py-2 px-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border cursor-pointer ${
                         isSelected 
                           ? 'bg-blue-600 border-blue-700 text-white shadow-sm shadow-blue-500/10' 
-                          : boxMeta.isLocked
+                          : isLockState
                             ? 'bg-red-50 border-red-100 text-red-500 border-dashed cursor-not-allowed opacity-70'
                             : 'bg-white border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-700'
                       }`}
                     >
-                      {isSelected ? 'Seal Pullout Box' : boxMeta.isLocked ? 'Cabinet Locked' : 'Pull Drawer Open'}
+                      {isSelected ? 'Seal Pullout Box' : isLockState ? (boxMeta.isLocked ? 'Cabinet Locked' : 'Restricted Cabinet') : 'Pull Drawer Open'}
                     </button>
                   </div>
                 </div>
@@ -1187,62 +1271,35 @@ WHERE role IN ('admin', 'super_admin');`;
                         </button>
                         {isAddMenuOpen && (
                           <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto bg-white border border-slate-200 rounded-2xl shadow-xl py-2 w-56 z-30 font-semibold text-slate-700 text-xs flex flex-col items-stretch overflow-hidden">
-                            <span className="px-4 py-1.5 text-[9px] font-black uppercase text-slate-450 text-slate-400 tracking-wider bg-slate-50 border-b border-slate-100">Select Module / Category</span>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(null);
-                                setFormType('VISA');
-                                setIsFormOpen(true);
-                                setIsAddMenuOpen(false);
-                              }}
-                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-blue-500" /> VISA Document
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(null);
-                                setFormType('EOID');
-                                setIsFormOpen(true);
-                                setIsAddMenuOpen(false);
-                              }}
-                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
-                            >
-                              <Fingerprint className="w-3.5 h-3.5 text-emerald-500" /> EOID Document
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(null);
-                                setFormType('Residence ID');
-                                setIsFormOpen(true);
-                                setIsAddMenuOpen(false);
-                              }}
-                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
-                            >
-                              <CreditCard className="w-3.5 h-3.5 text-amber-500" /> Residence ID Document
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(null);
-                                setFormType('ETD');
-                                setIsFormOpen(true);
-                                setIsAddMenuOpen(false);
-                              }}
-                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
-                            >
-                              <MapPin className="w-3.5 h-3.5 text-rose-500" /> ETD Record Document
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingRecord(null);
-                                setFormType('Alien Passport');
-                                setIsFormOpen(true);
-                                setIsAddMenuOpen(false);
-                              }}
-                              className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
-                            >
-                              <Globe className="w-3.5 h-3.5 text-emerald-500" /> Alien Passport Document
-                            </button>
+                            <span className="px-4 py-1.5 text-[9px] font-black uppercase text-slate-400 tracking-wider bg-slate-50 border-b border-slate-100">Select Module / Category</span>
+                            {[
+                              { type: 'VISA', label: 'VISA Document', icon: FileText, color: 'text-blue-500' },
+                              { type: 'EOID', label: 'EOID Document', icon: Fingerprint, color: 'text-emerald-500' },
+                              { type: 'Residence ID', label: 'Residence ID Document', icon: CreditCard, color: 'text-amber-500' },
+                              { type: 'ETD', label: 'ETD Record Document', icon: MapPin, color: 'text-rose-500' },
+                              { type: 'Alien Passport', label: 'Alien Passport Document', icon: Globe, color: 'text-teal-500' },
+                              { type: 'Yellow Card', label: 'Yellow Card / Airport', icon: Shield, color: 'text-orange-500' },
+                              { type: 'Eritrean ID', label: 'Eritrean ID Document', icon: Plane, color: 'text-indigo-500' },
+                              { type: 'EOID Under_Age', label: 'EOID Under Age', icon: Fingerprint, color: 'text-purple-500' },
+                            ].map((mod) => {
+                              const hasPerm = canUserAccessCabinet(mod.type);
+                              if (!hasPerm) return null;
+                              const Icon = mod.icon;
+                              return (
+                                <button
+                                  key={mod.type}
+                                  onClick={() => {
+                                    setEditingRecord(null);
+                                    setFormType(mod.type as RecordType);
+                                    setIsFormOpen(true);
+                                    setIsAddMenuOpen(false);
+                                  }}
+                                  className="px-4 py-2.5 hover:bg-slate-50 hover:text-blue-600 text-left transition-colors font-bold cursor-pointer border-none bg-transparent flex items-center gap-2 text-slate-700"
+                                >
+                                  <Icon className={`w-3.5 h-3.5 ${mod.color}`} /> {mod.label}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
