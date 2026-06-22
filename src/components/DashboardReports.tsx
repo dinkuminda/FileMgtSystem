@@ -8,7 +8,8 @@ import {
   Loader2, TrendingUp, Users, FileText, Globe, Archive, Folder,
   FolderOpen, Search, Info, CheckCircle, ChevronRight, Minimize2, Tag, Calendar,
   Eye, Edit2, Trash2, Plus, Paperclip, ChevronDown, X, ExternalLink, CreditCard, Fingerprint, MapPin,
-  LayoutDashboard, Plane, Shield, Activity, BarChart3, Database, Terminal, Copy, Code
+  LayoutDashboard, Plane, Shield, Activity, BarChart3, Database, Terminal, Copy, Code,
+  Thermometer, Droplets, Lock, Unlock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
@@ -16,12 +17,23 @@ import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
 const COLORS = ['#1b54ac', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#06b6d4'];
 
 export const BOX_MODULE_DESC: Record<string, string> = {
-  'Visa-000001': 'Visa Portal Logs',
-  'EOID-000002': 'EOID National Registry',
-  'Residence-000003': 'Residence Permits',
-  'ETD-000004': 'Emergency Travel Docs',
-  'Yellow-000005': 'Yellow Card Logs',
-  'EOID-Underage-000006': 'EOID Under Age Logs'
+  'Visa-000001': 'VISA',
+  'Residence-000003': 'Residence ID',
+  'ETD-000004': 'ETD',
+  'Yellow-000005': 'Yellow Card',
+  'EOID-Underage-000006': 'EOID Under_Age',
+  'Alien-000007': 'Alien Passport',
+  'Eritrean-000008': 'Eritrean ID'
+};
+
+export const STANDARD_BOX_META: Record<string, { module: string; label: string; color: string; temp: number; humidity: number }> = {
+  'Visa-000001': { module: 'VISA', label: 'VISA Drawer', color: 'from-blue-600 to-blue-850', temp: 21.4, humidity: 42 },
+  'Residence-000003': { module: 'Residence ID', label: 'Residence ID Drawer', color: 'from-amber-500 to-amber-600', temp: 21.8, humidity: 45 },
+  'ETD-000004': { module: 'ETD', label: 'ETD Drawer', color: 'from-rose-600 to-rose-700', temp: 19.5, humidity: 35 },
+  'Yellow-000005': { module: 'Yellow Card', label: 'Yellow Card Drawer', color: 'from-yellow-500 to-yellow-600', temp: 22.1, humidity: 41 },
+  'EOID-Underage-000006': { module: 'EOID Under_Age', label: 'EOID Under_Age Drawer', color: 'from-purple-650 to-fuchsia-850', temp: 20.2, humidity: 39 },
+  'Alien-000007': { module: 'Alien Passport', label: 'Alien Passport Drawer', color: 'from-emerald-650 to-emerald-850', temp: 20.0, humidity: 40 },
+  'Eritrean-000008': { module: 'Eritrean ID', label: 'Eritrean ID Drawer', color: 'from-cyan-705 to-teal-850', temp: 20.5, humidity: 42 },
 };
 
 // Defensive helper to parse response body as JSON without crashing if it returns HTML or text
@@ -60,6 +72,46 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<ImmigrationRecord | null>(null);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [cabinets, setCabinets] = useState<any[]>([]);
+
+  const toggleCabinetLock = (boxName: string) => {
+    let nextLockedState = false;
+    const updatedCabinets = cabinets.map((c: any) => {
+      if (c.boxName === boxName) {
+        nextLockedState = !c.isLocked;
+        return { ...c, isLocked: nextLockedState };
+      }
+      return c;
+    });
+    setCabinets(updatedCabinets);
+    localStorage.setItem('managed_physical_cabinets', JSON.stringify(updatedCabinets));
+    fetchStats();
+  };
+
+  const deleteCabinet = (boxName: string) => {
+    if (!window.confirm(`Are you sure you want to delete physical cabinet ${boxName}?`)) return;
+    const updated = cabinets.filter((c: any) => c.boxName !== boxName);
+    setCabinets(updated);
+    localStorage.setItem('managed_physical_cabinets', JSON.stringify(updated));
+    fetchStats();
+  };
+
+  const editCabinet = (boxName: string) => {
+    const cab = cabinets.find(c => c.boxName === boxName);
+    if (!cab) return;
+    const newDesc = window.prompt(`Update Description for ${boxName}:`, cab.desc);
+    if (newDesc === null) return;
+    
+    const updated = cabinets.map(c => {
+      if (c.boxName === boxName) {
+        return { ...c, desc: newDesc };
+      }
+      return c;
+    });
+    setCabinets(updated);
+    localStorage.setItem('managed_physical_cabinets', JSON.stringify(updated));
+    fetchStats();
+  };
 
   // States for dynamic system clearance & modules desk
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
@@ -404,26 +456,75 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         .slice(-10);
 
       // Box Grouping for File Management View
-      let customCabinetsList: any[] = [];
+      let cabinetsList: any[] = [];
       try {
-        const customCabinetsStr = localStorage.getItem('custom_physical_cabinets');
-        if (customCabinetsStr) {
-          customCabinetsList = JSON.parse(customCabinetsStr);
+        const storedCabinets = localStorage.getItem('managed_physical_cabinets');
+        if (storedCabinets) {
+          cabinetsList = JSON.parse(storedCabinets);
+        } else {
+          // Fallback + initialization
+          cabinetsList = [
+            { boxName: 'Visa-000001', desc: 'Visa Portal Logs Archive Drawer', module: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, humidity: 42, isLocked: false },
+            { boxName: 'Residence-000003', desc: 'Residence Permit Physical Registry Drawer', module: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, humidity: 45, isLocked: false },
+            { boxName: 'ETD-000004', desc: 'Emergency Travel Document Secure Vault', module: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, humidity: 35, isLocked: false },
+            { boxName: 'Yellow-000005', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
+            { boxName: 'EOID-Underage-000006', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
+            { boxName: 'Alien-000007', desc: 'Alien Passport Secure Vault', module: 'Alien Passport', color: 'from-emerald-600 to-emerald-800', temp: 20.0, humidity: 40, isLocked: false },
+            { boxName: 'Eritrean-000008', desc: 'Eritrean ID division Physical Registry Box', module: 'Eritrean ID', color: 'from-blue-600 to-emerald-800', temp: 20.5, humidity: 42, isLocked: false },
+          ];
+          localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
+        }
+
+        // Migration of legacy custom_physical_cabinets if any exist
+        const legacyCustomStr = localStorage.getItem('custom_physical_cabinets');
+        if (legacyCustomStr) {
+          try {
+            const legacyCustomList = JSON.parse(legacyCustomStr);
+            if (Array.isArray(legacyCustomList) && legacyCustomList.length > 0) {
+              let updated = false;
+              legacyCustomList.forEach((c: any) => {
+                if (!cabinetsList.some(item => item.boxName === c.boxName)) {
+                  cabinetsList.push({
+                    boxName: c.boxName,
+                    desc: c.desc || 'Dynamic Storage Unit Cabinet',
+                    module: c.module,
+                    color: c.color || 'from-indigo-600 to-indigo-800',
+                    temp: c.temp || +(19 + Math.random() * 4).toFixed(1),
+                    humidity: c.humidity || Math.floor(35 + Math.random() * 15),
+                    isLocked: false
+                  });
+                  updated = true;
+                }
+              });
+              if (updated) {
+                localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
+              }
+              localStorage.removeItem('custom_physical_cabinets');
+            }
+          } catch (me) {}
         }
       } catch (e) {
-        console.error("Failed to parse custom cabinets in DashboardReports:", e);
+        console.error("Failed to parse managed physical cabinets inside DashboardReports:", e);
       }
+      setCabinets(cabinetsList);
 
       const isAllowedBox = (boxName: string, moduleType?: string) => {
         if (!userProfile) return true;
         const roleL = (userProfile.role as string || '').toLowerCase();
-        if (roleL === 'admin' || roleL === 'super_admin' || roleL === 'super-admin' || roleL === 'super admin') return true;
-        const mType = moduleType || (
+        if (roleL === 'admin' || roleL === 'super_admin' || roleL === 'super-admin' || roleL === 'super admin' || roleL === 'admin_grant') return true;
+        
+        // Dynamic module type lookup
+        const cab = cabinetsList.find((item: any) => item.boxName === boxName);
+        const mType = moduleType || cab?.module || (
           boxName === 'Visa-000001' ? 'VISA' :
           boxName === 'Residence-000003' ? 'Residence ID' :
           boxName === 'ETD-000004' ? 'ETD' :
-          boxName === 'Yellow-000005' ? 'Yellow Card' : 'VISA'
+          boxName === 'Yellow-000005' ? 'Yellow Card' :
+          boxName === 'EOID-Underage-000006' ? 'EOID Under_Age' :
+          boxName === 'Alien-000007' ? 'Alien Passport' :
+          boxName === 'Eritrean-000008' ? 'Eritrean ID' : 'VISA'
         );
+
         if (userProfile.modules) {
           if (mType === 'Yellow Card') {
             return userProfile.modules.includes('Yellow Card');
@@ -433,19 +534,13 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           if (roleL === 'airport_viewer' || roleL === 'editor' || roleL === 'staff' || roleL === 'supervisor') {
             return mType === 'Yellow Card';
           }
-          // Regular staff with no configured modules get no default cabinet access
+          // Regular staff with no configured clearance modules get no default cabinet access
           return false;
         }
       };
 
       const boxMap: Record<string, any[]> = {};
-      if (isAllowedBox('Visa-000001', 'VISA')) boxMap['Visa-000001'] = [];
-      if (isAllowedBox('Residence-000003', 'Residence ID')) boxMap['Residence-000003'] = [];
-      if (isAllowedBox('ETD-000004', 'ETD')) boxMap['ETD-000004'] = [];
-      if (isAllowedBox('Yellow-000005', 'Yellow Card')) boxMap['Yellow-000005'] = [];
-      if (isAllowedBox('EOID-Underage-000006', 'EOID Under_Age')) boxMap['EOID-Underage-000006'] = [];
-
-      customCabinetsList.forEach(c => {
+      cabinetsList.forEach(c => {
         if (isAllowedBox(c.boxName, c.module)) {
           boxMap[c.boxName] = [];
         }
@@ -923,56 +1018,136 @@ WHERE role IN ('admin', 'super_admin');`;
         </div>
 
         {/* Dynamic Box Shelf Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {stats?.boxData?.length === 0 ? (
-            <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm uppercase tracking-wider">
+            <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm uppercase tracking-wider bg-slate-50 border border-dashed border-slate-200 rounded-3xl">
               No Physical Storage Boxes Recorded Yet.
             </div>
           ) : (
             stats?.boxData?.map((box: any) => {
               const isSelected = selectedBox === box.boxName;
+              const cabObj = cabinets.find((c: any) => c.boxName === box.boxName);
+              const boxMeta = {
+                module: cabObj?.module || 'CUSTOM',
+                label: cabObj?.desc || (box.boxName.includes('-') ? box.boxName.split('-')[1] || box.boxName : box.boxName) + ' Drawer',
+                color: cabObj?.color || 'from-indigo-600 to-indigo-800',
+                temp: cabObj?.temp || 20.8,
+                humidity: cabObj?.humidity || 42,
+                isLocked: cabObj?.isLocked || false
+              };
+
               return (
-                <button
+                <div
                   key={box.boxName}
-                  onClick={() => {
-                    setSelectedBox(isSelected ? null : box.boxName);
-                    setBoxSearchQuery('');
-                  }}
-                  className={`p-5 rounded-2xl border transition-all text-left flex flex-col justify-between h-40 focus:outline-none relative group ${
+                  className={`flex flex-col rounded-3xl border transition-all overflow-hidden bg-white select-none relative ${
                     isSelected 
-                      ? 'bg-blue-600 border-blue-700 text-white shadow-md shadow-blue-500/20' 
-                      : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-slate-100/50 text-slate-800'
+                      ? 'ring-4 ring-blue-500/15 border-blue-500' 
+                      : 'border-slate-200 hover:border-slate-350 hover:shadow-md'
                   }`}
                 >
-                  {/* Visual steel bar on top of archive box */}
-                  <div className={`absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl ${
-                    isSelected ? 'bg-blue-900' : 'bg-slate-300'
-                  }`} />
+                  {/* Physical Cabinet Head Panel */}
+                  <div className={`p-4 bg-gradient-to-br ${boxMeta.color} text-white flex flex-col justify-between h-36 relative`}>
+                    
+                    {/* Panel action buttons at top */}
+                    <div className="flex justify-between items-center bg-transparent w-full">
+                      {canEditOrDelete ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editCabinet(box.boxName);
+                              }}
+                              className="w-7 h-7 flex items-center justify-center bg-white/15 hover:bg-white/25 active:scale-90 rounded-full transition-all text-white border-none cursor-pointer"
+                              title="Edit Description"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteCabinet(box.boxName);
+                              }}
+                              className="w-7 h-7 flex items-center justify-center bg-white/15 hover:bg-white/25 active:scale-90 rounded-full transition-all text-white border-none cursor-pointer"
+                              title="Delete Cabinet"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCabinetLock(box.boxName);
+                            }}
+                            className="w-7 h-7 flex items-center justify-center bg-white/15 hover:bg-white/25 active:scale-90 rounded-full transition-all text-white border-none cursor-pointer"
+                            title={boxMeta.isLocked ? "Unlock Drawer" : "Lock Drawer"}
+                          >
+                            {boxMeta.isLocked ? <Lock className="w-3.5 h-3.5 text-red-100" /> : <Unlock className="w-3.5 h-3.5" />}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-full flex justify-end">
+                          <span className="text-[8px] font-black tracking-widest bg-black/20 text-white/80 px-2 py-0.5 rounded-full uppercase">
+                            READ ONLY
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex justify-between items-start pt-1.5 w-full">
-                    {isSelected ? (
-                      <FolderOpen className="w-7 h-7 text-blue-100 animate-pulse" />
-                    ) : (
-                      <Folder className="w-7 h-7 text-[#1b54ac] group-hover:scale-105 transition-transform" />
-                    )}
-                    <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      isSelected ? 'bg-blue-900/40 text-blue-100' : 'bg-slate-200/65 text-slate-500'
-                    }`}>
-                      {box.itemsCount} Files
+                    {/* Vault Location / Tagging */}
+                    <div className="text-left mt-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white/70 block mb-0.5">VAULT LOCATION</span>
+                      <h4 className="text-[17px] font-black tracking-tight leading-none font-mono">{box.boxName}</h4>
+                    </div>
+
+                    {/* Bottom stats inside header panel */}
+                    <div className="flex justify-between items-center mt-2 pt-1 border-t border-white/10 w-full text-white">
+                      <span className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {box.itemsCount} CASES
+                      </span>
+                      <span className="text-[9px] font-extrabold text-white/80 truncate max-w-[110px]">{boxMeta.module}</span>
+                    </div>
+
+                  </div>
+
+                  {/* Sensors / Environmental controls */}
+                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono font-bold select-none">
+                    <span className="flex items-center gap-1">
+                      <Thermometer className="w-3.5 h-3.5 text-orange-500" /> {boxMeta.temp}°C
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Droplets className="w-3.5 h-3.5 text-blue-500" /> {boxMeta.humidity}% RH
+                    </span>
+                    <span className={`inline-flex items-center gap-0.5 font-extrabold ${boxMeta.isLocked ? 'text-red-600' : 'text-emerald-600'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${boxMeta.isLocked ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+                      {boxMeta.isLocked ? 'LKD' : 'OPN'}
                     </span>
                   </div>
 
-                  <div className="mt-8">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${
-                      isSelected ? 'text-blue-200' : 'text-slate-400'
-                    }`}>
-                      {getBoxDesc(box.boxName)}
-                    </p>
-                    <p className="text-lg font-black tracking-tight leading-none mt-1">
-                      {box.boxName}
-                    </p>
+                  {/* Cabinet Pullout Handles */}
+                  <div className="p-4 flex flex-col items-center gap-2.5">
+                    <div className="w-full h-1 bg-slate-200 shadow-inner rounded-full" />
+                    <button
+                      onClick={() => {
+                        if (boxMeta.isLocked) {
+                          alert(`This physical cabinet ${box.boxName} is currently LOCKED. Please unlock the drawer first before pulling it open.`);
+                          return;
+                        }
+                        setSelectedBox(isSelected ? null : box.boxName);
+                        setBoxSearchQuery('');
+                      }}
+                      className={`w-full py-2 px-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border cursor-pointer ${
+                        isSelected 
+                          ? 'bg-blue-600 border-blue-700 text-white shadow-sm shadow-blue-500/10' 
+                          : boxMeta.isLocked
+                            ? 'bg-red-50 border-red-100 text-red-500 border-dashed cursor-not-allowed opacity-70'
+                            : 'bg-white border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      {isSelected ? 'Seal Pullout Box' : boxMeta.isLocked ? 'Cabinet Locked' : 'Pull Drawer Open'}
+                    </button>
                   </div>
-                </button>
+                </div>
               );
             })
           )}
