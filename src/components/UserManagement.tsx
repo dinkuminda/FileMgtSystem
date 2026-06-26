@@ -562,7 +562,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
               <div className="flex gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'])}
+                  onClick={() => setModules(['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'])}
                   className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-[6px] text-[9px] font-bold uppercase transition cursor-pointer"
                 >
                   All
@@ -570,7 +570,7 @@ function EditUserModal({ user, onClose, onSave }: EditUserModalProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    const pool = ['USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'];
+                    const pool = ['USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID'];
                     const randomCount = Math.floor(Math.random() * pool.length) + 1;
                     const shuffled = [...pool].sort(() => 0.5 - Math.random());
                     setModules(['OVERVIEW', ...shuffled.slice(0, randomCount)]);

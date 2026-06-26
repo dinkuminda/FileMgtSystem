@@ -174,7 +174,7 @@ export default function Presentation() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <div className="space-y-2 text-xs text-slate-350">
-              <p className="text-emerald-400">&gt;&gt; Cabinet: Eritrean-000008 Status Checked</p>
+              <p className="text-emerald-400">&gt;&gt; Cabinet: ERID-B1 Status Checked</p>
               <p>&gt;&gt; Total Drawers Indexed: 12 Units</p>
               <p>&gt;&gt; Active Temp: 20.5°C | Relative Humidity: 42%</p>
               <p className="text-blue-300">&gt;&gt; Security Gate: Active RLS Policies Verified</p>
@@ -443,7 +443,7 @@ export default function Presentation() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Box Number</label>
-                  <div className="w-full h-8 mt-1 border rounded bg-slate-50 border-slate-200 px-2.5 flex items-center font-mono">Eritrean-000008</div>
+                  <div className="w-full h-8 mt-1 border rounded bg-slate-50 border-slate-200 px-2.5 flex items-center font-mono">ERID-B1</div>
                 </div>
               </div>
             </div>

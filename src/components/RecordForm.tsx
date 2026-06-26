@@ -5,14 +5,28 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CITIZENSHIPS } from '../constants';
 
 export const MODULE_BOX_MAP: Record<RecordType, string> = {
-  'VISA': 'Visa-000001',
-  'EOID': 'EOID-000002',
-  'Residence ID': 'Residence-000003',
-  'ETD': 'ETD-000004',
-  'Yellow Card': 'Yellow-000005',
-  'EOID Under_Age': 'EOID-Underage-000006',
-  'Alien Passport': 'Alien-000007',
-   'Eritrean ID': 'Eritrean-000008'
+  'VISA': 'VS-B1-01',
+  'EOID': 'EOID-B1-01',
+  'Residence ID': 'RES-B1-01',
+  'ETD': 'ETD-B1-01',
+  'Yellow Card': 'YC-B1-01',
+  'EOID Under_Age': 'EOIDUA-B1-01',
+  'Alien Passport': 'AP-B1-01',
+  'Eritrean ID': 'ERID-B1-01'
+};
+
+export const getPrefixForType = (type: RecordType): string => {
+  switch (type) {
+    case 'VISA': return 'VS';
+    case 'EOID': return 'EOID';
+    case 'Residence ID': return 'RES';
+    case 'ETD': return 'ETD';
+    case 'Yellow Card': return 'YC';
+    case 'EOID Under_Age': return 'EOIDUA';
+    case 'Alien Passport': return 'AP';
+    case 'Eritrean ID': return 'ERID';
+    default: return 'BOX';
+  }
 };
 
 interface RecordFormProps {
@@ -96,9 +110,98 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
     }
   };
 
+  const [boxCounts, setBoxCounts] = useState<Record<string, number>>({});
+
+  const loadBoxesAndCounts = async (recordType: RecordType, isNewRecord: boolean) => {
+    try {
+      const prefix = getPrefixForType(recordType);
+      const tableName = TABLE_MAP[recordType];
+      let existingBoxes: string[] = [];
+      const { data, error: fetchError } = await supabase
+        .from(tableName)
+        .select('box_number');
+        
+      if (!fetchError && data) {
+        existingBoxes = data.map((r: any) => r.box_number || '');
+      } else {
+        const storedKey = 'local_records_' + recordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const stored = localStorage.getItem(storedKey);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            existingBoxes = parsed.map((r: any) => r.box_number || '');
+          } catch (e) {}
+        }
+      }
+
+      const prefixPattern = new RegExp('^' + prefix + '-B');
+      const filteredBoxes = existingBoxes.filter(b => b && prefixPattern.test(b));
+      
+      const counts: Record<string, number> = {};
+      filteredBoxes.forEach(b => {
+        const match = b.match(new RegExp('^' + prefix + '-B(\\d+)'));
+        if (match) {
+          const parentBox = `${prefix}-B${match[1]}-00`;
+          counts[parentBox] = (counts[parentBox] || 0) + 1;
+        }
+      });
+      setBoxCounts(prev => ({ ...prev, ...counts }));
+
+      let calculatedBox = `${prefix}-B1-01`;
+      let foundNext = false;
+      for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+        for (let sIdx = 1; sIdx <= 50; sIdx++) {
+          const candidate = `${prefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+          if (!existingBoxes.includes(candidate)) {
+            calculatedBox = candidate;
+            foundNext = true;
+            break;
+          }
+        }
+        if (foundNext) break;
+      }
+
+      if (isNewRecord) {
+        setFormData(prev => ({ ...prev, box_number: calculatedBox }));
+      }
+
+      let maxIndex = 1;
+      existingBoxes.forEach(b => {
+        const match = b.match(new RegExp('^' + prefix + '-B(\\d+)'));
+        if (match) {
+          const idx = parseInt(match[1], 10);
+          if (idx > maxIndex) maxIndex = idx;
+        }
+      });
+
+      const listToShow: string[] = [];
+      for (let i = 1; i <= Math.max(3, maxIndex + 1); i++) {
+        listToShow.push(`${prefix}-B${i}-00`);
+      }
+
+      const legacyBoxToRemove = MODULE_BOX_MAP[recordType];
+      const uniqueBoxes = Array.from(new Set([...listToShow, ...existingBoxes.map(b => {
+        const match = b.match(new RegExp('^' + prefix + '-B(\\d+)'));
+        return match ? `${prefix}-B${match[1]}-00` : b;
+      })])).filter(b => b && b !== legacyBoxToRemove);
+
+      setAvailableBoxes(uniqueBoxes);
+    } catch (e) {
+      console.error(`Error loading boxes and counts for ${recordType}:`, e);
+      const prefix = getPrefixForType(recordType);
+      setAvailableBoxes([`${prefix}-B1-00`, `${prefix}-B2-00`, `${prefix}-B3-00`]);
+      if (isNewRecord) {
+        setFormData(prev => ({ ...prev, box_number: `${prefix}-B1-01` }));
+      }
+    }
+  };
+
   useEffect(() => {
-    if (isOpen && !record) {
-      generateNextId();
+    if (isOpen) {
+      loadBoxesAndCounts(type, !record);
+      if (!record) {
+        generateNextId();
+      }
     }
   }, [isOpen, record, type]);
   
@@ -186,6 +289,9 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
   const [availableBoxes, setAvailableBoxes] = useState<string[]>([]);
 
   useEffect(() => {
+    if (type === 'Eritrean ID' || type === 'VISA') {
+      return;
+    }
     const standardBox = MODULE_BOX_MAP[type];
     const boxes = [standardBox];
 
@@ -350,7 +456,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
   useEffect(() => {
     if (record) {
       setFormData({
-        box_number: record.box_number || defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
+        box_number: record.box_number || defaultBoxNumber || MODULE_BOX_MAP[type] || `${getPrefixForType(type)}-B1-01`,
         shelf_number: (record as any).shelf_number || '',
         personal_id_no: (record as any).personal_id_no || '',
         full_name: record.full_name || '',
@@ -377,7 +483,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
     } else {
       setFormData(prev => ({
         ...prev,
-        box_number: defaultBoxNumber || MODULE_BOX_MAP[type] || 'Visa-000001',
+        box_number: defaultBoxNumber || MODULE_BOX_MAP[type] || `${getPrefixForType(type)}-B1-01`,
         shelf_number: '',
         personal_id_no: '',
         full_name: '',
@@ -542,12 +648,11 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       }
       const tableName = TABLE_MAP[activeFormType];
 
-      // Enforce only visa box numbers (e.g. Visa-000001) for visa records
-      if (type === 'VISA') {
-        const boxNum = (formData.box_number || '').trim();
-        if (!boxNum.toLowerCase().startsWith('visa-')) {
-          throw new Error('Invalid BOX Number: VISA records only accept box numbers starting with "Visa-" (e.g., Visa-000001).');
-        }
+      // Enforce only correct prefix box numbers (e.g. VS-B1-01) for the record type
+      const prefix = getPrefixForType(type);
+      const boxNum = (formData.box_number || '').trim();
+      if (!boxNum.toLowerCase().startsWith(prefix.toLowerCase() + '-b')) {
+        throw new Error(`Invalid BOX Number: ${type} records only accept box numbers starting with "${prefix}-B" (e.g., ${prefix}-B1-01).`);
       }
 
       if (formData.passport_number && type !== 'ETD' && type !== 'Eritrean ID') {
@@ -646,7 +751,48 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       }
 
       // Ensure each module is assigned to a dynamic or default physical cabinet box
-      basePayload.box_number = formData.box_number || MODULE_BOX_MAP[type] || 'Visa-000001';
+      if (!record) {
+        try {
+          const currentPrefix = getPrefixForType(type);
+          let existingBoxes: string[] = [];
+          const { data, error: fetchError } = await supabase
+            .from(tableName)
+            .select('box_number');
+            
+          if (!fetchError && data) {
+            existingBoxes = data.map((r: any) => r.box_number || '');
+          } else {
+            const storedKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const stored = localStorage.getItem(storedKey);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              existingBoxes = parsed.map((r: any) => r.box_number || '');
+            }
+          }
+
+          let calculatedBox = `${currentPrefix}-B1-01`;
+          let foundNext = false;
+          for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+            for (let sIdx = 1; sIdx <= 50; sIdx++) {
+              const candidate = `${currentPrefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+              if (!existingBoxes.includes(candidate)) {
+                calculatedBox = candidate;
+                foundNext = true;
+                break;
+              }
+            }
+            if (foundNext) break;
+          }
+          basePayload.box_number = formData.box_number || calculatedBox;
+        } catch (e) {
+          console.error(`Error evaluating final box number for ${type}, using current state value:`, e);
+          const currentPrefix = getPrefixForType(type);
+          basePayload.box_number = formData.box_number || `${currentPrefix}-B1-01`;
+        }
+      } else {
+        const currentPrefix = getPrefixForType(type);
+        basePayload.box_number = formData.box_number || `${currentPrefix}-B1-01`;
+      }
       basePayload.attachments = formData.attachments_json;
 
       basePayload.shelf_number = formData.shelf_number || null;
@@ -910,7 +1056,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           </button>
         </header>
 
-        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-hide">
+        <form id="record-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 space-y-6 custom-sidebar-scrollbar">
           {/* Core Biodata Form Parameters */}
           <div className="space-y-5 text-left">
             <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
@@ -931,20 +1077,49 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
               </div>
 
               {/* Field 1: Box No(cabinet) */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOX Number</label>
-                <select
-                  className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-850 outline-none transition-all cursor-pointer"
-                  value={formData.box_number}
-                  onChange={e => setFormData({ ...formData, box_number: e.target.value })}
-                >
-                  {availableBoxes.map(box => (
-                    <option key={box} value={box}>{box}</option>
-                  ))}
-                  {formData.box_number && !availableBoxes.includes(formData.box_number) && (
-                    <option value={formData.box_number}>{formData.box_number}</option>
-                  )}
-                </select>
+                {(() => {
+                  const prefix = getPrefixForType(type);
+                  const displayBoxNum = formData.box_number || `${prefix}-B1-01`;
+                  const m = displayBoxNum.match(new RegExp(`^${prefix}-B(\\d+)`));
+                  const parentBox = m ? `${prefix}-B${m[1]}-00` : `${prefix}-B1-00`;
+                  const count = boxCounts[parentBox] || 0;
+                  return (
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black font-mono text-emerald-800 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/25">
+                            {displayBoxNum}
+                          </span>
+                          <span className="text-[10px] bg-emerald-100 text-[#1b8b58] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200/50 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#1b8b58] animate-pulse" />
+                            Auto-Allocated
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Allocating sequential slots: {prefix}-B1-01 to {prefix}-B1-50, then {prefix}-B2-01 to {prefix}-B2-50 etc.
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                          {parentBox} Capacity
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, (count / 50) * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-black font-mono text-slate-700">
+                            {count}/50
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
                {/* Field 1.5: Personal ID No. for all records */}

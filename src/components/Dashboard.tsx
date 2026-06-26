@@ -11,13 +11,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation, Link, Routes, Route, Navigate } from 'react-router-dom';
-import RecordForm from './RecordForm';
+import RecordForm, { getPrefixForType } from './RecordForm';
 import DashboardReports from './DashboardReports';
 import AuditLogView from './AuditLogView';
 import ReportingSystem from './ReportingSystem';
 import RecordTable from './RecordTable';
 import UserManagement from './UserManagement';
-import CabinetsView from './CabinetsView';
 import AdvancedSearch from './AdvancedSearch';
 import { EthiopiaFingerprint } from './EthiopiaFingerprint';
 import EthiopianImmigrationLogo from './EthiopianImmigrationLogo';
@@ -131,7 +130,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const [loading, setLoading] = useState(true);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   
-  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'CABINETS' | 'SEARCH'; icon: any; label: string }[] = [
+  const allTabs: { type: RecordType | 'OVERVIEW' | 'AUDIT' | 'REPORTS' | 'USERS' | 'SEARCH'; icon: any; label: string }[] = [
     { type: 'OVERVIEW', icon: LayoutDashboard, label: 'Dashboard' },
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
@@ -140,7 +139,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
     { type: 'Yellow Card', icon: Shield, label: 'Yellow Card' },
-    { type: 'CABINETS', icon: Archive, label: 'Physical Cabinets' },
     { type: 'USERS', icon: Users, label: 'User Management' },
     { type: 'SEARCH', icon: Search, label: 'Advanced Search' },
     { type: 'REPORTS', icon: BarChart3, label: 'System Reports' },
@@ -227,7 +225,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   }, [userProfile, activeTab, tabs, navigate]);
 
   useEffect(() => {
-    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS' && activeTab !== 'CABINETS') {
+    if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
       fetchRecords();
     }
   }, [activeTab]);
@@ -278,7 +276,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   ];
 
   const fetchRecords = async () => {
-    if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS') return;
+    if (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS') return;
     setLoading(true);
     setSchemaError(null);
     
@@ -637,15 +635,34 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         };
 
         const localModuleBoxMap: Record<string, string> = {
-          'VISA': 'Visa-000001',
-          'EOID': 'EOID-000002',
-          'Residence ID': 'Residence-000003',
-          'ETD': 'ETD-000004',
-          'Yellow Card': 'Yellow-000005',
-          'EOID Under_Age': 'EOID-Underage-000006',
-          'Alien Passport': 'Alien-000007',
-          'Eritrean ID': 'Eritrean-000008'
+          'VISA': 'VS-B1-01',
+          'EOID': 'EOID-B1-01',
+          'Residence ID': 'RES-B1-01',
+          'ETD': 'ETD-B1-01',
+          'Yellow Card': 'YC-B1-01',
+          'EOID Under_Age': 'EOIDUA-B1-01',
+          'Alien Passport': 'AP-B1-01',
+          'Eritrean ID': 'ERID-B1-01'
         };
+
+        let existingBoxes: string[] = [];
+        const tableName = TABLE_MAP[activeTab as RecordType];
+        if (tableName) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('box_number');
+          if (!error && data) {
+            existingBoxes = data.map((r: any) => r.box_number || '');
+          } else {
+            const storageKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              try {
+                existingBoxes = JSON.parse(stored).map((r: any) => r.box_number || '');
+              } catch (e) {}
+            }
+          }
+        }
 
         const processedData = json.map((row: any) => {
           const cleanRow: any = {};
@@ -679,9 +696,40 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             }
           });
 
-          // Auto-populate cabinet box number format if blank or undefined
-          if (!finalRow.box_number) {
-            finalRow.box_number = localModuleBoxMap[activeTab] || 'Visa-000001';
+          // Auto-populate cabinet box number format if blank, undefined, or legacy
+          const cleanBox = (finalRow.box_number || '').toString().trim();
+          const pfx = getPrefixForType(activeTab as RecordType);
+          const needsBoxAllocation = !cleanBox || 
+            cleanBox === 'Eritrean-000008' || 
+            cleanBox === 'ERID-B1' || 
+            cleanBox === 'Visa-000001' || 
+            cleanBox === 'VS-B1' ||
+            !cleanBox.startsWith(`${pfx}-B`);
+
+          if (needsBoxAllocation) {
+            let calculatedBox = `${pfx}-B1-01`;
+            let foundNext = false;
+            
+            // Build count map of currently assigned boxes in the import batch + database
+            const counts: Record<string, number> = {};
+            existingBoxes.forEach(b => {
+              counts[b] = (counts[b] || 0) + 1;
+            });
+            
+            for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+              for (let sIdx = 1; sIdx <= 50; sIdx++) {
+                const padSIdx = sIdx < 10 ? `0${sIdx}` : sIdx.toString();
+                const candidate = `${pfx}-B${bIdx}-${padSIdx}`;
+                if ((counts[candidate] || 0) === 0) {
+                  calculatedBox = candidate;
+                  foundNext = true;
+                  break;
+                }
+              }
+              if (foundNext) break;
+            }
+            finalRow.box_number = calculatedBox;
+            existingBoxes.push(calculatedBox);
           }
 
           // Force trim and normalize gender values to handle Case/Single letter constraints (e.g., MALE -> Male, f -> Female)
@@ -707,18 +755,15 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           throw new Error('No valid rows containing a "full_name" (or equivalent name column) were found.');
         }
 
-        // Validate Box Number format for VISA records during excel imports
-        if (activeTab === 'VISA') {
-          for (let i = 0; i < processedData.length; i++) {
-            const row = processedData[i];
-            const boxNum = (row.box_number || '').toString().trim();
-            if (!boxNum.toLowerCase().startsWith('visa-')) {
-              throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". Visa records only accept box numbers starting with "Visa-" (e.g., Visa-000001).`);
-            }
+        // Validate Box Number format for all records during excel imports
+        for (let i = 0; i < processedData.length; i++) {
+          const row = processedData[i];
+          const boxNum = (row.box_number || '').toString().trim();
+          const expectedPrefix = getPrefixForType(activeTab as RecordType);
+          if (!boxNum.toLowerCase().startsWith(`${expectedPrefix.toLowerCase()}-b`)) {
+            throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". ${activeTab} records only accept box numbers starting with "${expectedPrefix}-B" (e.g., ${expectedPrefix}-B1-01).`);
           }
         }
-
-        const tableName = TABLE_MAP[activeTab as RecordType];
 
         // PRE-CALCULATE MAXIMUM SEQUENTIAL ID KEY IN THE DATABASE & OFFLINE CORES
         let maxNum = 0;
@@ -1413,7 +1458,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   </div>
                 ) : (
-                  activeTab !== 'CABINETS' && activeTab !== 'SEARCH' && activeTab !== 'OVERVIEW' ? (
+                  activeTab !== 'SEARCH' && activeTab !== 'OVERVIEW' ? (
                     <div className="text-left">
                       <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
                         {activeTab}
@@ -1453,7 +1498,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     refreshCounter={refreshCounter}
                   />
                 } />
-                <Route path="/cabinets" element={hasAccess('CABINETS') ? <CabinetsView userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/audit" element={hasAccess('AUDIT') ? <AuditLogView /> : <Navigate to="/" replace />} />
                 <Route path="/reports" element={hasAccess('REPORTS') ? <ReportingSystem userProfile={userProfile} /> : <Navigate to="/" replace />} />
                 <Route path="/users" element={hasAccess('USERS') ? <UserManagement currentUserProfile={userProfile} onProfileUpdate={onProfileUpdate} /> : <Navigate to="/" replace />} />
@@ -1571,7 +1615,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             onClose={() => setIsFormOpen(false)} 
             type={(editingRecord && (editingRecord as any)._table) 
               ? REVERSE_TABLE_MAP[(editingRecord as any)._table] 
-              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' || activeTab === 'CABINETS' ? 'VISA' : activeTab as RecordType)}
+              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab as RecordType)}
             record={editingRecord}
             onSuccess={(record) => {
               setIsFormOpen(false);

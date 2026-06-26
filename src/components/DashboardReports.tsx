@@ -18,23 +18,25 @@ import RecordForm, { MODULE_BOX_MAP } from './RecordForm';
 const COLORS = ['#1b54ac', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#06b6d4'];
 
 export const BOX_MODULE_DESC: Record<string, string> = {
-  'Visa-000001': 'VISA',
-  'Residence-000003': 'Residence ID',
-  'ETD-000004': 'ETD',
-  'Yellow-000005': 'Yellow Card',
-  'EOID-Underage-000006': 'EOID Under_Age',
-  'Alien-000007': 'Alien Passport',
-  'Eritrean-000008': 'Eritrean ID'
+  'VS-B1-00': 'VISA',
+  'EOID-B1-00': 'EOID',
+  'RES-B1-00': 'Residence ID',
+  'ETD-B1-00': 'ETD',
+  'YC-B1-00': 'Yellow Card',
+  'EOIDUA-B1-00': 'EOID Under_Age',
+  'AP-B1-00': 'Alien Passport',
+  'ERID-B1-00': 'Eritrean ID'
 };
 
 export const STANDARD_BOX_META: Record<string, { module: string; label: string; color: string; temp: number; humidity: number }> = {
-  'Visa-000001': { module: 'VISA', label: 'VISA Drawer', color: 'from-blue-600 to-blue-850', temp: 21.4, humidity: 42 },
-  'Residence-000003': { module: 'Residence ID', label: 'Residence ID Drawer', color: 'from-amber-500 to-amber-600', temp: 21.8, humidity: 45 },
-  'ETD-000004': { module: 'ETD', label: 'ETD Drawer', color: 'from-rose-600 to-rose-700', temp: 19.5, humidity: 35 },
-  'Yellow-000005': { module: 'Yellow Card', label: 'Yellow Card Drawer', color: 'from-yellow-500 to-yellow-600', temp: 22.1, humidity: 41 },
-  'EOID-Underage-000006': { module: 'EOID Under_Age', label: 'EOID Under_Age Drawer', color: 'from-purple-650 to-fuchsia-850', temp: 20.2, humidity: 39 },
-  'Alien-000007': { module: 'Alien Passport', label: 'Alien Passport Drawer', color: 'from-emerald-650 to-emerald-850', temp: 20.0, humidity: 40 },
-  'Eritrean-000008': { module: 'Eritrean ID', label: 'Eritrean ID Drawer', color: 'from-cyan-705 to-teal-850', temp: 20.5, humidity: 42 },
+  'VS-B1-00': { module: 'VISA', label: 'VISA Drawer', color: 'from-blue-600 to-blue-850', temp: 21.4, humidity: 42 },
+  'EOID-B1-00': { module: 'EOID', label: 'EOID Drawer', color: 'from-indigo-600 to-indigo-800', temp: 20.5, humidity: 38 },
+  'RES-B1-00': { module: 'Residence ID', label: 'Residence ID Drawer', color: 'from-amber-500 to-amber-600', temp: 21.8, humidity: 45 },
+  'ETD-B1-00': { module: 'ETD', label: 'ETD Drawer', color: 'from-rose-600 to-rose-700', temp: 19.5, humidity: 35 },
+  'YC-B1-00': { module: 'Yellow Card', label: 'Yellow Card Drawer', color: 'from-yellow-500 to-yellow-600', temp: 22.1, humidity: 41 },
+  'EOIDUA-B1-00': { module: 'EOID Under_Age', label: 'EOID Under_Age Drawer', color: 'from-purple-650 to-fuchsia-850', temp: 20.2, humidity: 39 },
+  'AP-B1-00': { module: 'Alien Passport', label: 'Alien Passport Drawer', color: 'from-emerald-650 to-emerald-850', temp: 20.0, humidity: 40 },
+  'ERID-B1-00': { module: 'Eritrean ID', label: 'Eritrean ID Drawer', color: 'from-cyan-705 to-teal-850', temp: 20.5, humidity: 42 },
 };
 
 // Defensive helper to parse response body as JSON without crashing if it returns HTML or text
@@ -485,13 +487,14 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         } else {
           // Fallback + initialization
           cabinetsList = [
-            { boxName: 'Visa-000001', desc: 'Visa Portal Logs Archive Drawer', module: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, humidity: 42, isLocked: false },
-            { boxName: 'Residence-000003', desc: 'Residence Permit Physical Registry Drawer', module: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, humidity: 45, isLocked: false },
-            { boxName: 'ETD-000004', desc: 'Emergency Travel Document Secure Vault', module: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, humidity: 35, isLocked: false },
-            { boxName: 'Yellow-000005', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
-            { boxName: 'EOID-Underage-000006', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
-            { boxName: 'Alien-000007', desc: 'Alien Passport Secure Vault', module: 'Alien Passport', color: 'from-emerald-600 to-emerald-800', temp: 20.0, humidity: 40, isLocked: false },
-            { boxName: 'Eritrean-000008', desc: 'Eritrean ID division Physical Registry Box', module: 'Eritrean ID', color: 'from-blue-600 to-emerald-800', temp: 20.5, humidity: 42, isLocked: false },
+            { boxName: 'VS-B1-00', desc: 'Visa Portal Logs Archive Drawer', module: 'VISA', color: 'from-blue-600 to-blue-800', temp: 21.4, humidity: 42, isLocked: false },
+            { boxName: 'EOID-B1-00', desc: 'EOID Portal Registry Drawer', module: 'EOID', color: 'from-indigo-600 to-indigo-800', temp: 20.5, humidity: 38, isLocked: false },
+            { boxName: 'RES-B1-00', desc: 'Residence Permit Physical Registry Drawer', module: 'Residence ID', color: 'from-amber-600 to-amber-750', temp: 21.8, humidity: 45, isLocked: false },
+            { boxName: 'ETD-B1-00', desc: 'Emergency Travel Document Secure Vault', module: 'ETD', color: 'from-rose-600 to-rose-800', temp: 19.5, humidity: 35, isLocked: false },
+            { boxName: 'YC-B1-00', desc: 'Yellow Card Division / Origin ID Physical Registry Box', module: 'Yellow Card', color: 'from-yellow-600 to-amber-750', temp: 22.1, humidity: 41, isLocked: false },
+            { boxName: 'EOIDUA-B1-00', desc: 'EOID Under-Age Physical Registry Box', module: 'EOID Under_Age', color: 'from-fuchsia-600 to-fuchsia-800', temp: 20.2, humidity: 39, isLocked: false },
+            { boxName: 'AP-B1-00', desc: 'Alien Passport Secure Vault', module: 'Alien Passport', color: 'from-emerald-600 to-emerald-800', temp: 20.0, humidity: 40, isLocked: false },
+            { boxName: 'ERID-B1-00', desc: 'Eritrean ID division Physical Registry Box', module: 'Eritrean ID', color: 'from-blue-600 to-emerald-800', temp: 20.5, humidity: 42, isLocked: false },
           ];
           localStorage.setItem('managed_physical_cabinets', JSON.stringify(cabinetsList));
         }
@@ -537,13 +540,14 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         // Dynamic module type lookup
         const cab = cabinetsList.find((item: any) => item.boxName === boxName);
         const mType = moduleType || cab?.module || (
-          boxName === 'Visa-000001' ? 'VISA' :
-          boxName === 'Residence-000003' ? 'Residence ID' :
-          boxName === 'ETD-000004' ? 'ETD' :
-          boxName === 'Yellow-000005' ? 'Yellow Card' :
-          boxName === 'EOID-Underage-000006' ? 'EOID Under_Age' :
-          boxName === 'Alien-000007' ? 'Alien Passport' :
-          boxName === 'Eritrean-000008' ? 'Eritrean ID' : 'VISA'
+          boxName.startsWith('VS-') ? 'VISA' :
+          boxName.startsWith('EOID-') ? 'EOID' :
+          boxName.startsWith('RES-') ? 'Residence ID' :
+          boxName.startsWith('ETD-') ? 'ETD' :
+          boxName.startsWith('YC-') ? 'Yellow Card' :
+          boxName.startsWith('EOIDUA-') ? 'EOID Under_Age' :
+          boxName.startsWith('AP-') ? 'Alien Passport' :
+          boxName.startsWith('ERID-') ? 'Eritrean ID' : 'VISA'
         );
 
         if (userProfile.modules) {
@@ -567,13 +571,36 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
         }
       });
       
+      // Automatically register allowed dynamic parent boxes for all prefixes
+      allData.forEach(r => {
+        const box = (r.box_number || '').trim();
+        if (box) {
+          let parentBox = '';
+          const rType = getRecordType(r);
+          const m = box.match(/^([A-Z]+)-B(\d+)/);
+          if (m) {
+            parentBox = `${m[1]}-B${m[2]}-00`;
+          }
+          if (parentBox && boxMap[parentBox] === undefined && isAllowedBox(parentBox, rType)) {
+            boxMap[parentBox] = [];
+          }
+        }
+      });
+
       allData.forEach(r => {
         const rType = getRecordType(r);
-        let box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'Visa-000001';
+        let box = r.box_number?.trim() || MODULE_BOX_MAP[rType] || 'VS-B1-01';
+        
+        // Normalize dynamic slots to parent boxes
+        const m = box.match(/^([A-Z]+)-B(\d+)/);
+        if (m) {
+          box = `${m[1]}-B${m[2]}-00`;
+        }
+
         if (boxMap[box] === undefined) {
           // Find standard box or fallback
-          const standardBox = MODULE_BOX_MAP[rType] || 'Visa-000001';
-          box = boxMap[standardBox] !== undefined ? standardBox : Object.keys(boxMap)[0] || 'Visa-000001';
+          const standardBox = MODULE_BOX_MAP[rType] || 'VS-B1-01';
+          box = boxMap[standardBox] !== undefined ? standardBox : Object.keys(boxMap)[0] || 'VS-B1-01';
         }
         if (boxMap[box]) {
           boxMap[box].push(r);
@@ -618,7 +645,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
               if (moduleType === 'Eritrean ID' || moduleType === 'Eritrean ID Logs') {
                 return userProfile.modules.includes('Eritrean ID');
               }
-              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
+              const moduleKeys = ['VISA', 'EOID', 'Residence ID', 'ETD', 'USERS', 'REPORTS', 'AUDIT', 'Alien Passport', 'Yellow Card', 'Eritrean ID'];
               if (moduleKeys.includes(moduleType)) {
                 return userProfile.modules.includes(moduleType);
               }
@@ -706,7 +733,7 @@ SELECT id, email, role, modules FROM public.profiles ORDER BY email ASC;
 
 -- 3. Batch grant all modules to multiple admins
 UPDATE public.profiles 
-SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID']::text[]
+SET modules = ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'Residence ID', 'ETD', 'Yellow Card', 'AUDIT', 'Alien Passport', 'Eritrean ID']::text[]
 WHERE role IN ('admin', 'super_admin');`;
   }
 
@@ -941,7 +968,7 @@ WHERE role IN ('admin', 'super_admin');`;
               href="#explorer" 
               onClick={(e) => {
                 e.preventDefault();
-                setSelectedBox('Visa-000001');
+                setSelectedBox('VS-B1-00');
                 document.getElementById('explorer')?.scrollIntoView({ behavior: 'smooth' });
               }}
               className="text-[11px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest block whitespace-nowrap"

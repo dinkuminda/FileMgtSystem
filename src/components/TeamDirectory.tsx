@@ -99,7 +99,6 @@ export const TeamDirectory: React.FC<TeamDirectoryProps> = ({
                   .map(m => {
                     if (m === 'OVERVIEW') return 'Dashboard';
                     if (m === 'Yellow Card') return 'Yellow Card Div.';
-                    if (m === 'CABINETS') return 'File Cabinets';
                     if (m === 'AUDIT') return 'System Audit';
                     return m;
                   });

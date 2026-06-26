@@ -149,7 +149,7 @@ export default function RecordTable({
 
 
       {/* Desktop Table View */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden lg:block overflow-x-auto custom-sidebar-scrollbar">
         <table className={`w-full text-left border-collapse ${activeTab === 'EOID' ? 'min-w-[1300px]' : activeTab === 'VISA' ? 'min-w-[1200px]' : 'min-w-[1100px]'}`}>
           <thead>
             <tr className="border-b border-slate-100">
@@ -683,7 +683,7 @@ export default function RecordTable({
               </header>
 
               {/* Main Image Comparison / Instruction layout */}
-              <div className="p-8 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
+              <div className="p-8 overflow-y-auto custom-sidebar-scrollbar grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
                 {/* Left side: High Resolution Image Specimen with Watermark */}
                 <div className="lg:col-span-7 flex flex-col justify-center">
                   <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 dark:border-gray-800 shadow-inner bg-slate-100 dark:bg-gray-950 group">
@@ -959,7 +959,7 @@ function RecordDetailsModal({
         </header>
 
         {/* Content Body */}
-        <div className="p-8 overflow-y-auto space-y-6 flex-1 text-slate-700">
+        <div className="p-8 overflow-y-auto custom-sidebar-scrollbar space-y-6 flex-1 text-slate-700">
           {/* eVisa Specimen layout style if the record is under VISA */}
           {isVisa && <VisaSpecimenCard record={record} />}
 
