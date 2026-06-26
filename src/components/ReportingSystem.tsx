@@ -56,7 +56,7 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
       });
 
       const rRole = (userProfile?.role as string || '').toLowerCase();
-      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
+      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
       if (!isElevated && userProfile?.id) {
         combined = combined.filter((item: any) => item.created_by === userProfile.id);
       }

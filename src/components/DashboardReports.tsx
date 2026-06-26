@@ -441,7 +441,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
 
       // Process totals
       const rRole = (userProfile?.role as string || '').toLowerCase();
-      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
+      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
       
       if (!isElevated && userProfile?.id) {
         results.forEach(r => {

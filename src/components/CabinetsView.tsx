@@ -138,7 +138,7 @@ export default function CabinetsView({ userProfile }: CabinetsViewProps) {
       let allData = results.flatMap(r => r.data);
 
       const rRole = (userProfile?.role as string || '').toLowerCase();
-      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant';
+      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
       if (!isElevated && userProfile?.id) {
         allData = allData.filter(r => r.created_by === userProfile.id);
       }
