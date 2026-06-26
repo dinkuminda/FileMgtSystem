@@ -157,43 +157,45 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   });
   const activeTab = matchingTab?.type || 'OVERVIEW';
 
-  const tabs = allTabs.filter(tab => {
-    if (!userProfile) return false;
-    
-    // Admins should always see everything
-    const r = (userProfile.role as string || '').toLowerCase();
-    if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
+  const tabs = React.useMemo(() => {
+    return allTabs.filter(tab => {
+      if (!userProfile) return false;
+      
+      // Admins should always see everything
+      const r = (userProfile.role as string || '').toLowerCase();
+      if (r === 'super_admin' || r === 'super-admin' || r === 'super admin' || r === 'admin' || r === 'admin_grant') return true;
 
-    // Command Deck (Overview) is the baseline landing page for everyone
-    if (tab.type === 'OVERVIEW' || tab.type === 'SEARCH') return true;
+      // Command Deck (Overview) is the baseline landing page for everyone
+      if (tab.type === 'OVERVIEW' || tab.type === 'SEARCH') return true;
 
-    // Direct check for weleba ephrem as an active authorized staff member
-    const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
+      // Direct check for weleba ephrem as an active authorized staff member
+      const isWeleba = userProfile?.email?.toLowerCase().includes('weleba') || userProfile?.full_name?.toLowerCase().includes('weleba');
 
-    // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
-    if (userProfile.modules && Array.isArray(userProfile.modules)) {
-      if (tab.type === 'Yellow Card') {
-        return userProfile.modules.includes('Yellow Card') || 
-               userProfile.modules.includes('Yellow Card:read');
+      // If user has specific modules array assigned, use those STRICTLY as the primary authorization rule
+      if (userProfile.modules && Array.isArray(userProfile.modules)) {
+        if (tab.type === 'Yellow Card') {
+          return userProfile.modules.includes('Yellow Card') || 
+                 userProfile.modules.includes('Yellow Card:read');
+        }
+        return userProfile.modules.includes(tab.type) || 
+               userProfile.modules.includes(`${tab.type}:read`) ||
+               userProfile.modules.includes(`${tab.type}:write`) ||
+               userProfile.modules.includes(`${tab.type}:approve`);
       }
-      return userProfile.modules.includes(tab.type) || 
-             userProfile.modules.includes(`${tab.type}:read`) ||
-             userProfile.modules.includes(`${tab.type}:write`) ||
-             userProfile.modules.includes(`${tab.type}:approve`);
-    }
 
-    // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
-    // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
-    if (r === 'staff' || r === 'supervisor') {
-      return tab.type === 'Yellow Card' || tab.type === 'AUDIT';
-    }
-    if (r === 'airport_viewer' || r === 'editor') {
-      return tab.type === 'Yellow Card';
-    }
+      // STRICT NON-ADMIN PROTECTION: If they have no custom modules array configured in database,
+      // they should ONLY see the Overview tab and NOT get default fallback access to other divisions.
+      if (r === 'staff' || r === 'supervisor') {
+        return tab.type === 'Yellow Card' || tab.type === 'AUDIT';
+      }
+      if (r === 'airport_viewer' || r === 'editor') {
+        return tab.type === 'Yellow Card';
+      }
 
-    // Regular staff (or other roles) with no configured modules array get ONLY the Overview baseline.
-    return false;
-  });
+      // Regular staff (or other roles) with no configured modules array get ONLY the Overview baseline.
+      return false;
+    });
+  }, [userProfile]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);

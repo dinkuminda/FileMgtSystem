@@ -69,14 +69,8 @@ export default function App() {
 
     channel.subscribe();
 
-    // Constant 15-sec polling interval fallback to handle real-time sync across clients/tabs
-    const pollInterval = setInterval(() => {
-      fetchProfile(userId);
-    }, 15000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(pollInterval);
     };
   }, [session?.user?.id]);
 
