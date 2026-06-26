@@ -102,6 +102,119 @@ const PORT = 3000;
     return r === 'admin' || r === 'super_admin' || r === 'admin_grant';
   }
 
+  // Auth: Proxy Login with lock/failed attempt checking
+  app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    try {
+      // 1. Fetch user's profile to check if already locked
+      const { data: profile, error: pErr } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, modules, role, is_locked, failed_attempts')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+
+      const isLocked = profile?.is_locked === true || profile?.modules?.includes('LOCKED');
+      if (isLocked) {
+        return res.status(423).json({ error: "Your account is currently locked after 3 invalid login attempts. Please contact an Administrator to unlock your credentials." });
+      }
+
+      // 2. Attempt standard sign-in
+      const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
+
+      if (authError) {
+        // Invalid credentials. Increment failed attempts
+        if (profile) {
+          const prevFailed = profile.failed_attempts !== undefined ? (profile.failed_attempts || 0) : (profile.modules || []).filter((m: string) => m.startsWith('FAIL_')).length;
+          const currentFailed = prevFailed + 1;
+          const shouldLock = currentFailed >= 3;
+
+          const updateData: any = {
+            failed_attempts: currentFailed,
+            updated_at: new Date().toISOString()
+          };
+
+          if (shouldLock) {
+            updateData.is_locked = true;
+          }
+
+          // Let's filter out existing FAIL_ module tags and LOCKED tag if any
+          const cleanModules = (profile.modules || []).filter((m: string) => m !== 'LOCKED' && !m.startsWith('FAIL_'));
+          
+          if (shouldLock) {
+            updateData.modules = [...cleanModules, 'LOCKED'];
+          } else {
+            updateData.modules = [...cleanModules];
+            for (let i = 1; i <= currentFailed; i++) {
+              updateData.modules.push(`FAIL_${i}`);
+            }
+          }
+
+          // Try updating with new columns, if it fails, fallback to updating modules
+          const { error: updErr } = await supabaseAdmin
+            .from('profiles')
+            .update(updateData)
+            .eq('id', profile.id);
+
+          if (updErr) {
+            const fallbackData: any = {
+              modules: updateData.modules,
+              updated_at: new Date().toISOString()
+            };
+            await supabaseAdmin
+              .from('profiles')
+              .update(fallbackData)
+              .eq('id', profile.id);
+          }
+
+          if (shouldLock) {
+            return res.status(423).json({ error: "Your account has been locked due to 3 invalid login attempts. Please contact an Administrator to restore your access." });
+          } else {
+            return res.status(401).json({ error: `Invalid password. You have ${3 - currentFailed} attempts remaining.` });
+          }
+        }
+        return res.status(401).json({ error: authError.message || "Invalid login credentials." });
+      }
+
+      // Login succeeded! Reset failed attempts
+      if (profile) {
+        const cleanModules = (profile.modules || []).filter((m: string) => m !== 'LOCKED' && !m.startsWith('FAIL_'));
+        const updateData: any = {
+          failed_attempts: 0,
+          is_locked: false,
+          modules: cleanModules,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error: updErr } = await supabaseAdmin
+          .from('profiles')
+          .update(updateData)
+          .eq('id', profile.id);
+
+        if (updErr) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              modules: cleanModules,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', profile.id);
+        }
+      }
+
+      return res.json({ session: authData.session, user: authData.user });
+    } catch (err: any) {
+      console.error("Login route error:", err);
+      return res.status(500).json({ error: err.message || "Authentication error" });
+    }
+  });
+
   // Admin: Reset Password
   app.post("/api/admin/reset-password", async (req, res) => {
     const authHeader = req.headers.authorization;
@@ -423,13 +536,24 @@ const PORT = 3000;
         console.warn("[API WARNING] Exception during auth.admin.listUsers. Falling back to DB profiles list resolution. Exception:", listExc.message);
       }
 
-      // 3. Fetch all profiles to join roles/names
-      const { data: profiles, error: pErr } = await supabaseAdmin
+      // 3. Fetch all profiles to join roles/names (safely handle if columns is_locked, failed_attempts exist or not)
+      let profiles: any[] = [];
+      const { data: profilesWithLock, error: pErrWithLock } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, full_name, role, modules, updated_at');
-      
-      if (pErr) {
-        throw new Error(`Profile synchronization failed: ${pErr.message}`);
+        .select('id, email, full_name, role, modules, updated_at, is_locked, failed_attempts');
+
+      if (pErrWithLock) {
+        // Fallback to columns we know exist
+        const { data: profilesFallback, error: pErrFallback } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email, full_name, role, modules, updated_at');
+        
+        if (pErrFallback) {
+          throw new Error(`Profile synchronization failed: ${pErrFallback.message}`);
+        }
+        profiles = profilesFallback || [];
+      } else {
+        profiles = profilesWithLock || [];
       }
 
       // 4. Merge data (use profiles table as supreme fallback if admin auth list is closed)
@@ -438,6 +562,10 @@ const PORT = 3000;
       if (users && users.length > 0) {
         mergedUsers = users.map(u => {
           const p = (profiles || []).find(prof => prof.id === u.id);
+          const userModules = p?.modules || [];
+          const isUserLocked = p && 'is_locked' in p && p.is_locked !== null ? p.is_locked : userModules.includes('LOCKED');
+          const failedCount = p && 'failed_attempts' in p && p.failed_attempts !== null ? p.failed_attempts : userModules.filter((m: string) => m.startsWith('FAIL_')).length;
+
           return {
             id: u.id,
             email: u.email,
@@ -446,26 +574,105 @@ const PORT = 3000;
             confirmed_at: u.email_confirmed_at,
             full_name: p?.full_name || u.user_metadata?.full_name,
             role: p?.role || 'staff',
-            modules: p?.modules || []
+            modules: userModules,
+            is_locked: isUserLocked,
+            failed_attempts: failedCount
           };
         });
       } else {
         // Safe robust build from profiles database records
-        mergedUsers = (profiles || []).map(p => ({
-          id: p.id,
-          email: p.email,
-          last_sign_in_at: new Date().toISOString(),
-          created_at: p.updated_at || new Date().toISOString(),
-          confirmed_at: p.updated_at || new Date().toISOString(),
-          full_name: p.full_name || p.email.split('@')[0],
-          role: p.role || 'staff',
-          modules: p.modules || []
-        }));
+        mergedUsers = (profiles || []).map(p => {
+          const userModules = p.modules || [];
+          const isUserLocked = 'is_locked' in p && p.is_locked !== null ? p.is_locked : userModules.includes('LOCKED');
+          const failedCount = 'failed_attempts' in p && p.failed_attempts !== null ? p.failed_attempts : userModules.filter((m: string) => m.startsWith('FAIL_')).length;
+
+          return {
+            id: p.id,
+            email: p.email,
+            last_sign_in_at: new Date().toISOString(),
+            created_at: p.updated_at || new Date().toISOString(),
+            confirmed_at: p.updated_at || new Date().toISOString(),
+            full_name: p.full_name || p.email.split('@')[0],
+            role: p.role || 'staff',
+            modules: userModules,
+            is_locked: isUserLocked,
+            failed_attempts: failedCount
+          };
+        });
       }
 
       res.json({ users: mergedUsers });
     } catch (err: any) {
       console.error("[API ERROR] Error in /api/admin/users handler:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: Unlock User
+  app.post("/api/admin/unlock-user", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: "No authorization header" });
+
+    const token = authHeader.split(" ")[1];
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    try {
+      // 1. Verify requester is admin
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      const user = data?.user;
+      if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
+
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!isDbAdminRole(profile?.role || '')) {
+        return res.status(403).json({ error: "Forbidden: Admin access required" });
+      }
+
+      // 2. Unlock the user
+      // We read the user's profile first to get their current modules
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('modules')
+        .eq('id', userId)
+        .single();
+
+      const currentModules = targetProfile?.modules || [];
+      const updatedModules = currentModules.filter((m: string) => m !== 'LOCKED' && !m.startsWith('FAIL_'));
+
+      const updateData: any = {
+        is_locked: false,
+        failed_attempts: 0,
+        modules: updatedModules,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) {
+        // Fallback update
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            modules: updatedModules,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId);
+      }
+
+      res.json({ message: "User account unlocked successfully" });
+    } catch (err: any) {
+      console.error("Unlock user error:", err);
       res.status(500).json({ error: err.message });
     }
   });

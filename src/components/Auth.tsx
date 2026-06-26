@@ -55,11 +55,26 @@ export default function Auth({ onClose, isModal = false, isInline = false }: Aut
         if (error) throw error;
         setMessage('Check your email for the confirmation link!');
       } else if (view === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
         });
-        if (error) throw error;
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Authentication failed');
+        }
+        if (data.session) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          });
+          if (sessionError) throw sessionError;
+        } else {
+          throw new Error('Establishment of secure credential matrix failed.');
+        }
       } else if (view === 'forgot-password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/`,

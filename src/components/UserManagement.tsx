@@ -58,6 +58,8 @@ interface AdminUser {
   full_name: string | null;
   role: string;
   modules: string[];
+  is_locked?: boolean;
+  failed_attempts?: number;
 }
 
 const ALL_MODULES = [
@@ -82,10 +84,11 @@ interface TeamDirectoryProps {
   users: AdminUser[];
   onEdit: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
+  onUnlock: (user: AdminUser) => void;
   currentUserProfile: UserProfile | null;
 }
 
-function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDirectoryProps) {
+function TeamDirectory({ users, onEdit, onDelete, onUnlock, currentUserProfile }: TeamDirectoryProps) {
   const getRoleLabel = (role: string) => {
     const frontendRole = mapDbRoleToFrontend(role);
     switch (frontendRole) {
@@ -146,10 +149,12 @@ function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDire
             <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
               {/* Full Name */}
               <td className="py-4 px-6 font-bold text-[#1E293B] capitalize">
-                {user.full_name || 'Anonymous User'}
-                {currentUserProfile?.id === user.id && (
-                  <span className="text-[#00966D] font-normal text-xs normal-case ml-1"> (You)</span>
-                )}
+                <div className="flex flex-col">
+                  <span>{user.full_name || 'Anonymous User'}</span>
+                  {currentUserProfile?.id === user.id && (
+                    <span className="text-[#00966D] font-normal text-xs normal-case"> (You)</span>
+                  )}
+                </div>
               </td>
               
               {/* Email */}
@@ -157,17 +162,34 @@ function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDire
               
               {/* System Role Badge */}
               <td className="py-4 px-6">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border rounded-[4px] uppercase ${getRoleStyle(user.role)}`}>
-                  {getRoleLabel(user.role)}
-                </span>
+                <div className="flex flex-col gap-1 items-start">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide border rounded-[4px] uppercase ${getRoleStyle(user.role)}`}>
+                    {getRoleLabel(user.role)}
+                  </span>
+                  {user.is_locked && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black bg-rose-50 text-rose-600 border border-rose-100 rounded uppercase tracking-wider">
+                      <Lock className="w-2.5 h-2.5" /> Locked
+                    </span>
+                  )}
+                </div>
               </td>
               
               {/* Encrypted Password Placeholder */}
               <td className="py-4 px-6 text-slate-400 font-mono text-xs tracking-widest">
-                <div className="flex items-center gap-1.5 text-[#94A3B8]">
-                  <Key className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>••••••••••••</span>
-                </div>
+                {user.is_locked ? (
+                  <div className="flex items-center gap-1.5 text-rose-500 font-sans text-xs font-bold uppercase tracking-normal">
+                    <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Locked ({user.failed_attempts || 3} Failures)</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[#94A3B8]">
+                    <Key className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>••••••••••••</span>
+                    {user.failed_attempts !== undefined && user.failed_attempts > 0 ? (
+                      <span className="text-[10px] text-amber-500 font-sans tracking-normal font-semibold normal-case">({user.failed_attempts}/3 fails)</span>
+                    ) : null}
+                  </div>
+                )}
               </td>
               
               {/* Created Date */}
@@ -178,6 +200,15 @@ function TeamDirectory({ users, onEdit, onDelete, currentUserProfile }: TeamDire
               {/* Action Buttons */}
               <td className="py-4 px-6 text-right">
                 <div className="flex items-center justify-end gap-2">
+                  {user.is_locked && (
+                    <button 
+                      onClick={() => onUnlock(user)}
+                      className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-all border border-emerald-100 shadow-2xs"
+                      title="Unlock staff credentials"
+                    >
+                      <UserCheck className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  )}
                   <button 
                     onClick={() => onEdit(user)}
                     className="p-2 text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded-md transition-all border border-[#DBEAFE] shadow-2xs"
@@ -878,6 +909,36 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
     }
   };
 
+  const handleUnlockUser = async (user: AdminUser) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Credentials session expired.");
+
+      const res = await fetch('/api/admin/unlock-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId: user.id })
+      });
+
+      const d = await safeParseJson(res);
+      if (!res.ok) {
+        throw new Error(d.error || "Failed to unlock user account.");
+      }
+
+      loadUsersAndRules();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveMatrix = async (updatedRules: ModulePermissionRule[]) => {
     try {
       setRulesLoading(true);
@@ -1028,6 +1089,7 @@ export default function AdminAccessControl({ currentUserProfile, onProfileUpdate
                       users={filteredUsers} 
                       onEdit={(user) => setEditingUser(user)}
                       onDelete={(user) => setDeletingUser(user)}
+                      onUnlock={handleUnlockUser}
                       currentUserProfile={currentUserProfile}
                     />
                   </div>

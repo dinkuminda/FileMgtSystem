@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'Editor', 'viewer')),
   modules TEXT[] DEFAULT ARRAY['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'],
+  is_locked BOOLEAN DEFAULT FALSE,
+  failed_attempts INT DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -24,6 +26,21 @@ DO $$
 BEGIN 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='full_name') THEN
     ALTER TABLE public.profiles ADD COLUMN full_name TEXT;
+  END IF;
+END $$;
+
+-- Ensure is_locked and failed_attempts exist
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='is_locked') THEN
+    ALTER TABLE public.profiles ADD COLUMN is_locked BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='failed_attempts') THEN
+    ALTER TABLE public.profiles ADD COLUMN failed_attempts INT DEFAULT 0;
   END IF;
 END $$;
 
