@@ -110,12 +110,37 @@ const PORT = 3000;
     }
 
     try {
-      // 1. Fetch user's profile to check if already locked
-      const { data: profile, error: pErr } = await supabaseAdmin
+      // 1. Fetch user's profile to check if already locked (safely handle case sensitivity and column existence)
+      let profile: any = null;
+      let pErr: any = null;
+
+      // Try with all columns first using case-insensitive ilike
+      const firstQuery = await supabaseAdmin
         .from('profiles')
         .select('id, email, modules, role, is_locked, failed_attempts')
-        .eq('email', email.trim().toLowerCase())
+        .ilike('email', email.trim())
         .maybeSingle();
+
+      if (firstQuery.error) {
+        console.warn("[LOGIN] Advanced column select failed, retrying with basic profile columns:", firstQuery.error.message);
+        // Retry with only basic columns that we are sure exist
+        const fallbackQuery = await supabaseAdmin
+          .from('profiles')
+          .select('id, email, modules, role')
+          .ilike('email', email.trim())
+          .maybeSingle();
+
+        if (fallbackQuery.error) {
+          pErr = fallbackQuery.error;
+          console.error("[LOGIN] Profile fallback query failed:", fallbackQuery.error.message);
+        } else {
+          profile = fallbackQuery.data;
+        }
+      } else {
+        profile = firstQuery.data;
+      }
+
+      console.log(`[LOGIN ATTEMPT] Email: "${email.trim()}", Profile resolved:`, profile ? { id: profile.id, email: profile.email, has_lock_col: 'is_locked' in profile } : "None");
 
       const isLocked = profile?.is_locked === true || profile?.modules?.includes('LOCKED');
       if (isLocked) {
@@ -131,7 +156,9 @@ const PORT = 3000;
       if (authError) {
         // Invalid credentials. Increment failed attempts
         if (profile) {
-          const prevFailed = profile.failed_attempts !== undefined ? (profile.failed_attempts || 0) : (profile.modules || []).filter((m: string) => m.startsWith('FAIL_')).length;
+          const prevFailed = (profile && 'failed_attempts' in profile && profile.failed_attempts !== null && profile.failed_attempts !== undefined)
+            ? (profile.failed_attempts || 0)
+            : (profile.modules || []).filter((m: string) => m.startsWith('FAIL_')).length;
           const currentFailed = prevFailed + 1;
           const shouldLock = currentFailed >= 3;
 
