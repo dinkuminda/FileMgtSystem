@@ -10,7 +10,7 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'Residence ID': 'RES-B1-01',
   'ETD': 'ETD-B1-01',
   'Yellow Card': 'YC-B1-01',
-  'EOID Under_Age': 'EOIDUA-B1-01',
+  'EOID Under_Age': 'EOIDUA-B1-01-50',
   'Alien Passport': 'AP-B1-01',
   'Eritrean ID': 'ERID-B1-01'
 };
@@ -148,17 +148,21 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       setBoxCounts(prev => ({ ...prev, ...counts }));
 
       let calculatedBox = `${prefix}-B1-01`;
-      let foundNext = false;
-      for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-        for (let sIdx = 1; sIdx <= 50; sIdx++) {
-          const candidate = `${prefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
-          if (!existingBoxes.includes(candidate)) {
-            calculatedBox = candidate;
-            foundNext = true;
-            break;
+      if (recordType === 'EOID Under_Age') {
+        calculatedBox = 'EOIDUA-B1-01-50';
+      } else {
+        let foundNext = false;
+        for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+          for (let sIdx = 1; sIdx <= 50; sIdx++) {
+            const candidate = `${prefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+            if (!existingBoxes.includes(candidate)) {
+              calculatedBox = candidate;
+              foundNext = true;
+              break;
+            }
           }
+          if (foundNext) break;
         }
-        if (foundNext) break;
       }
 
       if (isNewRecord) {
@@ -191,7 +195,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       const prefix = getPrefixForType(recordType);
       setAvailableBoxes([`${prefix}-B1-00`, `${prefix}-B2-00`, `${prefix}-B3-00`]);
       if (isNewRecord) {
-        setFormData(prev => ({ ...prev, box_number: `${prefix}-B1-01` }));
+        setFormData(prev => ({ ...prev, box_number: recordType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01` }));
       }
     }
   };
@@ -652,7 +656,8 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       const prefix = getPrefixForType(type);
       const boxNum = (formData.box_number || '').trim();
       if (!boxNum.toLowerCase().startsWith(prefix.toLowerCase() + '-b')) {
-        throw new Error(`Invalid BOX Number: ${type} records only accept box numbers starting with "${prefix}-B" (e.g., ${prefix}-B1-01).`);
+        const sampleBox = prefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`;
+        throw new Error(`Invalid BOX Number: ${type} records only accept box numbers starting with "${prefix}-B" (e.g., ${sampleBox}).`);
       }
 
       if (formData.passport_number && type !== 'ETD' && type !== 'Eritrean ID') {
@@ -771,27 +776,33 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           }
 
           let calculatedBox = `${currentPrefix}-B1-01`;
-          let foundNext = false;
-          for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-            for (let sIdx = 1; sIdx <= 50; sIdx++) {
-              const candidate = `${currentPrefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
-              if (!existingBoxes.includes(candidate)) {
-                calculatedBox = candidate;
-                foundNext = true;
-                break;
+          if (type === 'EOID Under_Age') {
+            calculatedBox = 'EOIDUA-B1-01-50';
+          } else {
+            let foundNext = false;
+            for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+              for (let sIdx = 1; sIdx <= 50; sIdx++) {
+                const candidate = `${currentPrefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+                if (!existingBoxes.includes(candidate)) {
+                  calculatedBox = candidate;
+                  foundNext = true;
+                  break;
+                }
               }
+              if (foundNext) break;
             }
-            if (foundNext) break;
           }
           basePayload.box_number = formData.box_number || calculatedBox;
         } catch (e) {
           console.error(`Error evaluating final box number for ${type}, using current state value:`, e);
           const currentPrefix = getPrefixForType(type);
-          basePayload.box_number = formData.box_number || `${currentPrefix}-B1-01`;
+          const fallbackBox = type === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+          basePayload.box_number = formData.box_number || fallbackBox;
         }
       } else {
         const currentPrefix = getPrefixForType(type);
-        basePayload.box_number = formData.box_number || `${currentPrefix}-B1-01`;
+        const fallbackBox = type === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+        basePayload.box_number = formData.box_number || fallbackBox;
       }
       basePayload.attachments = formData.attachments_json;
 
@@ -1098,7 +1109,9 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500">
-                          Allocating sequential slots: {prefix}-B1-01 to {prefix}-B1-50, then {prefix}-B2-01 to {prefix}-B2-50 etc.
+                          {prefix === 'EOIDUA' 
+                            ? 'Allocating physical archive slot: EOIDUA-B1-01-50' 
+                            : `Allocating sequential slots: ${prefix}-B1-01 to ${prefix}-B1-50, then ${prefix}-B2-01 to ${prefix}-B2-50 etc.`}
                         </p>
                       </div>
                       <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
@@ -1124,22 +1137,9 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
 
                {/* Field 1.5: Personal ID No. for all records */}
               <div className="flex flex-col gap-1.5" id="form-personal-id-no-container">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>Personal ID No.</span>
-                    <span className="bg-emerald-50 text-[#1b8b58] text-[9px] font-black uppercase tracking-wider border border-emerald-100 px-1.5 py-0.5 rounded">
-                      Auto-Sequential
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={generateNextId}
-                    disabled={isGeneratingId}
-                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 px-2 py-0.5 rounded transition-all border-none cursor-pointer flex items-center gap-1"
-                  >
-                    {isGeneratingId ? 'Generating...' : 'Re-Generate ↺'}
-                  </button>
-                </div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Personal ID No.
+                </label>
                 <input
                   required
                   placeholder="e.g. PID-987654"

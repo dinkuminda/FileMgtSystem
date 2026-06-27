@@ -640,7 +640,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           'Residence ID': 'RES-B1-01',
           'ETD': 'ETD-B1-01',
           'Yellow Card': 'YC-B1-01',
-          'EOID Under_Age': 'EOIDUA-B1-01',
+          'EOID Under_Age': 'EOIDUA-B1-01-50',
           'Alien Passport': 'AP-B1-01',
           'Eritrean ID': 'ERID-B1-01'
         };
@@ -708,25 +708,29 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           if (needsBoxAllocation) {
             let calculatedBox = `${pfx}-B1-01`;
-            let foundNext = false;
-            
-            // Build count map of currently assigned boxes in the import batch + database
-            const counts: Record<string, number> = {};
-            existingBoxes.forEach(b => {
-              counts[b] = (counts[b] || 0) + 1;
-            });
-            
-            for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-              for (let sIdx = 1; sIdx <= 50; sIdx++) {
-                const padSIdx = sIdx < 10 ? `0${sIdx}` : sIdx.toString();
-                const candidate = `${pfx}-B${bIdx}-${padSIdx}`;
-                if ((counts[candidate] || 0) === 0) {
-                  calculatedBox = candidate;
-                  foundNext = true;
-                  break;
+            if (activeTab === 'EOID Under_Age') {
+              calculatedBox = 'EOIDUA-B1-01-50';
+            } else {
+              let foundNext = false;
+              
+              // Build count map of currently assigned boxes in the import batch + database
+              const counts: Record<string, number> = {};
+              existingBoxes.forEach(b => {
+                counts[b] = (counts[b] || 0) + 1;
+              });
+              
+              for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+                for (let sIdx = 1; sIdx <= 50; sIdx++) {
+                  const padSIdx = sIdx < 10 ? `0${sIdx}` : sIdx.toString();
+                  const candidate = `${pfx}-B${bIdx}-${padSIdx}`;
+                  if ((counts[candidate] || 0) === 0) {
+                    calculatedBox = candidate;
+                    foundNext = true;
+                    break;
+                  }
                 }
+                if (foundNext) break;
               }
-              if (foundNext) break;
             }
             finalRow.box_number = calculatedBox;
             existingBoxes.push(calculatedBox);
@@ -761,7 +765,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           const boxNum = (row.box_number || '').toString().trim();
           const expectedPrefix = getPrefixForType(activeTab as RecordType);
           if (!boxNum.toLowerCase().startsWith(`${expectedPrefix.toLowerCase()}-b`)) {
-            throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". ${activeTab} records only accept box numbers starting with "${expectedPrefix}-B" (e.g., ${expectedPrefix}-B1-01).`);
+            const exampleBox = expectedPrefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${expectedPrefix}-B1-01`;
+            throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". ${activeTab} records only accept box numbers starting with "${expectedPrefix}-B" (e.g., ${exampleBox}).`);
           }
         }
 
