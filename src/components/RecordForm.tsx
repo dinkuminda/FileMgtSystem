@@ -657,11 +657,11 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       const tableName = TABLE_MAP[activeFormType];
 
       // Enforce only correct prefix box numbers (e.g. VS-B1-01) for the record type
-      const prefix = getPrefixForType(type);
+      const prefix = getPrefixForType(activeFormType);
       const boxNum = (formData.box_number || '').trim();
       if (!boxNum.toLowerCase().startsWith(prefix.toLowerCase() + '-b')) {
         const sampleBox = prefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`;
-        throw new Error(`Invalid BOX Number: ${type} records only accept box numbers starting with "${prefix}-B" (e.g., ${sampleBox}).`);
+        throw new Error(`Invalid BOX Number: ${activeFormType} records only accept box numbers starting with "${prefix}-B" (e.g., ${sampleBox}).`);
       }
 
       if (formData.passport_number && type !== 'ETD' && type !== 'Eritrean ID') {
@@ -762,7 +762,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       // Ensure each module is assigned to a dynamic or default physical cabinet box
       if (!record) {
         try {
-          const currentPrefix = getPrefixForType(type);
+          const currentPrefix = getPrefixForType(activeFormType);
           let existingBoxes: string[] = [];
           const { data, error: fetchError } = await supabase
             .from(tableName)
@@ -771,7 +771,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           if (!fetchError && data) {
             existingBoxes = data.map((r: any) => r.box_number || '');
           } else {
-            const storedKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const storedKey = 'local_records_' + activeFormType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storedKey);
             if (stored) {
               const parsed = JSON.parse(stored);
@@ -780,7 +780,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           }
 
           let calculatedBox = `${currentPrefix}-B1-01`;
-          if (type === 'EOID Under_Age') {
+          if (activeFormType === 'EOID Under_Age') {
             calculatedBox = 'EOIDUA-B1-01-50';
           } else {
             let foundNext = false;
@@ -798,14 +798,14 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           }
           basePayload.box_number = formData.box_number || calculatedBox;
         } catch (e) {
-          console.error(`Error evaluating final box number for ${type}, using current state value:`, e);
-          const currentPrefix = getPrefixForType(type);
-          const fallbackBox = type === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+          console.error(`Error evaluating final box number for ${activeFormType}, using current state value:`, e);
+          const currentPrefix = getPrefixForType(activeFormType);
+          const fallbackBox = activeFormType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
           basePayload.box_number = formData.box_number || fallbackBox;
         }
       } else {
-        const currentPrefix = getPrefixForType(type);
-        const fallbackBox = type === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+        const currentPrefix = getPrefixForType(activeFormType);
+        const fallbackBox = activeFormType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
         basePayload.box_number = formData.box_number || fallbackBox;
       }
       basePayload.attachments = formData.attachments_json;
