@@ -200,15 +200,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
     }
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      loadBoxesAndCounts(type, !record);
-      if (!record) {
-        generateNextId();
-      }
-    }
-  }, [isOpen, record, type]);
-  
+
   // Custom upload / scan states for the new structured upload panels (from user image)
   const [scanningDocIdx, setScanningDocIdx] = useState<number | null>(null);
   const [activeChecklistUploadIdx, setActiveChecklistUploadIdx] = useState<number | null>(null);
@@ -521,6 +513,18 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
 
     }
   }, [record, type, defaultBoxNumber]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const activeType = (type === 'EOID' || type === 'EOID Under_Age')
+        ? (formData.under_age ? 'EOID Under_Age' : 'EOID')
+        : type;
+      loadBoxesAndCounts(activeType, !record);
+      if (!record) {
+        generateNextId();
+      }
+    }
+  }, [isOpen, record, type, formData.under_age]);
 
   const fetchAttachments = async (recordId: string) => {
     const { data, error } = await supabase
@@ -1091,8 +1095,11 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
               <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">BOX Number</label>
                 {(() => {
-                  const prefix = getPrefixForType(type);
-                  const displayBoxNum = formData.box_number || `${prefix}-B1-01`;
+                  const activeType = (type === 'EOID' || type === 'EOID Under_Age')
+                    ? (formData.under_age ? 'EOID Under_Age' : 'EOID')
+                    : type;
+                  const prefix = getPrefixForType(activeType);
+                  const displayBoxNum = formData.box_number || (activeType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`);
                   const m = displayBoxNum.match(new RegExp(`^${prefix}-B(\\d+)`));
                   const parentBox = m ? `${prefix}-B${m[1]}-00` : `${prefix}-B1-00`;
                   const count = boxCounts[parentBox] || 0;
