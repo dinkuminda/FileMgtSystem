@@ -12,97 +12,119 @@ export default function AuditLogView({ filter }: { filter?: string }) {
 
   const fetchLogs = async () => {
     setLoading(true);
-    let query = supabase
-      .from('audit_logs')
-      .select('*');
-    
-    if (filter) {
-      query = query.eq('entity_type', filter);
+    let loadedFromDb = false;
+    try {
+      let query = supabase
+        .from('audit_logs')
+        .select('*');
+      
+      if (filter) {
+        query = query.eq('entity_type', filter);
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (!error && data && data.length > 0) {
+        setLogs(data as AuditLog[]);
+        loadedFromDb = true;
+      }
+    } catch (err) {
+      console.warn("Supabase audit log fetch error, reading local storage:", err);
     }
 
-    const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (!error && data) setLogs(data as AuditLog[]);
+    if (!loadedFromDb) {
+      // Load from localStorage fallback
+      try {
+        const localLogsStr = localStorage.getItem('local_audit_logs') || '[]';
+        let localLogs = JSON.parse(localLogsStr) as AuditLog[];
+        if (filter) {
+          localLogs = localLogs.filter(log => log.entity_type === filter);
+        }
+        setLogs(localLogs.slice(0, 100));
+      } catch (e) {
+        console.error("Failed to parse local audit logs fallback:", e);
+      }
+    }
     setLoading(false);
   };
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case 'CREATE': return 'text-[var(--m3-primary)] bg-[var(--m3-primary-container)]';
-      case 'UPDATE': return 'text-[var(--m3-secondary)] bg-[var(--m3-secondary-container)]';
-      case 'DELETE': return 'text-[var(--m3-error)] bg-[var(--m3-error-container)]';
-      case 'LOGIN': return 'text-[var(--m3-tertiary)] bg-[var(--m3-tertiary-container)]';
-      default: return 'text-[var(--m3-on-surface-variant)] bg-[var(--m3-surface-container-high)]';
+      case 'CREATE': return 'text-emerald-700 bg-emerald-50 border border-emerald-100';
+      case 'UPDATE': return 'text-blue-700 bg-blue-50 border border-blue-100';
+      case 'DELETE': return 'text-rose-750 bg-rose-50 border border-rose-100';
+      case 'LOGIN': return 'text-violet-750 bg-violet-50 border border-violet-100';
+      default: return 'text-slate-600 bg-slate-50 border border-slate-150';
     }
   };
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-20">
-        <Loader2 className="w-12 h-12 animate-spin mb-6 text-[var(--m3-primary)] opacity-40" />
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--m3-on-surface-variant)]">Streaming Audit Trail...</p>
+        <Loader2 className="w-10 h-10 animate-spin mb-4 text-emerald-600 opacity-60" />
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Streaming Audit Trail...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-10">
+    <div className="p-6 md:p-8 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-[var(--m3-surface-container-high)] rounded-2xl text-[var(--m3-primary)]">
-            <ShieldCheck className="w-7 h-7" />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+            <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-[var(--m3-on-surface)] tracking-tight">Security Audit Logs</h3>
-            <p className="text-xs font-black uppercase tracking-widest text-[var(--m3-on-surface-variant)] opacity-50">System-wide event tracking</p>
+            <h3 className="text-xl font-bold text-slate-800 tracking-tight">Security Audit Logs</h3>
+            <p className="text-xs font-medium text-slate-500">System-wide event tracking</p>
           </div>
         </div>
         <button 
           onClick={fetchLogs}
-          className="m3-button-filled !bg-[var(--m3-surface-container-highest)] !text-[var(--m3-on-surface)] !shadow-none hover:bg-[var(--m3-primary-container)] hover:text-[var(--m3-on-primary-container)] px-6 py-2.5 text-[10px]"
+          className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer"
         >
           Refresh Feed
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {logs.map((log) => (
           <div 
             key={log.id} 
-            className="flex items-start justify-between p-6 bg-[var(--m3-surface-container)] rounded-[2rem] border border-[var(--m3-outline)]/5 transition-all hover:bg-[var(--m3-surface-container-high)] group"
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-white rounded-xl border border-slate-200/80 hover:border-slate-350 transition-all shadow-xs group"
           >
-            <div className="flex items-start gap-5">
-              <div className={`p-4 rounded-2xl ${getActionColor(log.action)} shadow-sm transition-transform group-hover:scale-110`}>
-                <Activity className="w-6 h-6" />
+            <div className="flex items-start gap-4">
+              <div className={`p-3.5 rounded-xl ${getActionColor(log.action)} shadow-xs transition-transform group-hover:scale-105`}>
+                <Activity className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter ${getActionColor(log.action)}`}>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${getActionColor(log.action)}`}>
                     {log.action}
                   </span>
-                  <span className="text-sm font-bold text-[var(--m3-on-surface)]">
+                  <span className="text-xs font-bold text-slate-700">
                     {log.entity_type} Management
                   </span>
                 </div>
-                <p className="text-sm text-[var(--m3-on-surface-variant)] mt-2 font-medium leading-relaxed">{log.details}</p>
-                <div className="flex flex-wrap items-center gap-5 mt-4">
-                  <div className="flex items-center gap-2 text-[10px] text-[var(--m3-on-surface-variant)] font-black uppercase tracking-widest">
-                    <User className="w-4 h-4 text-[var(--m3-primary)]" />
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">{log.details}</p>
+                <div className="flex flex-wrap items-center gap-4 pt-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                    <User className="w-3.5 h-3.5 text-slate-350" />
                     <span>{log.user_email}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-[var(--m3-on-surface-variant)] font-black uppercase tracking-widest">
-                    <Calendar className="w-4 h-4 text-[var(--m3-primary)]" />
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                    <Calendar className="w-3.5 h-3.5 text-slate-350" />
                     <span>{new Date(log.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   </div>
                 </div>
               </div>
             </div>
             {log.entity_id && (
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[9px] font-black text-[var(--m3-on-surface-variant)] opacity-30 uppercase tracking-[0.2em]">Trace ID</span>
-                <span className="text-[10px] font-mono text-[var(--m3-on-surface-variant)] opacity-40 font-bold">
+              <div className="flex flex-col items-start sm:items-end gap-0.5 self-start sm:self-center">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Trace ID</span>
+                <span className="text-[10px] font-mono text-slate-500 font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
                   {log.entity_id.slice(0, 12)}
                 </span>
               </div>
@@ -111,9 +133,9 @@ export default function AuditLogView({ filter }: { filter?: string }) {
         ))}
 
         {logs.length === 0 && (
-          <div className="text-center py-24 rounded-[3rem] border-2 border-dashed border-[var(--m3-outline)]/10 bg-[var(--m3-surface-container)]/30">
-            <Activity className="w-16 h-16 mx-auto text-[var(--m3-outline)] opacity-10 mb-4" />
-            <p className="text-sm font-bold text-[var(--m3-on-surface-variant)] uppercase tracking-widest">No Security Events Recorded</p>
+          <div className="text-center py-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
+            <Activity className="w-12 h-12 mx-auto text-slate-300 opacity-60 mb-3 animate-pulse" />
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Security Events Recorded</p>
           </div>
         )}
       </div>

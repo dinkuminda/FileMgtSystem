@@ -14,47 +14,12 @@
 }
 
 @layer base {
-  :root {
-    /* Flat Modern Palette - Decoupled from Material/Flutter */
-    --m3-primary: #2b825a; /* Emerald */
-    --m3-on-primary: #ffffff;
-    --m3-primary-container: #ecf7f1;
-    --m3-on-primary-container: #135234;
-    
-    --m3-secondary: #475569; /* Slate 600 */
-    --m3-on-secondary: #ffffff;
-    --m3-secondary-container: #f1f5f9;
-    --m3-on-secondary-container: #0f172a;
-
-    --m3-surface: #fafbfc; /* Slate 50 background */
-    --m3-on-surface: #0f172a; /* Slate 900 text */
-    --m3-surface-container: #ffffff;
-    --m3-surface-container-high: #f8fafc;
-    --m3-outline: #cbd5e1; /* Slate 300 divider */
-    --m3-outline-variant: #e2e8f0; /* Slate 200 border */
-
-    /* Generic Standard Theme Aliases */
-    --clr-background: #fafbfc;
-    --clr-heading: #0f172a;
-    --clr-text: #334155; /* Slate 700 */
-    --clr-primary: #2b825a;
-  }
-
   body {
     @apply bg-slate-50 text-slate-700 selection:bg-emerald-100 selection:text-emerald-950 antialiased;
   }
 }
 
 @layer components {
-  /* Flat elegant custom card with 16px rounding */
-  .flutter-card, .dashboard-card {
-    @apply bg-white rounded-2xl border border-slate-100 shadow-xs transition-all duration-300 hover:shadow-xs;
-  }
-
-  .flutter-card-elevated, .dashboard-card-elevated {
-    @apply bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100/50 transition-all duration-300;
-  }
-
   /* Custom Navigation Sidebar Links */
   .sidebar-link {
     @apply flex items-center gap-4 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer;
@@ -83,18 +48,6 @@
 
   .bottom-nav-link-inactive .bottom-nav-icon-container {
     @apply text-slate-400;
-  }
-
-  .m3-button-filled {
-    @apply bg-[#2b825a] hover:bg-[#206243] text-white px-6 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border-none cursor-pointer outline-none shadow-sm;
-  }
-  
-  .m3-input {
-    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all;
-  }
-
-  .m3-fab {
-    @apply fixed bottom-24 md:bottom-8 right-6 w-14 h-14 md:w-16 md:h-16 bg-[#2b825a] hover:bg-[#206243] text-white rounded-2xl shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-40 border-none cursor-pointer outline-none;
   }
 
   .scrollbar-hide::-webkit-scrollbar {

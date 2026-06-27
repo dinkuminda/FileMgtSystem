@@ -127,23 +127,72 @@ export interface AuditLog {
 
 export const logger = {
   log: async (action: AuditLog['action'], entity_type: string, details: string, entity_id?: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    let uid = '00000000-0000-0000-0000-000000000000';
+    let uemail = 'system@immigration.gov.et';
 
-    const { error } = await supabase.from('audit_logs').insert([
-      {
-        user_id: user.id,
-        user_email: user.email,
-        action,
-        entity_type,
-        entity_id,
-        details,
-        created_at: new Date().toISOString()
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        uid = user.id;
+        uemail = user.email || 'user@immigration.gov.et';
+      } else {
+        // Try to get from localStorage if available
+        const url = (import.meta as any).env.VITE_SUPABASE_URL || '';
+        const storedSession = localStorage.getItem('sb-' + url + '-auth-token');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            if (parsed?.user) {
+              uid = parsed.user.id;
+              uemail = parsed.user.email || 'user@immigration.gov.et';
+            }
+          } catch (_) {}
+        }
       }
-    ]);
+    } catch (_) {}
 
-    if (error) {
-      console.error('Audit Log Error:', error);
+    const newLogEntry: AuditLog = {
+      id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+      user_id: uid,
+      user_email: uemail,
+      action,
+      entity_type,
+      entity_id,
+      details,
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Always append to localStorage cache
+    try {
+      const existingLogsStr = localStorage.getItem('local_audit_logs') || '[]';
+      const existingLogs = JSON.parse(existingLogsStr);
+      existingLogs.unshift(newLogEntry);
+      // Limit to 200 logs locally
+      localStorage.setItem('local_audit_logs', JSON.stringify(existingLogs.slice(0, 200)));
+    } catch (e) {
+      console.error('Failed to write to local audit logs:', e);
+    }
+
+    // 2. Attempt Supabase write if configured
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('audit_logs').insert([
+          {
+            user_id: uid,
+            user_email: uemail,
+            action,
+            entity_type,
+            entity_id,
+            details,
+            created_at: newLogEntry.created_at
+          }
+        ]);
+        if (error) {
+          console.warn('Supabase Audit Log insert failed (using local fallback):', error.message || error);
+        }
+      } catch (err: any) {
+        console.warn('Supabase Audit Log insert failed (using local fallback):', err.message || err);
+      }
     }
   }
 };

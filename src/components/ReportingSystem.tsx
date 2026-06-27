@@ -207,8 +207,8 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-20">
-        <Loader2 className="w-12 h-12 animate-spin mb-6 text-[var(--m3-primary)] opacity-40" />
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--m3-on-surface-variant)]">Compiling Analytical Data...</p>
+        <Loader2 className="w-10 h-10 animate-spin mb-4 text-emerald-600 opacity-60" />
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Compiling Analytical Data...</p>
       </div>
     );
   }
@@ -477,39 +477,39 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
 
       {/* Visual Analysis & Table */}
       {!reportReady ? (
-        <div className="flex flex-col items-center justify-center py-32 m3-card bg-transparent border-2 border-dashed border-[var(--m3-outline)]/10">
+        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border-2 border-dashed border-slate-200">
           <div className="relative mb-8">
-            <BarChart3 className="w-20 h-20 text-[var(--m3-primary)] opacity-5" />
-            <Search className="w-10 h-10 text-[var(--m3-primary)] absolute bottom-0 right-0 animate-bounce" />
+            <BarChart3 className="w-16 h-16 text-slate-300 animate-pulse" />
+            <Search className="w-8 h-8 text-emerald-600 absolute bottom-0 right-0 animate-bounce" />
           </div>
-          <h4 className="text-lg font-bold text-[var(--m3-on-surface)] opacity-30">Analysis Pending</h4>
-          <p className="text-xs text-[var(--m3-on-surface-variant)] mt-2 uppercase tracking-widest opacity-40">Apply filters to stream intelligence data</p>
+          <h4 className="text-lg font-bold text-slate-700">Analysis Pending</h4>
+          <p className="text-xs text-slate-400 mt-2 uppercase tracking-widest font-semibold">Apply filters to stream intelligence data</p>
         </div>
       ) : (
         <div className="space-y-10">
           {isGenerating ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-16 h-16 animate-spin text-[var(--m3-primary)] opacity-10 mb-6" />
-              <p className="text-xs font-black uppercase tracking-widest text-[var(--m3-on-surface-variant)] opacity-40">Re-indexing analytical core...</p>
+              <Loader2 className="w-12 h-12 animate-spin text-emerald-600 opacity-60 mb-4" />
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Re-indexing analytical core...</p>
             </div>
           ) : (
             <>
               {/* Visual Analysis */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-                <div className="m3-card p-8">
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
                   <div className="flex items-center gap-3 mb-8">
-                    <FileText className="w-5 h-5 text-[var(--m3-primary)]" />
-                    <h4 className="font-bold text-[var(--m3-on-surface)] uppercase tracking-tight">Record Distribution</h4>
+                    <FileText className="w-5 h-5 text-emerald-600" />
+                    <h4 className="font-bold text-slate-800 uppercase tracking-tight text-sm">Record Distribution</h4>
                   </div>
                   <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="var(--m3-outline)" opacity={0.1} />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: 'var(--m3-on-surface-variant)', opacity: 0.6 }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: 'var(--m3-on-surface-variant)', opacity: 0.6 }} />
+                        <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" opacity={0.8} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} />
                         <Tooltip 
-                          cursor={{ fill: 'var(--m3-surface-container-highest)', opacity: 0.3 }}
-                          contentStyle={{ borderRadius: '24px', border: 'none', backgroundColor: 'var(--m3-surface-container-high)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                          cursor={{ fill: '#f8fafc', opacity: 0.5 }}
+                          contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
                         <Bar dataKey="value" radius={[12, 12, 0, 0]} barSize={40}>
                           {chartData.map((entry, index) => (
@@ -521,22 +521,22 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
                   </div>
                 </div>
 
-                <div className="m3-card p-8">
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
                   <div className="flex items-center gap-3 mb-8">
-                    <Globe className="w-5 h-5 text-[var(--m3-secondary)]" />
-                    <h4 className="font-bold text-[var(--m3-on-surface)] uppercase tracking-tight">Geographic Intelligence</h4>
+                    <Globe className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-bold text-slate-800 uppercase tracking-tight text-sm">Geographic Intelligence</h4>
                   </div>
                   <div className="h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={countryData} layout="vertical">
-                        <CartesianGrid strokeDasharray="2 4" horizontal={false} stroke="var(--m3-outline)" opacity={0.1} />
+                        <CartesianGrid strokeDasharray="2 4" horizontal={false} stroke="#f1f5f9" opacity={0.8} />
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: 'var(--m3-on-surface-variant)', opacity: 0.6 }} />
+                        <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} />
                         <Tooltip 
-                          cursor={{ fill: 'var(--m3-surface-container-highest)', opacity: 0.3 }}
-                          contentStyle={{ borderRadius: '24px', border: 'none', backgroundColor: 'var(--m3-surface-container-high)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                          cursor={{ fill: '#f8fafc', opacity: 0.5 }}
+                          contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                         />
-                        <Bar dataKey="value" fill="var(--m3-primary)" radius={[0, 12, 12, 0]} barSize={20} />
+                        <Bar dataKey="value" fill="#2b825a" radius={[0, 12, 12, 0]} barSize={20} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -544,72 +544,72 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
               </div>
 
               {/* Detailed Results Table */}
-              <div className="m3-card-elevated !p-0 overflow-hidden border border-[var(--m3-outline-variant)]/30 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-                <div className="p-8 border-b border-[var(--m3-outline-variant)]/30 flex items-center justify-between bg-[var(--m3-surface-container-low)]">
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs animate-in fade-in slide-in-from-bottom-10 duration-1000">
+                <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/30">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-[var(--m3-surface-container-highest)] rounded-2xl text-[var(--m3-primary)]">
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
                       <Search className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-[var(--m3-on-surface)]">Raw Intelligence Feed</h4>
-                      <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-widest opacity-50">Filtered granularity</p>
+                      <h4 className="font-bold text-slate-850 text-base leading-tight">Raw Intelligence Feed</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Filtered granularity</p>
                     </div>
                   </div>
-                  <span className="px-4 py-1.5 bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-150 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-xs">
                     {filteredData.length} UNITS LOCALIZED
                   </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-[var(--m3-surface-container)]/30 border-b border-[var(--m3-outline-variant)]/20">
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em]">Registry Date</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em]">Subject Name</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em]">Credential ID</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em]">Origin</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em]">Classification</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.2em] text-right">Ref Code</th>
+                      <tr className="bg-slate-50/50 border-b border-slate-100">
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registry Date</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subject Name</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Credential ID</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Origin</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Classification</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Ref Code</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--m3-outline-variant)]/20">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredData.slice(0, 50).map((record: any) => (
-                        <tr key={record.id} className="hover:bg-[var(--m3-surface-container-high)] transition-all group">
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-3 text-xs font-bold text-[var(--m3-on-surface-variant)] font-mono">
-                              <Calendar className="w-4 h-4 text-[var(--m3-primary)] opacity-40" />
+                        <tr key={record.id} className="hover:bg-slate-50/60 transition-all group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 font-mono">
+                              <Calendar className="w-4 h-4 text-slate-450 opacity-60" />
                               <span>{new Date(record.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })}</span>
                             </div>
                           </td>
-                          <td className="px-8 py-5">
-                            <span className="text-sm font-bold text-[var(--m3-on-surface)] group-hover:text-[var(--m3-primary)] transition-colors">{record.full_name}</span>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-semibold text-slate-850 group-hover:text-emerald-600 transition-colors">{record.full_name}</span>
                           </td>
-                          <td className="px-8 py-5">
-                            <span className="text-xs font-mono font-bold text-[var(--m3-on-surface-variant)] opacity-70">{record.passport_number || record.id_number || 'N/A'}</span>
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-mono font-bold text-slate-500">{record.passport_number || record.id_number || 'N/A'}</span>
                           </td>
-                          <td className="px-8 py-5">
-                            <span className="text-xs font-bold text-[var(--m3-on-surface-variant)] bg-[var(--m3-surface-container-high)] px-3 py-1 rounded-lg">
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-lg">
                               {record.citizenship}
                             </span>
                           </td>
-                          <td className="px-8 py-5">
-                            <span className="inline-flex px-3 py-1 rounded-full text-[10px] font-black bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)] uppercase tracking-tighter shadow-sm">
+                          <td className="px-6 py-4">
+                            <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-100 text-emerald-700 uppercase tracking-wide">
                               {record.record_type}
                             </span>
                           </td>
-                          <td className="px-8 py-5 text-right font-mono text-xs font-bold text-[var(--m3-primary)]">
+                          <td className="px-6 py-4 text-right font-mono text-xs font-bold text-emerald-600">
                             {record.visa_number || record.request_number || record.residence_number || record.file_number || 'TRK-XXX'}
                           </td>
                         </tr>
                       ))}
                       {filteredData.length > 50 && (
                         <tr>
-                          <td colSpan={6} className="px-8 py-8 text-center bg-[var(--m3-surface-container-low)]/50">
-                            <p className="text-[10px] font-black text-[var(--m3-on-surface-variant)] uppercase tracking-[0.3em] opacity-40">
+                          <td colSpan={6} className="px-6 py-6 text-center bg-slate-50/30">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                               + {filteredData.length - 50} ADDITIONAL SUBJECTS ENUMERATED
                             </p>
                             <button 
                               onClick={exportFilteredData}
-                              className="mt-3 text-[10px] font-black text-[var(--m3-primary)] uppercase tracking-widest hover:underline"
+                              className="mt-2 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider hover:underline transition-all"
                             >
                               Download Full CSV Intelligence Manifest
                             </button>
@@ -618,7 +618,7 @@ export default function ReportingSystem({ userProfile }: ReportingSystemProps) {
                       )}
                       {filteredData.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-8 py-20 text-center text-[var(--m3-on-surface-variant)] italic">
+                          <td colSpan={6} className="px-6 py-16 text-center text-slate-400 italic text-xs font-medium">
                             No subjects localized within the current temporal or geographic parameters.
                           </td>
                         </tr>
