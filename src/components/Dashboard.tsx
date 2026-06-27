@@ -135,6 +135,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'Ethiopian Origin ID' },
+    { type: 'EOID Under_Age', icon: Baby, label: 'EOID Under Age' },
     { type: 'Alien Passport', icon: CreditCard, label: 'Alien Passport' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
@@ -281,47 +282,28 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     setSchemaError(null);
     
     try {
+      const tableName = TABLE_MAP[activeTab as RecordType];
+      if (!tableName) {
+        throw new Error(`No table mapped for active tab: ${activeTab}`);
+      }
+      let query = supabase.from(tableName).select('*').order('created_at', { ascending: false });
       if (activeTab === 'EOID') {
-        const [eoidRes, underageRes] = await Promise.all([
-          supabase.from('eoid_records').select('*').order('created_at', { ascending: false }),
-          supabase.from('eoid_underage_records').select('*').order('created_at', { ascending: false })
-        ]);
+        query = query.or('under_age.eq.false,under_age.is.null');
+      } else if (activeTab === 'EOID Under_Age') {
+        query = query.eq('under_age', true);
+      }
+      const { data, error } = await query;
 
-        if (eoidRes.error) throw eoidRes.error;
-        if (underageRes.error) throw underageRes.error;
-
-        const combined = [
-          ...(eoidRes.data || []).map(r => ({ ...r, _table: 'eoid_records', under_age: r.under_age ?? false })),
-          ...(underageRes.data || []).map(r => ({ ...r, _table: 'eoid_underage_records', under_age: r.under_age ?? true }))
-        ];
-
-        combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-
+      if (!error && data) {
         const rRole = (userProfile?.role as string || '').toLowerCase();
         const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
-        let filteredCombined = combined;
+        let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
         if (!isElevated && userProfile?.id) {
-          filteredCombined = combined.filter(r => r.created_by === userProfile.id);
+          mappedData = mappedData.filter(r => r.created_by === userProfile.id);
         }
-        setRecords(filteredCombined as ImmigrationRecord[]);
+        setRecords(mappedData);
       } else {
-        const tableName = TABLE_MAP[activeTab as RecordType];
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data) {
-          const rRole = (userProfile?.role as string || '').toLowerCase();
-          const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
-          let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
-          if (!isElevated && userProfile?.id) {
-            mappedData = mappedData.filter(r => r.created_by === userProfile.id);
-          }
-          setRecords(mappedData);
-        } else {
-          throw error || new Error("Failed to load");
-        }
+        throw error || new Error("Failed to load");
       }
     } catch (e: any) {
       console.warn(`Error or missing table on fetching ${activeTab} records, applying fallback:`, e?.message || e);
@@ -333,43 +315,51 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         setSchemaError(null);
       }
       
-      if (activeTab === 'EOID') {
-        const storedNormal = localStorage.getItem('local_records_eoid') || '[]';
-        const storedUnderage = localStorage.getItem('local_records_eoid_under_age') || '[]';
+      const useSharedEoid = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
+      const storageKey = useSharedEoid ? 'local_records_eoid' : 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      
+      const stored = localStorage.getItem(storageKey);
+      let parsed = [];
+      if (useSharedEoid) {
+        const normalStored = localStorage.getItem('local_records_eoid');
+        const underageStored = localStorage.getItem('local_records_eoid_under_age');
         
-        let valNormal = JSON.parse(storedNormal);
-        let valUnderage = JSON.parse(storedUnderage);
-        if (valUnderage.length === 0 && !localStorage.getItem('local_records_eoid_under_age')) {
-          valUnderage = DEFAULT_EOID_UNDERAGE_MOCKS;
-          localStorage.setItem('local_records_eoid_under_age', JSON.stringify(DEFAULT_EOID_UNDERAGE_MOCKS));
+        const merged: any[] = [];
+        if (normalStored) {
+          try {
+            merged.push(...JSON.parse(normalStored).map((r: any) => ({ ...r, under_age: r.under_age ?? false })));
+          } catch (_) {}
         }
-
-        const combinedLocal = [
-          ...valNormal.map((r: any) => ({ ...r, under_age: r.under_age ?? false, _table: 'eoid_records' })),
-          ...valUnderage.map((r: any) => ({ ...r, under_age: r.under_age ?? true, _table: 'eoid_underage_records' }))
-        ];
-        combinedLocal.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        if (underageStored) {
+          try {
+            merged.push(...JSON.parse(underageStored).map((r: any) => ({ ...r, under_age: true })));
+          } catch (_) {}
+        } else if (!normalStored) {
+          merged.push(...DEFAULT_EOID_UNDERAGE_MOCKS.map((r: any) => ({ ...r, under_age: true })));
+        }
         
-        const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
-        let filteredLocal = combinedLocal;
-        if (!isElevated && userProfile?.id) {
-          filteredLocal = combinedLocal.filter(r => r.created_by === userProfile.id);
+        if (!normalStored && merged.length > 0) {
+          localStorage.setItem('local_records_eoid', JSON.stringify(merged));
         }
-        setRecords(filteredLocal);
+        
+        parsed = merged;
+        if (activeTab === 'EOID') {
+          parsed = parsed.filter((r: any) => !r.under_age);
+        } else {
+          parsed = parsed.filter((r: any) => !!r.under_age);
+        }
       } else {
-        const tableKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        const stored = localStorage.getItem(tableKey) || '[]';
-        const parsed = JSON.parse(stored);
-        let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
-        
-        const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
-        if (!isElevated && userProfile?.id) {
-          mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
-        }
-        setRecords(mappedParsed);
+        parsed = stored ? JSON.parse(stored) : [];
       }
+      
+      let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
+      
+      const rRole = (userProfile?.role as string || '').toLowerCase();
+      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
+      if (!isElevated && userProfile?.id) {
+        mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
+      }
+      setRecords(mappedParsed);
     }
     setLoading(false);
   };
@@ -408,15 +398,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (error) throw error;
       } catch (dbErr) {
-        if (activeTab === 'EOID') {
-          const isUnderAge = (record as any)?.under_age;
-          const storageKey = isUnderAge ? 'local_records_eoid_under_age' : 'local_records_eoid';
+        if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
           console.warn("Delete DB error, performing local delete for EOID", dbErr);
-          const stored = localStorage.getItem(storageKey);
+          const stored = localStorage.getItem('local_records_eoid');
           if (stored) {
             const parsed = JSON.parse(stored) as ImmigrationRecord[];
             const updated = parsed.filter(r => r.id !== id);
-            localStorage.setItem(storageKey, JSON.stringify(updated));
+            localStorage.setItem('local_records_eoid', JSON.stringify(updated));
           }
         } else {
           throw dbErr;
@@ -654,7 +642,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (!error && data) {
             existingBoxes = data.map((r: any) => r.box_number || '');
           } else {
-            const storageKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const isEoid = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
+            const storageKey = isEoid ? 'local_records_eoid' : 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storageKey);
             if (stored) {
               try {
@@ -752,6 +741,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           finalRow.created_by = user.id;
 
+          if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
+            finalRow.under_age = activeTab === 'EOID Under_Age';
+          }
+
           return finalRow;
         }).filter((row: any) => row.full_name);
 
@@ -807,22 +800,11 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         // 1. Populating unique verification sets from active database records
         try {
           let dbRecords: any[] = [];
-          if (activeTab === 'EOID') {
-            const [normalDb, underageDb] = await Promise.all([
-              supabase.from('eoid_records').select(selectCols),
-              supabase.from('eoid_underage_records').select(selectCols)
-            ]);
-            dbRecords = [
-              ...(normalDb.data || []),
-              ...(underageDb.data || [])
-            ];
-          } else {
-            const { data, error: dbErr } = await supabase
-              .from(tableName)
-              .select(selectCols);
-            if (!dbErr && data) {
-              dbRecords = data;
-            }
+          const { data, error: dbErr } = await supabase
+            .from(tableName)
+            .select(selectCols);
+          if (!dbErr && data) {
+            dbRecords = data;
           }
 
           dbRecords.forEach((r: any) => {
@@ -861,7 +843,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         // 2. Load from local storage cache always (ensures offline entries are also accounted for)
         const storageKeys = [];
         if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-          storageKeys.push('local_records_eoid', 'local_records_eoid_under_age');
+          storageKeys.push('local_records_eoid');
         } else {
           storageKeys.push('local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
         }
@@ -1027,26 +1009,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           throw new Error(errMsg);
         }
 
-        if (activeTab === 'EOID') {
-          const normalRows = uniqueProcessed.filter(row => !row.under_age);
-          const underageRows = uniqueProcessed.filter(row => !!row.under_age);
-
-          const promises = [];
-          if (normalRows.length > 0) {
-            const cleanedNormal = normalRows.map(({ dob, ...r }) => r);
-            promises.push(supabase.from('eoid_records').insert(cleanedNormal));
-          }
-          if (underageRows.length > 0) {
-            promises.push(supabase.from('eoid_underage_records').insert(underageRows));
-          }
-
-          const results = await Promise.all(promises);
-          const firstErr = results.find(res => res.error);
-          if (firstErr) throw firstErr.error;
-        } else {
-          const { error } = await supabase.from(tableName).insert(uniqueProcessed);
-          if (error) throw error;
-        }
+        const { error } = await supabase.from(tableName).insert(uniqueProcessed);
+        if (error) throw error;
         
         await logger.log('IMPORT', activeTab, `Imported ${uniqueProcessed.length} records via Excel (skipped ${duplicateInDbCount + duplicateInFileCount} duplicates)`);
         
@@ -1080,7 +1044,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
             console.warn(`Excel import DB insertion failed for ${activeTab}, falling back to localStorage offline security cache:`, err);
             let storageKey = '';
             if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-              storageKey = activeTab === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+              storageKey = 'local_records_eoid';
             } else {
               storageKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             }
@@ -1402,6 +1366,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                          <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
                           {activeTab === 'VISA' ? 'VISA Records' : 
                            activeTab === 'EOID' ? 'Ethiopian Origin ID' : 
+                           activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID Under-Age' : 
                            activeTab === 'Residence ID' ? 'Residence ID Records' : 
                            activeTab === 'ETD' ? 'ETD Records' : 
                            activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
@@ -1411,6 +1376,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
                            activeTab === 'EOID' ? 'SOURCE: - Unified National ID Verification Feeds' : 
+                           activeTab === 'EOID Under_Age' ? 'SOURCE: - Unified National ID Verification Feeds (Minor Applications)' : 
                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
                            activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
@@ -1535,7 +1501,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eoid" element={
-                  (hasAccess('EOID') || hasAccess('EOID Under_Age')) ? (
+                  hasAccess('EOID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                       <RecordTable 
                         loading={loading}
@@ -1548,7 +1514,20 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
-                <Route path="/eoid-under_age" element={<Navigate to="/eoid" replace />} />
+                <Route path="/eoid-under_age" element={
+                  hasAccess('EOID Under_Age') ? (
+                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                      <RecordTable 
+                        loading={loading}
+                        records={filteredRecords}
+                        activeTab={activeTab as RecordType}
+                        canEdit={canEdit()}
+                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                  ) : <Navigate to="/" replace />
+                } />
                 <Route path="/residence-id" element={
                   hasAccess('Residence ID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">

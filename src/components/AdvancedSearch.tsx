@@ -176,25 +176,26 @@ export default function AdvancedSearch({ userProfile, onEditRecord, onDeleteReco
 
         // DIVISION IMMIGRATION RECORDS
         if (type === 'EOID') {
-          // SPECIAL EOID / EOID UNDER_AGE DUO
-          const [eoidRes, underageRes] = await Promise.all([
-            supabase.from('eoid_records').select('*'),
-            supabase.from('eoid_underage_records').select('*')
-          ]);
+          // SPECIAL EOID / EOID UNDER_AGE DUO (CONSOLIDATED)
+          const { data, error } = await supabase.from('eoid_records').select('*');
 
-          let eoidData = eoidRes.data || [];
-          let underageData = underageRes.data || [];
+          let eoidData = data || [];
 
-          if (eoidRes.error || underageRes.error) {
+          if (error) {
             // Local fallbacks
-            eoidData = JSON.parse(localStorage.getItem('local_records_eoid') || '[]');
-            underageData = JSON.parse(localStorage.getItem('local_records_eoid_under_age') || '[]');
+            const normalStored = localStorage.getItem('local_records_eoid');
+            const underageStored = localStorage.getItem('local_records_eoid_under_age');
+            const merged: any[] = [];
+            if (normalStored) {
+              try { merged.push(...JSON.parse(normalStored).map((r: any) => ({ ...r, under_age: r.under_age ?? false }))); } catch(_) {}
+            }
+            if (underageStored) {
+              try { merged.push(...JSON.parse(underageStored).map((r: any) => ({ ...r, under_age: true }))); } catch(_) {}
+            }
+            eoidData = merged;
           }
 
-          const combined = [
-            ...eoidData.map((r: any) => ({ ...r, _table: 'eoid_records', under_age: r.under_age ?? false })),
-            ...underageData.map((r: any) => ({ ...r, _table: 'eoid_underage_records', under_age: r.under_age ?? true }))
-          ];
+          const combined = eoidData.map((r: any) => ({ ...r, _table: 'eoid_records', under_age: r.under_age ?? false }));
 
           return combined.filter(r => {
             // Main term filter

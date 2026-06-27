@@ -423,20 +423,32 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
           }
 
           try {
-            const { data, count, error } = await supabase
-              .from(table)
-              .select('*', { count: 'exact' });
-            
+            let query = supabase.from(table).select('*');
+            if (type === 'EOID') {
+              query = query.or('under_age.eq.false,under_age.is.null');
+            } else if (type === 'EOID Under_Age') {
+              query = query.eq('under_age', true);
+            }
+            const { data, error } = await query;
             if (error) throw error;
-            return { type, count: count || 0, data: (data || []).map(r => ({ ...r, _recordType: type })) };
+            const finalData = data || [];
+            return { type, count: finalData.length, data: finalData.map(r => ({ ...r, _recordType: type })) };
           } catch (dbErr) {
             console.warn(`Stats database read failed for type ${type}, applying local storage fallback...`, dbErr);
-            if (type === 'EOID Under_Age') {
-              const stored = localStorage.getItem('local_records_eoid_under_age');
-              const localData: any[] = stored ? JSON.parse(stored) : [];
-              return { type, count: localData.length, data: localData };
+            if (type === 'EOID' || type === 'EOID Under_Age') {
+              const stored = localStorage.getItem('local_records_eoid');
+              let localData: any[] = stored ? JSON.parse(stored) : [];
+              if (type === 'EOID') {
+                localData = localData.filter((r: any) => !r.under_age);
+              } else {
+                localData = localData.filter((r: any) => !!r.under_age);
+              }
+              return { type, count: localData.length, data: localData.map(r => ({ ...r, _recordType: type })) };
             }
-            return { type, count: 0, data: [] };
+            const storedKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const stored = localStorage.getItem(storedKey);
+            const localData: any[] = stored ? JSON.parse(stored) : [];
+            return { type, count: localData.length, data: localData.map(r => ({ ...r, _recordType: type })) };
           }
         })
       );

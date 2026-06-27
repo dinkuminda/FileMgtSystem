@@ -66,7 +66,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
         // Fallback to local storage
         let storageKey = '';
         if (type === 'EOID' || type === 'EOID Under_Age') {
-          storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          storageKey = 'local_records_eoid';
         } else {
           storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         }
@@ -124,7 +124,8 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       if (!fetchError && data) {
         existingBoxes = data.map((r: any) => r.box_number || '');
       } else {
-        const storedKey = 'local_records_' + recordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const isEoid = recordType === 'EOID' || recordType === 'EOID Under_Age';
+        const storedKey = isEoid ? 'local_records_eoid' : 'local_records_' + recordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const stored = localStorage.getItem(storedKey);
         if (stored) {
           try {
@@ -686,7 +687,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       // 1. Check local storage first (instant and robust) for duplicates before DB check
       let storageKeyCheck = '';
       if (type === 'EOID' || type === 'EOID Under_Age') {
-        storageKeyCheck = formData.under_age ? 'local_records_eoid_under_age' : 'local_records_eoid';
+        storageKeyCheck = 'local_records_eoid';
       } else {
         storageKeyCheck = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
       }
@@ -771,7 +772,8 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           if (!fetchError && data) {
             existingBoxes = data.map((r: any) => r.box_number || '');
           } else {
-            const storedKey = 'local_records_' + activeFormType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const isEoid = activeFormType === 'EOID' || activeFormType === 'EOID Under_Age';
+            const storedKey = isEoid ? 'local_records_eoid' : 'local_records_' + activeFormType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storedKey);
             if (stored) {
               const parsed = JSON.parse(stored);
@@ -853,6 +855,21 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
             console.log(`EOID Category changed. Migrating record from ${originalTableName} to ${tableName}`);
             await supabase.from(originalTableName).delete().eq('id', record.id);
             
+            // Also update any associated attachments to point to the new table
+            try {
+              const { error: attUpdErr } = await supabase
+                .from('record_attachments')
+                .update({ record_table: tableName })
+                .eq('record_id', record.id);
+              if (attUpdErr) {
+                console.error("Error migrating attachments to new table:", attUpdErr.message);
+              } else {
+                console.log(`Successfully migrated record_attachments table references to ${tableName}`);
+              }
+            } catch (attE) {
+              console.error("Failed to migrate record attachments:", attE);
+            }
+
             let currentPayload = { ...basePayload, id: record.id, created_at: record.created_at };
             let success = false;
             let attempts = 0;
@@ -950,7 +967,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
         
         let storageKey = '';
         if (type === 'EOID' || type === 'EOID Under_Age') {
-          storageKey = type === 'EOID Under_Age' ? 'local_records_eoid_under_age' : 'local_records_eoid';
+          storageKey = 'local_records_eoid';
         } else {
           storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         }
@@ -1104,37 +1121,49 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                   const parentBox = m ? `${prefix}-B${m[1]}-00` : `${prefix}-B1-00`;
                   const count = boxCounts[parentBox] || 0;
                   return (
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black font-mono text-emerald-800 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/25">
-                            {displayBoxNum}
-                          </span>
-                          <span className="text-[10px] bg-emerald-100 text-[#1b8b58] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200/50 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#1b8b58] animate-pulse" />
-                            Auto-Allocated
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {prefix === 'EOIDUA' 
-                            ? 'Allocating physical archive slot: EOIDUA-B1-01-50' 
-                            : `Allocating sequential slots: ${prefix}-B1-01 to ${prefix}-B1-50, then ${prefix}-B2-01 to ${prefix}-B2-50 etc.`}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
-                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                          {parentBox} Capacity
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                            <div 
-                              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min(100, (count / 50) * 100)}%` }}
+                    <div className="flex flex-col gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              required
+                              placeholder={`e.g., ${prefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`}`}
+                              className="w-full max-w-xs px-4 py-2.5 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-sm font-black font-mono text-emerald-800 outline-none transition-all uppercase"
+                              value={formData.box_number}
+                              onChange={e => {
+                                const newVal = e.target.value.toUpperCase();
+                                setFormData(prev => ({
+                                  ...prev,
+                                  box_number: newVal
+                                }));
+                              }}
                             />
+                            <span className="text-[10px] bg-emerald-100 text-[#1b8b58] font-extrabold px-2 py-1 rounded-full border border-emerald-200/50 flex items-center gap-1 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#1b8b58] animate-pulse" />
+                              Editable
+                            </span>
                           </div>
-                          <span className="text-xs font-black font-mono text-slate-700">
-                            {count}/50
+                          <p className="text-[11px] text-slate-500">
+                            {prefix === 'EOIDUA' 
+                              ? 'Allocating physical archive slot: EOIDUA-B1-01-50' 
+                              : `Allocating sequential slots: ${prefix}-B1-01 to ${prefix}-B1-50, then ${prefix}-B2-01 to ${prefix}-B2-50 etc.`}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                            {parentBox} Capacity
                           </span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                              <div 
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, (count / 50) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-black font-mono text-slate-700">
+                              {count}/50
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1241,22 +1270,6 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
               {(type === 'EOID' || type === 'EOID Under_Age') && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Category / Age Group</label>
-                    <select
-                      required
-                      className="w-full px-4 py-3 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all cursor-pointer"
-                      value={formData.under_age ? "Under-Age" : "Normal"}
-                      onChange={e => {
-                        const isUnderAge = e.target.value === "Under-Age";
-                        setFormData(prev => ({ ...prev, under_age: isUnderAge }));
-                      }}
-                    >
-                      <option value="Normal">Normal Registry (Adult)</option>
-                      <option value="Under-Age">Under-Age Application (Minor)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EOID Type</label>
                     <select
                       required={!formData.under_age}
@@ -1294,8 +1307,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                         }
                         setFormData(prev => ({ 
                           ...prev, 
-                          dob: dobVal, 
-                          under_age: age < 18 
+                          dob: dobVal
                         }));
                       }}
                     />

@@ -860,18 +860,18 @@ const PORT = 3000;
       };
 
       // Query table counts and brief data safely
-      const [vRes, eRes, euaRes, rRes, etRes, aRes] = await Promise.all([
+      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
         supabaseAdmin.from("visa_records").select("citizenship, service_provided, box_number"),
-        supabaseAdmin.from("eoid_records").select("citizenship, service_provided, box_number"),
-        supabaseAdmin.from("eoid_underage_records").select("citizenship, service_provided, box_number"),
+        supabaseAdmin.from("eoid_records").select("citizenship, service_provided, box_number, under_age"),
         supabaseAdmin.from("residence_id_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("etd_records").select("citizenship, service_provided, box_number"),
         supabaseAdmin.from("yellow_card_records").select("citizenship, service_provided, box_number")
       ]);
 
       const visaData = vRes.data || [];
-      const eoidData = eRes.data || [];
-      const eoidUnderageData = euaRes.data || [];
+      const rawEoidData = eRes.data || [];
+      const eoidData = rawEoidData.filter(r => !r.under_age);
+      const eoidUnderageData = rawEoidData.filter(r => !!r.under_age);
       const residenceData = rRes.data || [];
       const etdData = etRes.data || [];
       const airportData = aRes.data || [];
@@ -964,19 +964,22 @@ Our secure physical and digital filing cabinets host a secure distribution of **
         return res.status(400).json({ error: "Missing interactive query message" });
       }
 
-      const [vRes, eRes, euaRes, rRes, etRes, aRes] = await Promise.all([
+      const [vRes, eRes, rRes, etRes, aRes] = await Promise.all([
         supabaseAdmin.from("visa_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, visa_type").limit(15),
-        supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number, personal_id, dob, under_age, eoid_type").limit(15),
-        supabaseAdmin.from("eoid_underage_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, personal_id, dob, under_age").limit(15),
+        supabaseAdmin.from("eoid_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, eoid_number, personal_id, dob, under_age, eoid_type").limit(30),
         supabaseAdmin.from("residence_id_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, id_type").limit(15),
         supabaseAdmin.from("etd_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided, etd").limit(15),
         supabaseAdmin.from("yellow_card_records").select("box_number, full_name, passport_number, citizenship, request_number, service_provided").limit(15)
       ]);
 
+      const rawEoidData = eRes.data || [];
+      const eoidData = rawEoidData.filter(r => !r.under_age).slice(0, 15);
+      const eoidUnderageData = rawEoidData.filter(r => !!r.under_age).slice(0, 15);
+
       const recordsContext = [
         ...(vRes.data || []).map(r => ({ division: "VISA", ...r })),
-        ...(eRes.data || []).map(r => ({ division: "EOID", ...r })),
-        ...(euaRes.data || []).map(r => ({ division: "EOID Under_Age", ...r })),
+        ...eoidData.map(r => ({ division: "EOID", ...r })),
+        ...eoidUnderageData.map(r => ({ division: "EOID Under_Age", ...r })),
         ...(rRes.data || []).map(r => ({ division: "Residence ID", ...r })),
         ...(etRes.data || []).map(r => ({ division: "ETD", ...r })),
         ...(aRes.data || []).map(r => ({ division: "Yellow Card", ...r }))
