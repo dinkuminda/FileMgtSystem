@@ -212,10 +212,26 @@ const PORT = 3000;
       // Login succeeded! Reset failed attempts
       if (profile) {
         const cleanModules = (profile.modules || []).filter((m: string) => m !== 'LOCKED' && !m.startsWith('FAIL_'));
+        const userEmailLower = email.trim().toLowerCase();
+        let expectedRole = profile.role || 'viewer';
+        let expectedModules = cleanModules;
+
+        if (userEmailLower === 'dinkuh12@gmail.com') {
+          expectedRole = 'admin';
+          expectedModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        } else if (userEmailLower === 'demebirhanu@gmail.com' || userEmailLower === 'dinku_staff@gmail.com' || userEmailLower.includes('weleba')) {
+          expectedRole = 'staff';
+          expectedModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        } else if (userEmailLower === 'mohammedturi@gmail.com') {
+          expectedRole = 'airport_viewer';
+          expectedModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        }
+
         const updateData: any = {
           failed_attempts: 0,
           is_locked: false,
-          modules: cleanModules,
+          role: expectedRole,
+          modules: expectedModules,
           updated_at: new Date().toISOString()
         };
 
@@ -228,10 +244,45 @@ const PORT = 3000;
           await supabaseAdmin
             .from('profiles')
             .update({
-              modules: cleanModules,
+              modules: expectedModules,
               updated_at: new Date().toISOString()
             })
             .eq('id', profile.id);
+        }
+      } else {
+        // Profile is missing! Let's create it.
+        console.log(`[LOGIN] Profile missing for logged-in user ${email.trim()}, creating one...`);
+        let initialRole = 'viewer';
+        const userEmailLower = email.trim().toLowerCase();
+        if (userEmailLower === 'dinkuh12@gmail.com') {
+          initialRole = 'admin';
+        } else if (userEmailLower === 'demebirhanu@gmail.com' || userEmailLower === 'dinku_staff@gmail.com' || userEmailLower.includes('weleba')) {
+          initialRole = 'staff';
+        } else if (userEmailLower === 'mohammedturi@gmail.com') {
+          initialRole = 'airport_viewer';
+        }
+        
+        let initialModules = ['OVERVIEW'];
+        if (initialRole === 'admin' || initialRole === 'staff' || initialRole === 'airport_viewer') {
+          initialModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+        }
+
+        const { error: insErr } = await supabaseAdmin
+          .from('profiles')
+          .insert([{
+            id: authData.user.id,
+            email: email.trim(),
+            full_name: authData.user.user_metadata?.full_name || email.trim().split('@')[0],
+            role: initialRole,
+            modules: initialModules,
+            failed_attempts: 0,
+            is_locked: false,
+            updated_at: new Date().toISOString()
+          }]);
+        if (insErr) {
+          console.error(`[LOGIN] Failed to auto-create missing profile for user ${email.trim()}:`, insErr.message);
+        } else {
+          console.log(`[LOGIN] Successfully auto-created missing profile for user ${email.trim()} with role: ${initialRole}`);
         }
       }
 
@@ -239,6 +290,95 @@ const PORT = 3000;
     } catch (err: any) {
       console.error("Login route error:", err);
       return res.status(500).json({ error: err.message || "Authentication error" });
+    }
+  });
+
+  // Ensure profile exists (heals cases where SQL trigger didn't run for a user)
+  app.post("/api/auth/ensure-profile", async (req, res) => {
+    const { userId, email, fullName } = req.body;
+    if (!userId || !email) {
+      return res.status(400).json({ error: "userId and email are required" });
+    }
+
+    try {
+      // Check if profile exists
+      const { data: existingProfile, error: getErr } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (getErr) {
+        return res.status(500).json({ error: `Error checking profile: ${getErr.message}` });
+      }
+
+      // Determine correct role and modules based on email
+      let initialRole = 'viewer';
+      const userEmailLower = email.trim().toLowerCase();
+      if (userEmailLower === 'dinkuh12@gmail.com') {
+        initialRole = 'admin';
+      } else if (userEmailLower === 'demebirhanu@gmail.com' || userEmailLower === 'dinku_staff@gmail.com' || userEmailLower.includes('weleba')) {
+        initialRole = 'staff';
+      } else if (userEmailLower === 'mohammedturi@gmail.com') {
+        initialRole = 'airport_viewer';
+      }
+      
+      let initialModules = ['OVERVIEW'];
+      if (initialRole === 'admin' || initialRole === 'staff' || initialRole === 'airport_viewer') {
+        initialModules = ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT'];
+      }
+
+      if (existingProfile) {
+        // Enforce the correct roles and modules on-the-fly for existing profiles if they mismatch
+        if (existingProfile.role !== initialRole || !existingProfile.modules || existingProfile.modules.length < 5) {
+          console.log(`[ENSURE-PROFILE] Existing profile role/modules mismatch. Healing for ${email}...`);
+          const { error: updErr } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              role: initialRole,
+              modules: initialModules,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+          if (!updErr) {
+            existingProfile.role = initialRole;
+            existingProfile.modules = initialModules;
+            console.log(`[ENSURE-PROFILE] Successfully healed existing profile for ${email} to role: ${initialRole}`);
+          } else {
+            console.error(`[ENSURE-PROFILE] Failed to heal existing profile:`, updErr.message);
+          }
+        }
+        return res.json({ profile: existingProfile, created: false });
+      }
+
+      // Profile is missing, let's create it!
+      console.log(`[ENSURE-PROFILE] Profile missing for user ${email}, auto-creating...`);
+
+      const newProfile = {
+        id: userId,
+        email: email.trim(),
+        full_name: fullName || email.split('@')[0],
+        role: initialRole,
+        modules: initialModules,
+        failed_attempts: 0,
+        is_locked: false,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: insErr } = await supabaseAdmin
+        .from('profiles')
+        .insert([newProfile]);
+
+      if (insErr) {
+        console.error(`[ENSURE-PROFILE] Failed to create profile:`, insErr.message);
+        return res.status(500).json({ error: `Failed to create profile: ${insErr.message}` });
+      }
+
+      console.log(`[ENSURE-PROFILE] Successfully created profile for ${email} with role: ${initialRole}`);
+      return res.json({ profile: newProfile, created: true });
+    } catch (err: any) {
+      console.error("ensure-profile route error:", err);
+      return res.status(500).json({ error: err.message || "Internal server error" });
     }
   });
 
@@ -1036,6 +1176,32 @@ How can I help you support system operations?`;
           }
         } else {
           console.log("[BOOTSTRAP] No active weleba profile found in database rows for immediate repair. Standby for standard registration.");
+        }
+
+        // 3. Force-align the primary administrator account (dinkuh12@gmail.com) if it exists
+        const { data: adminProfiles, error: aError } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('email', 'dinkuh12@gmail.com');
+
+        if (!aError && adminProfiles && adminProfiles.length > 0) {
+          for (const ap of adminProfiles) {
+            console.log(`[BOOTSTRAP] Found primary admin profile: ${ap.email}, checking role alignment...`);
+            if (ap.role !== 'admin' || !ap.modules || ap.modules.length < 5) {
+              const { error: updAdminErr } = await supabaseAdmin
+                .from('profiles')
+                .update({
+                  role: 'admin',
+                  modules: ['OVERVIEW', 'USERS', 'REPORTS', 'VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'CABINETS', 'Yellow Card', 'Alien Passport', 'Eritrean ID', 'AUDIT']
+                })
+                .eq('id', ap.id);
+              if (!updAdminErr) {
+                console.log(`[BOOTSTRAP] Successfully healed admin role & permissions for dinkuh12@gmail.com.`);
+              } else {
+                console.error(`[BOOTSTRAP FAILURE] Error healing admin profile:`, updAdminErr.message);
+              }
+            }
+          }
         }
       } catch (e: any) {
         console.error("[SECURE SYSTEM BOOTSTRAP] Fatal during self-healing:", e.message);

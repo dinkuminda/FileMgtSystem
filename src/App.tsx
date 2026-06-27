@@ -76,11 +76,46 @@ export default function App() {
 
   async function fetchProfile(uid: string) {
     // Fetch the profile from the 'profiles' table which is synced via trigger
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select('id, email, full_name, role, modules')
       .eq('id', uid)
       .single();
+
+    if (error) {
+      console.warn("Profile fetch failed, attempting on-the-fly backend profile sync for user:", uid);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const res = await fetch('/api/auth/ensure-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email,
+              fullName: user.user_metadata?.full_name
+            })
+          });
+          if (res.ok) {
+            const syncResult = await res.json();
+            if (syncResult.profile) {
+              // Retry fetching the profile from DB now that it has been created/ensured
+              const retry = await supabase
+                .from('profiles')
+                .select('id, email, full_name, role, modules')
+                .eq('id', uid)
+                .single();
+              if (!retry.error && retry.data) {
+                data = retry.data;
+                error = null;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to ensure profile on the fly:", e);
+      }
+    }
 
     if (!error && data) {
       const profile = {
@@ -96,7 +131,7 @@ export default function App() {
       setUserProfile(profile);
     } else {
       // Fallback/Retry logic if trigger is slow or not configured
-      console.warn("Profile fetch failed, using fallback logic for user:", uid);
+      console.warn("Profile fetch fallback activated for user:", uid);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const adminEmail = (import.meta as any).env.VITE_ADMIN_EMAIL || 'dinkuh12@gmail.com';
