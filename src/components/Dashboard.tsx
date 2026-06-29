@@ -1368,6 +1368,18 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     {/* FSD Division style heading row */}
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
+                        {isViewer && (
+                          <div className="text-[10px] font-bold text-[#10b981] uppercase tracking-widest mb-1">
+                            {activeTab === 'VISA' ? 'VISA Records' : 
+                             activeTab === 'EOID' ? 'Ethiopian Origin ID File' : 
+                             activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID Under-Age' : 
+                             activeTab === 'Residence ID' ? 'Residence ID Records' : 
+                             activeTab === 'ETD' ? 'ETD Records' : 
+                             activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
+                             activeTab === 'Eritrean ID' ? 'Eritrean ID Records' :
+                             activeTab === 'Alien Passport' ? 'Alien Passport Records' : activeTab}
+                          </div>
+                        )}
                          <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
                           {isViewer ? 'Record Lookup' : (
                             activeTab === 'VISA' ? 'VISA Records' : 
