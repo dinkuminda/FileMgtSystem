@@ -78,7 +78,7 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [cabinets, setCabinets] = useState<any[]>([]);
 
-  const toggleCabinetLock = (boxName: string) => {
+  const toggleCabinetLock = async (boxName: string) => {
     let nextLockedState = false;
     const updatedCabinets = cabinets.map((c: any) => {
       if (c.boxName === boxName) {
@@ -89,18 +89,26 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     });
     setCabinets(updatedCabinets);
     localStorage.setItem('managed_physical_cabinets', JSON.stringify(updatedCabinets));
+    
+    // Log physical cabinet drawer status changes
+    await logger.log('ADMIN_ACTION', 'System', `Toggled lock state of physical cabinet ${boxName} to: ${nextLockedState ? 'LOCKED' : 'UNLOCKED'}`, boxName);
+    
     fetchStats();
   };
 
-  const deleteCabinet = (boxName: string) => {
+  const deleteCabinet = async (boxName: string) => {
     if (!window.confirm(`Are you sure you want to delete physical cabinet ${boxName}?`)) return;
     const updated = cabinets.filter((c: any) => c.boxName !== boxName);
     setCabinets(updated);
     localStorage.setItem('managed_physical_cabinets', JSON.stringify(updated));
+    
+    // Log physical cabinet deletion
+    await logger.log('DELETE', 'System', `Deleted physical cabinet drawer ${boxName}`, boxName);
+    
     fetchStats();
   };
 
-  const editCabinet = (boxName: string) => {
+  const editCabinet = async (boxName: string) => {
     const cab = cabinets.find(c => c.boxName === boxName);
     if (!cab) return;
     const newDesc = window.prompt(`Update Description for ${boxName}:`, cab.desc);
@@ -114,6 +122,10 @@ export default function DashboardReports({ userProfile }: DashboardReportsProps)
     });
     setCabinets(updated);
     localStorage.setItem('managed_physical_cabinets', JSON.stringify(updated));
+    
+    // Log physical cabinet editing
+    await logger.log('UPDATE', 'System', `Updated description for physical cabinet drawer ${boxName} to: "${newDesc}"`, boxName);
+    
     fetchStats();
   };
 

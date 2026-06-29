@@ -164,6 +164,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   });
   const activeTab = matchingTab?.type || 'OVERVIEW';
 
+  const rRole = (userProfile?.role as string || '').toLowerCase();
+  const isViewerRole = rRole === 'viewer';
+  const isViewer = isViewerRole && ['VISA', 'EOID', 'EOID Under_Age', 'Residence ID', 'ETD', 'Yellow Card', 'Eritrean ID', 'Alien Passport'].includes(activeTab);
+
   const tabs = React.useMemo(() => {
     return allTabs.filter(tab => {
       if (!userProfile) return false;
@@ -304,7 +308,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
       if (!error && data) {
         const rRole = (userProfile?.role as string || '').toLowerCase();
-        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
+        const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor' || rRole === 'viewer' || rRole === 'editor';
         let mappedData = (data || []).map(r => ({ ...r, _table: tableName })) as ImmigrationRecord[];
         if (!isElevated && userProfile?.id) {
           mappedData = mappedData.filter(r => r.created_by === userProfile.id);
@@ -334,7 +338,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       let mappedParsed = parsed.map((r: any) => ({ ...r, _table: tableName }));
       
       const rRole = (userProfile?.role as string || '').toLowerCase();
-      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
+      const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor' || rRole === 'viewer' || rRole === 'editor';
       if (!isElevated && userProfile?.id) {
         mappedParsed = mappedParsed.filter((r: any) => r.created_by === userProfile.id);
       }
@@ -1115,7 +1119,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const filteredRecords = records.filter(r => {
     // Role-based visibility layer: non-elevated users can only view their own records
     const rRole = (userProfile?.role as string || '').toLowerCase();
-    const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
+    const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor' || rRole === 'viewer' || rRole === 'editor';
     if (!isElevated && userProfile?.id) {
       if (r.created_by && r.created_by !== userProfile.id) {
         return false;
@@ -1130,6 +1134,34 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     const personalIdMatch = (r as any).personal_id_no ? (r as any).personal_id_no.toLowerCase().includes(query) : false;
     return nameMatch || passportMatch || requestMatch || shelfMatch || personalIdMatch;
   });
+
+  const renderRecordTable = () => {
+    if (isViewer && !searchQuery.trim()) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 px-6 bg-[#fafbfc] rounded-2xl border border-dashed border-slate-200 text-center shadow-xs" id="viewer-restricted-lookup-card">
+          <div className="w-16 h-16 rounded-full bg-slate-100/80 flex items-center justify-center mb-5 text-slate-400 border border-slate-200/30 shadow-xs">
+            <Search className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-600 tracking-tight mb-1.5 max-w-md">
+            Enter a name, passport number, or ID above to locate a specific record.
+          </h3>
+          <p className="text-xs text-slate-400 font-medium">
+            Bulk data is restricted for security purposes.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <RecordTable 
+        loading={loading}
+        records={filteredRecords}
+        activeTab={activeTab as RecordType}
+        canEdit={canEdit()}
+        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
+        onDelete={handleDelete}
+      />
+    );
+  };
 
   const SidebarContent = () => {
     return (
@@ -1337,24 +1369,30 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 ${currentTheme.border} pl-5 py-1`}>
                       <div className="text-left">
                          <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
-                          {activeTab === 'VISA' ? 'VISA Records' : 
-                           activeTab === 'EOID' ? 'Ethiopian Origin ID File' : 
-                           activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID Under-Age' : 
-                           activeTab === 'Residence ID' ? 'Residence ID Records' : 
-                           activeTab === 'ETD' ? 'ETD Records' : 
-                           activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
-                           activeTab === 'Eritrean ID' ? 'Eritrean ID Records' :
-                           activeTab === 'Alien Passport' ? 'Alien Passport Records' : activeTab}
+                          {isViewer ? 'Record Lookup' : (
+                            activeTab === 'VISA' ? 'VISA Records' : 
+                            activeTab === 'EOID' ? 'Ethiopian Origin ID File' : 
+                            activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID Under-Age' : 
+                            activeTab === 'Residence ID' ? 'Residence ID Records' : 
+                            activeTab === 'ETD' ? 'ETD Records' : 
+                            activeTab === 'Yellow Card' ? 'Yellow Card Records' : 
+                            activeTab === 'Eritrean ID' ? 'Eritrean ID Records' :
+                            activeTab === 'Alien Passport' ? 'Alien Passport Records' : activeTab
+                          )}
                         </h1>
-                        <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
-                          {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
-                           activeTab === 'EOID' ? 'Source: - FSD Division Data structuring' : 
-                           activeTab === 'EOID Under_Age' ? 'SOURCE: - Unified National ID Verification Feeds (Minor Applications)' : 
-                           activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
-                           activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
-                           activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
-                           activeTab === 'Alien Passport' ? 'SOURCE: - ALIEN PASSPORT RECEPTACLE DATA' :
-                           'SOURCE: - DIASPORA REGISTRATION HUB'}
+                        <p className="text-slate-400 text-xs font-semibold tracking-wide mt-1.5 uppercase text-slate-500">
+                          {isViewer ? (
+                            `${records.length} record${records.length === 1 ? '' : 's'} stored — search to locate and manage individual entries.`
+                          ) : (
+                            activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
+                            activeTab === 'EOID' ? 'Source: - FSD Division Data structuring' : 
+                            activeTab === 'EOID Under_Age' ? 'SOURCE: - Unified National ID Verification Feeds (Minor Applications)' : 
+                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
+                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
+                            activeTab === 'Eritrean ID' ? 'SOURCE: - ERITREAN ORIGIN ID REGISTRY' :
+                            activeTab === 'Alien Passport' ? 'SOURCE: - ALIEN PASSPORT RECEPTACLE DATA' :
+                            'SOURCE: - DIASPORA REGISTRATION HUB'
+                          )}
                         </p>
                         {activeTab === 'EOID' && (
                           <div className="flex items-center gap-3 mt-4" id="eoid-type-selector-wrapper">
@@ -1390,14 +1428,16 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                             <span>Add Entry</span>
                           </button>
                         )}
-                        <button 
-                          onClick={exportToExcel}
-                          disabled={records.length === 0}
-                          className="flex items-center gap-2 px-4.5 py-2.5 bg-[#f4f7f5] hover:bg-[#e2ede6] text-slate-600 disabled:opacity-50 border border-slate-200/50 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
-                        >
-                          <FileOutput className="w-4 h-4 text-slate-400" />
-                          <span>Export Excel</span>
-                        </button>
+                        {!isViewer && (
+                          <button 
+                            onClick={exportToExcel}
+                            disabled={records.length === 0}
+                            className="flex items-center gap-2 px-4.5 py-2.5 bg-[#f4f7f5] hover:bg-[#e2ede6] text-slate-600 disabled:opacity-50 border border-slate-200/50 rounded-lg text-xs font-bold transition-all cursor-pointer outline-none"
+                          >
+                            <FileOutput className="w-4 h-4 text-slate-400" />
+                            <span>Export Excel</span>
+                          </button>
+                        )}
                         {canAdd() && (
                           <button 
                             onClick={() => fileInputRef.current?.click()}
@@ -1415,7 +1455,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors" />
                       <input 
                         type="text"
-                        placeholder="Filter this division by Box, Name, Passport or Request Number..."
+                        placeholder={isViewer ? "Search by Full Name, Passport No., Personal ID, Box Number..." : "Filter this division by Box, Name, Passport or Request Number..."}
                         className="w-full pl-12 pr-6 py-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 focus:bg-white focus:ring-4 focus:ring-slate-500/5 focus:border-slate-400 rounded-xl text-xs font-bold text-slate-800 outline-none transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -1423,7 +1463,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                     </div>
                   </div>
                 ) : (
-                  activeTab !== 'SEARCH' && activeTab !== 'OVERVIEW' ? (
+                  activeTab !== 'SEARCH' && activeTab !== 'OVERVIEW' && activeTab !== 'REPORTS' && activeTab !== 'AUDIT' ? (
                     <div className="text-left">
                       <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
                         {activeTab}
@@ -1469,112 +1509,56 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                  <Route path="/yellow-card" element={
                   hasAccess('Yellow Card') ? (
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/visa" element={
                   hasAccess('VISA') ? (
                     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eoid" element={
                   hasAccess('EOID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eoid-under_age" element={
                   hasAccess('EOID Under_Age') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/residence-id" element={
                   hasAccess('Residence ID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/etd" element={
                   hasAccess('ETD') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/eritrean-id" element={
                   hasAccess('Eritrean ID') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
                 <Route path="/alien-passport" element={
                   hasAccess('Alien Passport') ? (
                      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                      <RecordTable 
-                        loading={loading}
-                        records={filteredRecords}
-                        activeTab={activeTab as RecordType}
-                        canEdit={canEdit()}
-                        onEdit={(record) => { setEditingRecord(record); setIsFormOpen(true); }}
-                        onDelete={handleDelete}
-                      />
+                      {renderRecordTable()}
                     </div>
                   ) : <Navigate to="/" replace />
                 } />
