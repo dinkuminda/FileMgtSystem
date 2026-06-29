@@ -10,7 +10,7 @@ export const MODULE_BOX_MAP: Record<RecordType, string> = {
   'Residence ID': 'RES-B1-01',
   'ETD': 'ETD-B1-01',
   'Yellow Card': 'YC-B1-01',
-  'EOID Under_Age': 'EOIDUA-B1-01-50',
+  'EOID Under_Age': 'EOIDUA-B1-01',
   'Alien Passport': 'AP-B1-01',
   'Eritrean ID': 'ERID-B1-01'
 };
@@ -46,6 +46,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestActiveTypeRef = useRef<RecordType | null>(null);
   
   // Sequential automatic ID generation states & logic
   const [isGeneratingId, setIsGeneratingId] = useState(false);
@@ -64,12 +65,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
         existingIds = data.map((r: any) => r.personal_id_no || '').filter(Boolean);
       } else {
         // Fallback to local storage
-        let storageKey = '';
-        if (type === 'EOID' || type === 'EOID Under_Age') {
-          storageKey = 'local_records_eoid';
-        } else {
-          storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        }
+        const storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const stored = localStorage.getItem(storageKey);
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -124,8 +120,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       if (!fetchError && data) {
         existingBoxes = data.map((r: any) => r.box_number || '');
       } else {
-        const isEoid = recordType === 'EOID' || recordType === 'EOID Under_Age';
-        const storedKey = isEoid ? 'local_records_eoid' : 'local_records_' + recordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const storedKey = 'local_records_' + recordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const stored = localStorage.getItem(storedKey);
         if (stored) {
           try {
@@ -133,6 +128,10 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
             existingBoxes = parsed.map((r: any) => r.box_number || '');
           } catch (e) {}
         }
+      }
+
+      if (latestActiveTypeRef.current !== recordType) {
+        return;
       }
 
       const prefixPattern = new RegExp('^' + prefix + '-B');
@@ -149,21 +148,17 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       setBoxCounts(prev => ({ ...prev, ...counts }));
 
       let calculatedBox = `${prefix}-B1-01`;
-      if (recordType === 'EOID Under_Age') {
-        calculatedBox = 'EOIDUA-B1-01-50';
-      } else {
-        let foundNext = false;
-        for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-          for (let sIdx = 1; sIdx <= 50; sIdx++) {
-            const candidate = `${prefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
-            if (!existingBoxes.includes(candidate)) {
-              calculatedBox = candidate;
-              foundNext = true;
-              break;
-            }
+      let foundNext = false;
+      for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+        for (let sIdx = 1; sIdx <= 50; sIdx++) {
+          const candidate = `${prefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+          if (!existingBoxes.includes(candidate)) {
+            calculatedBox = candidate;
+            foundNext = true;
+            break;
           }
-          if (foundNext) break;
         }
+        if (foundNext) break;
       }
 
       if (isNewRecord) {
@@ -196,7 +191,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       const prefix = getPrefixForType(recordType);
       setAvailableBoxes([`${prefix}-B1-00`, `${prefix}-B2-00`, `${prefix}-B3-00`]);
       if (isNewRecord) {
-        setFormData(prev => ({ ...prev, box_number: recordType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01` }));
+        setFormData(prev => ({ ...prev, box_number: `${prefix}-B1-01` }));
       }
     }
   };
@@ -446,7 +441,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
     eoid_type: '',
     visa_type: '',
     dob: '',
-    under_age: false,
+    under_age: type === 'EOID Under_Age',
     attachments_json: [] as Array<{ file_type: string; url: string; verification_status: 'Pending' | 'Verified' | 'Rejected'; category?: string; is_other?: boolean }>,
   });
 
@@ -517,9 +512,15 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
 
   useEffect(() => {
     if (isOpen) {
+      const effectiveUnderAge = record
+        ? ((record as any).under_age !== undefined ? (record as any).under_age : (type === 'EOID Under_Age'))
+        : (formData.under_age || type === 'EOID Under_Age');
+
       const activeType = (type === 'EOID' || type === 'EOID Under_Age')
-        ? (formData.under_age ? 'EOID Under_Age' : 'EOID')
+        ? (effectiveUnderAge ? 'EOID Under_Age' : 'EOID')
         : type;
+
+      latestActiveTypeRef.current = activeType;
       loadBoxesAndCounts(activeType, !record);
       if (!record) {
         generateNextId();
@@ -660,9 +661,14 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       // Enforce only correct prefix box numbers (e.g. VS-B1-01) for the record type
       const prefix = getPrefixForType(activeFormType);
       const boxNum = (formData.box_number || '').trim();
-      if (!boxNum.toLowerCase().startsWith(prefix.toLowerCase() + '-b')) {
-        const sampleBox = prefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`;
-        throw new Error(`Invalid BOX Number: ${activeFormType} records only accept box numbers starting with "${prefix}-B" (e.g., ${sampleBox}).`);
+      let isBoxValid = boxNum.toLowerCase().startsWith(prefix.toLowerCase() + '-b');
+      if (!isBoxValid && activeFormType === 'EOID Under_Age') {
+        isBoxValid = boxNum.toLowerCase().startsWith('eoid-b');
+      }
+      if (!isBoxValid) {
+        const sampleBox = prefix === 'EOIDUA' ? 'EOIDUA-B1-01' : `${prefix}-B1-01`;
+        const acceptedPrefixes = activeFormType === 'EOID Under_Age' ? '"EOIDUA-B" or "EOID-B"' : `"${prefix}-B"`;
+        throw new Error(`Invalid BOX Number: ${activeFormType} records only accept box numbers starting with ${acceptedPrefixes} (e.g., ${sampleBox}).`);
       }
 
       if (formData.passport_number && type !== 'ETD' && type !== 'Eritrean ID') {
@@ -685,12 +691,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       }
 
       // 1. Check local storage first (instant and robust) for duplicates before DB check
-      let storageKeyCheck = '';
-      if (type === 'EOID' || type === 'EOID Under_Age') {
-        storageKeyCheck = 'local_records_eoid';
-      } else {
-        storageKeyCheck = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-      }
+      const storageKeyCheck = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
       const storedCheck = localStorage.getItem(storageKeyCheck);
       const localParsedCheck: any[] = storedCheck ? JSON.parse(storedCheck) : [];
 
@@ -772,8 +773,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           if (!fetchError && data) {
             existingBoxes = data.map((r: any) => r.box_number || '');
           } else {
-            const isEoid = activeFormType === 'EOID' || activeFormType === 'EOID Under_Age';
-            const storedKey = isEoid ? 'local_records_eoid' : 'local_records_' + activeFormType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const storedKey = 'local_records_' + activeFormType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storedKey);
             if (stored) {
               const parsed = JSON.parse(stored);
@@ -782,32 +782,28 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
           }
 
           let calculatedBox = `${currentPrefix}-B1-01`;
-          if (activeFormType === 'EOID Under_Age') {
-            calculatedBox = 'EOIDUA-B1-01-50';
-          } else {
-            let foundNext = false;
-            for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-              for (let sIdx = 1; sIdx <= 50; sIdx++) {
-                const candidate = `${currentPrefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
-                if (!existingBoxes.includes(candidate)) {
-                  calculatedBox = candidate;
-                  foundNext = true;
-                  break;
-                }
+          let foundNext = false;
+          for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+            for (let sIdx = 1; sIdx <= 50; sIdx++) {
+              const candidate = `${currentPrefix}-B${bIdx}-${sIdx.toString().padStart(2, '0')}`;
+              if (!existingBoxes.includes(candidate)) {
+                calculatedBox = candidate;
+                foundNext = true;
+                break;
               }
-              if (foundNext) break;
             }
+            if (foundNext) break;
           }
           basePayload.box_number = formData.box_number || calculatedBox;
         } catch (e) {
           console.error(`Error evaluating final box number for ${activeFormType}, using current state value:`, e);
           const currentPrefix = getPrefixForType(activeFormType);
-          const fallbackBox = activeFormType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+          const fallbackBox = `${currentPrefix}-B1-01`;
           basePayload.box_number = formData.box_number || fallbackBox;
         }
       } else {
         const currentPrefix = getPrefixForType(activeFormType);
-        const fallbackBox = activeFormType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${currentPrefix}-B1-01`;
+        const fallbackBox = `${currentPrefix}-B1-01`;
         basePayload.box_number = formData.box_number || fallbackBox;
       }
       basePayload.attachments = formData.attachments_json;
@@ -965,12 +961,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
       } catch (dbError: any) {
         console.warn(`Database operation failed for ${activeFormType}, attempting LocalStorage security/cache fallback:`, dbError);
         
-        let storageKey = '';
-        if (type === 'EOID' || type === 'EOID Under_Age') {
-          storageKey = 'local_records_eoid';
-        } else {
-          storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        }
+        const storageKey = 'local_records_' + type.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 
         let storedList: any[] = [];
         try {
@@ -1116,7 +1107,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                     ? (formData.under_age ? 'EOID Under_Age' : 'EOID')
                     : type;
                   const prefix = getPrefixForType(activeType);
-                  const displayBoxNum = formData.box_number || (activeType === 'EOID Under_Age' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`);
+                  const displayBoxNum = formData.box_number || `${prefix}-B1-01`;
                   const m = displayBoxNum.match(new RegExp(`^${prefix}-B(\\d+)`));
                   const parentBox = m ? `${prefix}-B${m[1]}-00` : `${prefix}-B1-00`;
                   const count = boxCounts[parentBox] || 0;
@@ -1127,7 +1118,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                           <div className="flex items-center gap-2">
                             <input
                               required
-                              placeholder={`e.g., ${prefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${prefix}-B1-01`}`}
+                              placeholder={`e.g., ${prefix}-B1-01`}
                               className="w-full max-w-xs px-4 py-2.5 bg-white border border-slate-200 focus:border-[#2b825a] focus:ring-4 focus:ring-emerald-500/5 rounded-xl text-sm font-black font-mono text-emerald-800 outline-none transition-all uppercase"
                               value={formData.box_number}
                               onChange={e => {
@@ -1145,7 +1136,7 @@ export default function RecordForm({ type, isOpen, onClose, onSuccess, record, d
                           </div>
                           <p className="text-[11px] text-slate-500">
                             {prefix === 'EOIDUA' 
-                              ? 'Allocating physical archive slot: EOIDUA-B1-01-50' 
+                              ? 'Allocating physical archive slots under EOIDUA-B1-00 Capacity: EOIDUA-B1-01 to EOIDUA-B1-50, then EOIDUA-B2-01 to EOIDUA-B2-50 etc.' 
                               : `Allocating sequential slots: ${prefix}-B1-01 to ${prefix}-B1-50, then ${prefix}-B2-01 to ${prefix}-B2-50 etc.`}
                           </p>
                         </div>

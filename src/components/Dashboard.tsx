@@ -107,6 +107,15 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>('emerald');
   const [permissionRules, setPermissionRules] = useState<ModulePermissionRule[]>(DEFAULT_PERMISSION_RULES);
   const [isEoidGroupOpen, setIsEoidGroupOpen] = useState(true);
+  const [eoidSubtype, setEoidSubtype] = useState<'normal' | 'underage'>('normal');
+
+  useEffect(() => {
+    const lowerPath = location.pathname.toLowerCase();
+    if (lowerPath === '/eoid-under_age' || lowerPath === '/eoid-under-age') {
+      setEoidSubtype('underage');
+      navigate('/eoid', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     getPermissionRules().then(rules => {
@@ -135,7 +144,6 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     { type: 'Eritrean ID', icon: Plane, label: 'Eritrean ID' },
     { type: 'VISA', icon: FileText, label: 'VISA Records' },
     { type: 'EOID', icon: Fingerprint, label: 'Ethiopian Origin ID' },
-    { type: 'EOID Under_Age', icon: Baby, label: 'EOID Under Age' },
     { type: 'Alien Passport', icon: CreditCard, label: 'Alien Passport' },
     { type: 'Residence ID', icon: CreditCard, label: 'Residence ID' },
     { type: 'ETD', icon: MapPin, label: 'Emergency Travel Document' },
@@ -229,7 +237,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     if (activeTab !== 'OVERVIEW' && activeTab !== 'AUDIT' && activeTab !== 'REPORTS') {
       fetchRecords();
     }
-  }, [activeTab]);
+  }, [activeTab, eoidSubtype]);
 
   const DEFAULT_EOID_UNDERAGE_MOCKS: ImmigrationRecord[] = [
     {
@@ -281,17 +289,17 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
     setLoading(true);
     setSchemaError(null);
     
+    const effectiveRecordType = activeTab === 'EOID' 
+      ? (eoidSubtype === 'underage' ? 'EOID Under_Age' : 'EOID')
+      : (activeTab as RecordType);
+
+    const tableName = TABLE_MAP[effectiveRecordType];
+
     try {
-      const tableName = TABLE_MAP[activeTab as RecordType];
       if (!tableName) {
-        throw new Error(`No table mapped for active tab: ${activeTab}`);
+        throw new Error(`No table mapped for record type: ${effectiveRecordType}`);
       }
       let query = supabase.from(tableName).select('*').order('created_at', { ascending: false });
-      if (activeTab === 'EOID') {
-        query = query.or('under_age.eq.false,under_age.is.null');
-      } else if (activeTab === 'EOID Under_Age') {
-        query = query.eq('under_age', true);
-      }
       const { data, error } = await query;
 
       if (!error && data) {
@@ -306,53 +314,24 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         throw error || new Error("Failed to load");
       }
     } catch (e: any) {
-      console.warn(`Error or missing table on fetching ${activeTab} records, applying fallback:`, e?.message || e);
+      console.warn(`Error or missing table on fetching ${effectiveRecordType} records, applying fallback:`, e?.message || e);
       const msg = e?.message || String(e);
       if (msg.includes('schema cache') || msg.includes('does not exist')) {
-        const expectedTable = TABLE_MAP[activeTab as RecordType] || 'eoid_records';
-        setSchemaError(`Database schema out of sync: The table "${expectedTable}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`);
+        setSchemaError(`Database schema out of sync: The table "${tableName}" is missing or uncached in Supabase. Please copy and run Section #7 or #12 of "supabase_setup.sql" in your Supabase SQL Editor and execute NOTIFY pgrst, 'reload schema'; to sync.`);
       } else {
         setSchemaError(null);
       }
       
-      const useSharedEoid = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
-      const storageKey = useSharedEoid ? 'local_records_eoid' : 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-      
+      const storageKey = 'local_records_' + effectiveRecordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
       const stored = localStorage.getItem(storageKey);
-      let parsed = [];
-      if (useSharedEoid) {
-        const normalStored = localStorage.getItem('local_records_eoid');
-        const underageStored = localStorage.getItem('local_records_eoid_under_age');
-        
-        const merged: any[] = [];
-        if (normalStored) {
-          try {
-            merged.push(...JSON.parse(normalStored).map((r: any) => ({ ...r, under_age: r.under_age ?? false })));
-          } catch (_) {}
-        }
-        if (underageStored) {
-          try {
-            merged.push(...JSON.parse(underageStored).map((r: any) => ({ ...r, under_age: true })));
-          } catch (_) {}
-        } else if (!normalStored) {
-          merged.push(...DEFAULT_EOID_UNDERAGE_MOCKS.map((r: any) => ({ ...r, under_age: true })));
-        }
-        
-        if (!normalStored && merged.length > 0) {
-          localStorage.setItem('local_records_eoid', JSON.stringify(merged));
-        }
-        
-        parsed = merged;
-        if (activeTab === 'EOID') {
-          parsed = parsed.filter((r: any) => !r.under_age);
-        } else {
-          parsed = parsed.filter((r: any) => !!r.under_age);
-        }
-      } else {
-        parsed = stored ? JSON.parse(stored) : [];
+      let parsed = stored ? JSON.parse(stored) : [];
+      
+      if (effectiveRecordType === 'EOID Under_Age' && parsed.length === 0) {
+        parsed = DEFAULT_EOID_UNDERAGE_MOCKS;
+        localStorage.setItem(storageKey, JSON.stringify(DEFAULT_EOID_UNDERAGE_MOCKS));
       }
       
-      let mappedParsed = parsed.map((r: any) => ({ ...r, _table: TABLE_MAP[activeTab as RecordType] }));
+      let mappedParsed = parsed.map((r: any) => ({ ...r, _table: tableName }));
       
       const rRole = (userProfile?.role as string || '').toLowerCase();
       const isElevated = rRole === 'admin' || rRole === 'super_admin' || rRole === 'super-admin' || rRole === 'super admin' || rRole === 'admin_grant' || rRole === 'supervisor';
@@ -398,16 +377,16 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
         if (error) throw error;
       } catch (dbErr) {
-        if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-          console.warn("Delete DB error, performing local delete for EOID", dbErr);
-          const stored = localStorage.getItem('local_records_eoid');
-          if (stored) {
-            const parsed = JSON.parse(stored) as ImmigrationRecord[];
-            const updated = parsed.filter(r => r.id !== id);
-            localStorage.setItem('local_records_eoid', JSON.stringify(updated));
-          }
-        } else {
-          throw dbErr;
+        const effectiveRecordType = activeTab === 'EOID' 
+          ? (((record as any)?.under_age) ? 'EOID Under_Age' : 'EOID')
+          : (activeTab as RecordType);
+        const storageKey = 'local_records_' + effectiveRecordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        console.warn(`Delete DB error, performing local delete for ${effectiveRecordType}`, dbErr);
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as ImmigrationRecord[];
+          const updated = parsed.filter(r => r.id !== id);
+          localStorage.setItem(storageKey, JSON.stringify(updated));
         }
       }
       
@@ -454,6 +433,10 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
     setLoading(true);
 
+    const effectiveRecordType = activeTab === 'EOID' 
+      ? (eoidSubtype === 'underage' ? 'EOID Under_Age' : 'EOID')
+      : (activeTab as RecordType);
+
     // 1. Prevent duplicate file import immediately
     try {
       const importedFilesStr = localStorage.getItem('local_imported_files_log') || '[]';
@@ -462,11 +445,11 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
       const isDuplicateFile = importedFilesLog.some((f: any) => 
         f.fileName === file.name && 
         f.fileSize === file.size && 
-        f.tab === activeTab
+        f.tab === effectiveRecordType
       );
       
       if (isDuplicateFile) {
-        addToast(`Duplicate File Cancelled: The spreadsheet "${file.name}" has already been imported into the "${activeTab}" module. To prevent duplicate registers, this import has been cancelled.`, 'error');
+        addToast(`Duplicate File Cancelled: The spreadsheet "${file.name}" has already been imported into the "${effectiveRecordType}" module. To prevent duplicate registers, this import has been cancelled.`, 'error');
         setLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
@@ -628,13 +611,13 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           'Residence ID': 'RES-B1-01',
           'ETD': 'ETD-B1-01',
           'Yellow Card': 'YC-B1-01',
-          'EOID Under_Age': 'EOIDUA-B1-01-50',
+          'EOID Under_Age': 'EOIDUA-B1-01',
           'Alien Passport': 'AP-B1-01',
           'Eritrean ID': 'ERID-B1-01'
         };
 
         let existingBoxes: string[] = [];
-        const tableName = TABLE_MAP[activeTab as RecordType];
+        const tableName = TABLE_MAP[effectiveRecordType];
         if (tableName) {
           const { data, error } = await supabase
             .from(tableName)
@@ -642,8 +625,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           if (!error && data) {
             existingBoxes = data.map((r: any) => r.box_number || '');
           } else {
-            const isEoid = activeTab === 'EOID' || activeTab === 'EOID Under_Age';
-            const storageKey = isEoid ? 'local_records_eoid' : 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const storageKey = 'local_records_' + effectiveRecordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storageKey);
             if (stored) {
               try {
@@ -687,7 +669,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           // Auto-populate cabinet box number format if blank, undefined, or legacy
           const cleanBox = (finalRow.box_number || '').toString().trim();
-          const pfx = getPrefixForType(activeTab as RecordType);
+          const pfx = getPrefixForType(effectiveRecordType);
           const needsBoxAllocation = !cleanBox || 
             cleanBox === 'Eritrean-000008' || 
             cleanBox === 'ERID-B1' || 
@@ -697,29 +679,25 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           if (needsBoxAllocation) {
             let calculatedBox = `${pfx}-B1-01`;
-            if (activeTab === 'EOID Under_Age') {
-              calculatedBox = 'EOIDUA-B1-01-50';
-            } else {
-              let foundNext = false;
-              
-              // Build count map of currently assigned boxes in the import batch + database
-              const counts: Record<string, number> = {};
-              existingBoxes.forEach(b => {
-                counts[b] = (counts[b] || 0) + 1;
-              });
-              
-              for (let bIdx = 1; bIdx <= 1000; bIdx++) {
-                for (let sIdx = 1; sIdx <= 50; sIdx++) {
-                  const padSIdx = sIdx < 10 ? `0${sIdx}` : sIdx.toString();
-                  const candidate = `${pfx}-B${bIdx}-${padSIdx}`;
-                  if ((counts[candidate] || 0) === 0) {
-                    calculatedBox = candidate;
-                    foundNext = true;
-                    break;
-                  }
+            let foundNext = false;
+            
+            // Build count map of currently assigned boxes in the import batch + database
+            const counts: Record<string, number> = {};
+            existingBoxes.forEach(b => {
+              counts[b] = (counts[b] || 0) + 1;
+            });
+            
+            for (let bIdx = 1; bIdx <= 1000; bIdx++) {
+              for (let sIdx = 1; sIdx <= 50; sIdx++) {
+                const padSIdx = sIdx < 10 ? `0${sIdx}` : sIdx.toString();
+                const candidate = `${pfx}-B${bIdx}-${padSIdx}`;
+                if ((counts[candidate] || 0) === 0) {
+                  calculatedBox = candidate;
+                  foundNext = true;
+                  break;
                 }
-                if (foundNext) break;
               }
+              if (foundNext) break;
             }
             finalRow.box_number = calculatedBox;
             existingBoxes.push(calculatedBox);
@@ -741,8 +719,8 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
 
           finalRow.created_by = user.id;
 
-          if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-            finalRow.under_age = activeTab === 'EOID Under_Age';
+          if (effectiveRecordType === 'EOID' || effectiveRecordType === 'EOID Under_Age') {
+            finalRow.under_age = effectiveRecordType === 'EOID Under_Age';
           }
 
           return finalRow;
@@ -756,24 +734,29 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         for (let i = 0; i < processedData.length; i++) {
           const row = processedData[i];
           const boxNum = (row.box_number || '').toString().trim();
-          const expectedPrefix = getPrefixForType(activeTab as RecordType);
-          if (!boxNum.toLowerCase().startsWith(`${expectedPrefix.toLowerCase()}-b`)) {
-            const exampleBox = expectedPrefix === 'EOIDUA' ? 'EOIDUA-B1-01-50' : `${expectedPrefix}-B1-01`;
-            throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". ${activeTab} records only accept box numbers starting with "${expectedPrefix}-B" (e.g., ${exampleBox}).`);
+          const expectedPrefix = getPrefixForType(effectiveRecordType);
+          let isBoxValid = boxNum.toLowerCase().startsWith(`${expectedPrefix.toLowerCase()}-b`);
+          if (!isBoxValid && effectiveRecordType === 'EOID Under_Age') {
+            isBoxValid = boxNum.toLowerCase().startsWith('eoid-b');
+          }
+          if (!isBoxValid) {
+            const exampleBox = expectedPrefix === 'EOIDUA' ? 'EOIDUA-B1-01' : `${expectedPrefix}-B1-01`;
+            const acceptedPrefixes = effectiveRecordType === 'EOID Under_Age' ? '"EOIDUA-B" or "EOID-B"' : `"${expectedPrefix}-B"`;
+            throw new Error(`Row #${i + 1} (${row.full_name || 'Unnamed'}) has an invalid Box Number "${boxNum || 'Empty'}". ${effectiveRecordType} records only accept box numbers starting with ${acceptedPrefixes} (e.g., ${exampleBox}).`);
           }
         }
 
         // PRE-CALCULATE MAXIMUM SEQUENTIAL ID KEY IN THE DATABASE & OFFLINE CORES
         let maxNum = 0;
         let prefix = 'PID-';
-        if (activeTab === 'VISA') prefix = 'PID-VISA-';
-        else if (activeTab === 'EOID') prefix = 'PID-EOID-';
-        else if (activeTab === 'EOID Under_Age') prefix = 'PID-U-';
-        else if (activeTab === 'Residence ID') prefix = 'PID-RES-';
-        else if (activeTab === 'ETD') prefix = 'PID-ETD-';
-        else if (activeTab === 'Yellow Card') prefix = 'PID-YEL-';
-        else if (activeTab === 'Alien Passport') prefix = 'PID-ALN-';
-        else if (activeTab === 'Eritrean ID') prefix = 'PID-ER-';
+        if (effectiveRecordType === 'VISA') prefix = 'PID-VISA-';
+        else if (effectiveRecordType === 'EOID') prefix = 'PID-EOID-';
+        else if (effectiveRecordType === 'EOID Under_Age') prefix = 'PID-U-';
+        else if (effectiveRecordType === 'Residence ID') prefix = 'PID-RES-';
+        else if (effectiveRecordType === 'ETD') prefix = 'PID-ETD-';
+        else if (effectiveRecordType === 'Yellow Card') prefix = 'PID-YEL-';
+        else if (effectiveRecordType === 'Alien Passport') prefix = 'PID-ALN-';
+        else if (effectiveRecordType === 'Eritrean ID') prefix = 'PID-ER-';
 
         const existingPassports = new Set<string>();
         const existingRequests = new Set<string>();
@@ -841,12 +824,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         }
 
         // 2. Load from local storage cache always (ensures offline entries are also accounted for)
-        const storageKeys = [];
-        if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-          storageKeys.push('local_records_eoid');
-        } else {
-          storageKeys.push('local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
-        }
+        const storageKeys = ['local_records_' + effectiveRecordType.toLowerCase().replace(/[^a-z0-9_]/g, '_')];
 
         storageKeys.forEach(storageKey => {
           try {
@@ -1030,7 +1008,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           console.error("Error storing imported file log:", e);
         }
 
-        let successMsg = `Successfully imported ${uniqueProcessed.length} new document entries into ${activeTab}!`;
+        let successMsg = `Successfully imported ${uniqueProcessed.length} new document entries into ${effectiveRecordType}!`;
         if (duplicateInDbCount > 0 || duplicateInFileCount > 0) {
           successMsg += ` Skipped ${duplicateInDbCount + duplicateInFileCount} duplicates (${duplicateInDbCount} in DB, ${duplicateInFileCount} in file).`;
         }
@@ -1038,19 +1016,14 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
         fetchRecords();
       } catch (err: any) {
         const msg = err.message || String(err);
-        const expectedTable = TABLE_MAP[activeTab as RecordType] || 'eoid_records';
+        const expectedTable = TABLE_MAP[effectiveRecordType] || 'eoid_records';
         if (msg.includes(expectedTable) || msg.includes('schema cache') || msg.includes('does not exist') || msg.includes('relation')) {
           try {
-            console.warn(`Excel import DB insertion failed for ${activeTab}, falling back to localStorage offline security cache:`, err);
-            let storageKey = '';
-            if (activeTab === 'EOID' || activeTab === 'EOID Under_Age') {
-              storageKey = 'local_records_eoid';
-            } else {
-              storageKey = 'local_records_' + activeTab.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-            }
+            console.warn(`Excel import DB insertion failed for ${effectiveRecordType}, falling back to localStorage offline security cache:`, err);
+            const storageKey = 'local_records_' + effectiveRecordType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
             const stored = localStorage.getItem(storageKey);
             const parsed = stored ? JSON.parse(stored) : [];
-            const importPrefix = activeTab.toLowerCase().replace(/[^a-z0-9]/g, '') + '-local-';
+            const importPrefix = effectiveRecordType.toLowerCase().replace(/[^a-z0-9]/g, '') + '-local-';
             const fallbackProcessed = uniqueProcessed.map((row, idx) => ({
               ...row,
               id: importPrefix + Date.now().toString() + '-' + idx,
@@ -1365,7 +1338,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                       <div className="text-left">
                          <h1 className="text-2xl md:text-3xl font-semibold text-slate-700 tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
                           {activeTab === 'VISA' ? 'VISA Records' : 
-                           activeTab === 'EOID' ? 'Ethiopian Origin ID' : 
+                           activeTab === 'EOID' ? 'Ethiopian Origin ID File' : 
                            activeTab === 'EOID Under_Age' ? 'Ethiopian Origin ID Under-Age' : 
                            activeTab === 'Residence ID' ? 'Residence ID Records' : 
                            activeTab === 'ETD' ? 'ETD Records' : 
@@ -1375,7 +1348,7 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                         </h1>
                         <p className="text-slate-400 text-xs font-extrabold tracking-wider mt-1.5 uppercase">
                           {activeTab === 'VISA' ? 'SOURCE: - FSD Division Data structuring' : 
-                           activeTab === 'EOID' ? 'SOURCE: - Unified National ID Verification Feeds' : 
+                           activeTab === 'EOID' ? 'Source: - FSD Division Data structuring' : 
                            activeTab === 'EOID Under_Age' ? 'SOURCE: - Unified National ID Verification Feeds (Minor Applications)' : 
                            activeTab === 'Residence ID' ? 'SOURCE: - Permanent ID verification records' : 
                            activeTab === 'ETD' ? 'SOURCE: - Non-resident exception travels' : 
@@ -1383,6 +1356,27 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
                            activeTab === 'Alien Passport' ? 'SOURCE: - ALIEN PASSPORT RECEPTACLE DATA' :
                            'SOURCE: - DIASPORA REGISTRATION HUB'}
                         </p>
+                        {activeTab === 'EOID' && (
+                          <div className="flex items-center gap-3 mt-4" id="eoid-type-selector-wrapper">
+                            <span className="text-slate-600 font-bold text-[13px] md:text-sm tracking-tight">EOID Type:</span>
+                            <div className="relative inline-block">
+                              <select
+                                id="eoid-type-selector-input"
+                                value={eoidSubtype}
+                                onChange={(e) => setEoidSubtype(e.target.value as 'normal' | 'underage')}
+                                className="appearance-none bg-[#232c3f] hover:bg-[#2d3950] text-white font-bold py-2 pl-4 pr-10 rounded-xl text-[12px] md:text-xs cursor-pointer outline-none border-none shadow-md transition-all duration-200"
+                              >
+                                <option value="normal" className="bg-[#232c3f]">Normal EOID File</option>
+                                <option value="underage" className="bg-[#232c3f]">Under-Age EOID File</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-white">
+                                <svg className="fill-current h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Header Buttons matching the screen exact colors */}
@@ -1597,9 +1591,18 @@ export default function Dashboard({ userProfile, onProfileUpdate }: DashboardPro
           <RecordForm 
             isOpen={isFormOpen} 
             onClose={() => setIsFormOpen(false)} 
-            type={(editingRecord && (editingRecord as any)._table) 
-              ? REVERSE_TABLE_MAP[(editingRecord as any)._table] 
-              : (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' ? 'VISA' : activeTab as RecordType)}
+            type={(() => {
+              if (editingRecord) {
+                const isEoid = (editingRecord as any)._table === 'eoid_records' || (editingRecord as any)._table === 'eoid_underage_records';
+                if (isEoid) {
+                  return (editingRecord as any).under_age ? 'EOID Under_Age' : 'EOID';
+                }
+                return REVERSE_TABLE_MAP[(editingRecord as any)._table] || (activeTab as RecordType);
+              }
+              return (activeTab === 'OVERVIEW' || activeTab === 'AUDIT' || activeTab === 'REPORTS' 
+                ? 'VISA' 
+                : (activeTab === 'EOID' ? (eoidSubtype === 'underage' ? 'EOID Under_Age' : 'EOID') : activeTab as RecordType));
+            })()}
             record={editingRecord}
             onSuccess={(record) => {
               setIsFormOpen(false);

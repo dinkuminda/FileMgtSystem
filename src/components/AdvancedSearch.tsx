@@ -177,25 +177,30 @@ export default function AdvancedSearch({ userProfile, onEditRecord, onDeleteReco
         // DIVISION IMMIGRATION RECORDS
         if (type === 'EOID') {
           // SPECIAL EOID / EOID UNDER_AGE DUO (CONSOLIDATED)
-          const { data, error } = await supabase.from('eoid_records').select('*');
+          let normalData: any[] = [];
+          let underageData: any[] = [];
 
-          let eoidData = data || [];
-
-          if (error) {
-            // Local fallbacks
-            const normalStored = localStorage.getItem('local_records_eoid');
-            const underageStored = localStorage.getItem('local_records_eoid_under_age');
-            const merged: any[] = [];
-            if (normalStored) {
-              try { merged.push(...JSON.parse(normalStored).map((r: any) => ({ ...r, under_age: r.under_age ?? false }))); } catch(_) {}
+          const { data: nData, error: nError } = await supabase.from('eoid_records').select('*');
+          if (!nError && nData) {
+            normalData = nData.map((r: any) => ({ ...r, under_age: false }));
+          } else {
+            const stored = localStorage.getItem('local_records_eoid');
+            if (stored) {
+              try { normalData = JSON.parse(stored).map((r: any) => ({ ...r, under_age: false })); } catch(_) {}
             }
-            if (underageStored) {
-              try { merged.push(...JSON.parse(underageStored).map((r: any) => ({ ...r, under_age: true }))); } catch(_) {}
-            }
-            eoidData = merged;
           }
 
-          const combined = eoidData.map((r: any) => ({ ...r, _table: 'eoid_records', under_age: r.under_age ?? false }));
+          const { data: uData, error: uError } = await supabase.from('eoid_underage_records').select('*');
+          if (!uError && uData) {
+            underageData = uData.map((r: any) => ({ ...r, under_age: true }));
+          } else {
+            const stored = localStorage.getItem('local_records_eoid_under_age');
+            if (stored) {
+              try { underageData = JSON.parse(stored).map((r: any) => ({ ...r, under_age: true })); } catch(_) {}
+            }
+          }
+
+          const combined = [...normalData, ...underageData];
 
           return combined.filter(r => {
             // Main term filter
